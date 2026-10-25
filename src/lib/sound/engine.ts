@@ -55,15 +55,31 @@ interface Scene {
   layers: Layer[];
 }
 
+function holdGain(param: AudioParam, now: number) {
+  if (typeof param.cancelAndHoldAtTime === "function") {
+    param.cancelAndHoldAtTime(now);
+  } else {
+    param.cancelScheduledValues(now);
+    param.setValueAtTime(param.value, now);
+  }
+}
+
 export class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private scene: Scene | null = null;
   private heading = 0;
   private volume = 0.8;
+  private muted = false;
+  private lastSpecs: LayerSpec[] = [];
+  private muteTimer: number | null = null;
 
   get running() {
     return this.ctx?.state === "running";
+  }
+
+  get isMuted() {
+    return this.muted;
   }
 
   async start() {
@@ -73,29 +89,23 @@ export class SoundEngine {
       comp.threshold.value = -14;
       comp.ratio.value = 3;
       this.master = this.ctx.createGain();
-      this.master.gain.value = this.volume;
+      this.master.gain.value = this.muted ? 0 : this.volume;
       this.master.connect(comp).connect(this.ctx.destination);
     }
-    await this.ctx.resume();
+    if (!this.muted) await this.ctx.resume();
   }
 
   setScene(specs: LayerSpec[], fadeSeconds = 2.5) {
+    this.lastSpecs = specs;
     const ctx = this.ctx;
     const master = this.master;
     if (!ctx || !master) return;
 
-    const now = ctx.currentTime;
-    const old = this.scene;
-    if (old) {
-      old.bus.gain.cancelScheduledValues(now);
-      old.bus.gain.setValueAtTime(old.bus.gain.value, now);
-      old.bus.gain.linearRampToValueAtTime(0, now + fadeSeconds);
-      window.setTimeout(() => {
-        old.layers.forEach((l) => l.stop());
-        old.bus.disconnect();
-      }, fadeSeconds * 1000 + 200);
-    }
+    this.clearScene(fadeSeconds);
 
+    if (this.muted) return;
+
+    const now = ctx.currentTime;
     const bus = ctx.createGain();
     bus.gain.setValueAtTime(0, now);
     bus.gain.linearRampToValueAtTime(1, now + fadeSeconds);
@@ -110,21 +120,75 @@ export class SoundEngine {
 
   setVolume(v: number) {
     this.volume = v;
-    if (this.ctx && this.master) this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.1);
+    if (this.muted || !this.ctx || !this.master) return;
+    holdGain(this.master.gain, this.ctx.currentTime);
+    this.master.gain.setTargetAtTime(v, this.ctx.currentTime, 0.05);
   }
 
-  fadeOut(seconds: number) {
-    if (this.ctx && this.master) {
-      const now = this.ctx.currentTime;
-      this.master.gain.cancelScheduledValues(now);
-      this.master.gain.setValueAtTime(this.master.gain.value, now);
-      this.master.gain.linearRampToValueAtTime(0, now + seconds);
+  /** Mute stops generators after the fade so nothing keeps ticking in the background. */
+  async setMuted(muted: boolean, fadeSeconds = 1.5) {
+    if (this.muteTimer !== null) {
+      window.clearTimeout(this.muteTimer);
+      this.muteTimer = null;
+    }
+
+    this.muted = muted;
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) return;
+
+    const now = ctx.currentTime;
+    holdGain(master.gain, now);
+
+    if (muted) {
+      master.gain.linearRampToValueAtTime(0, now + Math.max(0.05, fadeSeconds));
+      this.muteTimer = window.setTimeout(() => {
+        this.muteTimer = null;
+        if (!this.muted) return;
+        this.clearScene(0);
+        void ctx.suspend();
+      }, Math.max(0.05, fadeSeconds) * 1000 + 50);
+    } else {
+      master.gain.linearRampToValueAtTime(this.volume, now + Math.max(0.05, fadeSeconds));
+      await ctx.resume();
+      if (!this.scene && this.lastSpecs.length) this.setScene(this.lastSpecs, fadeSeconds);
     }
   }
 
-  async close() {
-    this.scene?.layers.forEach((l) => l.stop());
+  /** @deprecated use setMuted(true) */
+  fadeOut(seconds: number) {
+    void this.setMuted(true, seconds);
+  }
+
+  private clearScene(fadeSeconds: number) {
+    const ctx = this.ctx;
+    const old = this.scene;
     this.scene = null;
+    if (!old || !ctx) return;
+
+    if (fadeSeconds <= 0) {
+      old.layers.forEach((l) => l.stop());
+      old.bus.disconnect();
+      return;
+    }
+
+    const now = ctx.currentTime;
+    old.bus.gain.cancelScheduledValues(now);
+    old.bus.gain.setValueAtTime(old.bus.gain.value, now);
+    old.bus.gain.linearRampToValueAtTime(0, now + fadeSeconds);
+    window.setTimeout(() => {
+      old.layers.forEach((l) => l.stop());
+      old.bus.disconnect();
+    }, fadeSeconds * 1000 + 200);
+  }
+
+  async close() {
+    if (this.muteTimer !== null) {
+      window.clearTimeout(this.muteTimer);
+      this.muteTimer = null;
+    }
+    this.clearScene(0);
+    this.lastSpecs = [];
     await this.ctx?.close();
     this.ctx = null;
     this.master = null;

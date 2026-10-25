@@ -1,0 +1,37 @@
+[
+  {
+    "course_id": "gangneung-sea-and-forest",
+    "position": 0,
+    "place_id": "kr-gangneung-anmok-coffee-street",
+    "heading": null,
+    "tip": "바다 쪽을 바라보면 파도 소리가 정면에서, 뒤를 돌면 카페 소리가 가까워져요."
+  },
+  {
+    "course_id": "gangneung-sea-and-forest",
+    "position": 1,
+    "place_id": "kr-gangneung-gyeongpo-beach",
+    "heading": null,
+    "tip": "뒤쪽 솔숲에서는 바람 소리와 새소리가 들려요."
+  },
+  {
+    "course_id": "gangneung-sea-and-forest",
+    "position": 2,
+    "place_id": "kr-gangneung-ojukheon",
+    "heading": null,
+    "tip": "대숲이 바람에 흔들리는 소리와 대나무끼리 부딪히는 소리에 집중해보세요."
+  },
+  {
+    "course_id": "gangneung-sea-and-forest",
+    "position": 3,
+    "place_id": "kr-gangneung-jungang-market",
+    "heading": null,
+    "tip": null
+  },
+  {
+    "course_id": "kyoto-bamboo",
+    "position": 0,
+    "place_id": "jp-kyoto-arashiyama-bamboo-grove",
+    "heading": null,
+    "tip": "이른 아침에 가면 사람이 적어 대숲 소리를 온전히 들을 수 있어요."
+  }
+]

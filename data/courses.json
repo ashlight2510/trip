@@ -1,0 +1,22 @@
+[
+  {
+    "id": "gangneung-sea-and-forest",
+    "title": "강릉, 바다와 대숲 사이",
+    "subtitle": "커피거리에서 시작해 경포 바다, 오죽헌 대숲, 중앙시장까지",
+    "country_code": "KR",
+    "cover": ["#5fa8d3", "#1b4965"],
+    "visibility": "public",
+    "created_at": "2026-10-25T12:00:00+09:00",
+    "updated_at": "2026-10-25T12:00:00+09:00"
+  },
+  {
+    "id": "kyoto-bamboo",
+    "title": "교토, 아라시야마 대나무숲",
+    "subtitle": "해외 로드뷰 확인용 한 정거장 코스",
+    "country_code": "JP",
+    "cover": ["#a7c957", "#386641"],
+    "visibility": "public",
+    "created_at": "2026-10-25T12:00:00+09:00",
+    "updated_at": "2026-10-25T12:00:00+09:00"
+  }
+]

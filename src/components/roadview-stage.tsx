@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Stop } from "@/data/courses";
+import type { StopView } from "@/db/repo";
 import {
   PanoramaNotFoundError,
   fallbackProvider,
@@ -19,7 +19,7 @@ export interface StageInfo {
 }
 
 interface Props {
-  stop: Stop;
+  stop: StopView;
   onReady: (info: StageInfo) => void;
   onHeading: (deg: number) => void;
 }
@@ -44,17 +44,17 @@ export function RoadviewStage({ stop, onReady, onHeading }: Props) {
     let unsubscribe: (() => void) | null = null;
 
     const target = {
-      lat: stop.lat,
-      lng: stop.lng,
+      lat: stop.place.lat,
+      lng: stop.place.lng,
       heading: stop.heading,
-      palette: stop.palette,
+      palette: stop.place.palette ?? undefined,
       landmarks: stop.soundscape.flatMap((l) =>
         l.bearing !== undefined && l.label ? [{ bearing: l.bearing, label: l.label }] : [],
       ),
     };
 
     (async () => {
-      let provider = providerFor(stop.country);
+      let provider = providerFor(stop.region?.country_code ?? "KR");
       let notice: StageNotice | null = null;
 
       if (!provider.isConfigured()) {

@@ -1,0 +1,18 @@
+"use client";
+
+import dynamic from "next/dynamic";
+import type { MapArea, MapPlace } from "@/db/repo";
+
+const MapExplorer = dynamic(
+  () => import("@/components/map-explorer").then((m) => m.MapExplorer),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="grid h-dvh place-items-center bg-[#f7f5f1] text-sm text-stone-500">지도를 불러오는 중…</div>
+    ),
+  },
+);
+
+export function MapExplorerClient({ places, areas }: { places: MapPlace[]; areas: MapArea[] }) {
+  return <MapExplorer places={places} areas={areas} />;
+}

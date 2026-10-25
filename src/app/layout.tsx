@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "풍경너머",
-  description: "떠나기 전에 먼저 가보는 여행. 로드뷰와 그 장소의 소리로 떠나는 가상여행.",
+  description: "여행지를 지도에 모으고, 블로그·후기는 원문으로 연결하는 사전 조사 지도.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

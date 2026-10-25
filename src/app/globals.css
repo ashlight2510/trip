@@ -1,8 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f6f4f0;
+  --background: #f7f5f1;
   --foreground: #1c1916;
+}
+
+.leaflet-container {
+  font: inherit;
+  background: #dce3e0;
+}
+
+.leaflet-control-attribution {
+  font-size: 10px !important;
+}
+
+.pn-place-pin {
+  background: transparent !important;
+  border: none !important;
+}
+
+.pn-place-pin button:focus-visible {
+  outline: 2px solid #1b4965;
+  outline-offset: 2px;
+  border-radius: 999px;
 }
 
 @theme inline {
@@ -15,4 +35,17 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+@keyframes kenburns {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.08);
+  }
+}
+
+.animate-kenburns {
+  animation: kenburns 18s ease-out forwards;
 }
