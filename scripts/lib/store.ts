@@ -17,7 +17,11 @@ export function read<T extends TableName>(name: T): Row<T>[] {
 
 export function write<T extends TableName>(name: T, rows: Row<T>[]) {
   const valid = z.array(tables[name]).parse(rows);
-  fs.writeFileSync(file(name), JSON.stringify(valid, null, 2) + "\n");
+  const target = file(name);
+  const tmp = `${target}.tmp`;
+  // Compact JSON — pretty-print doubles disk use during large batch jobs.
+  fs.writeFileSync(tmp, `${JSON.stringify(valid)}\n`);
+  fs.renameSync(tmp, target);
 }
 
 export function loadEnv() {

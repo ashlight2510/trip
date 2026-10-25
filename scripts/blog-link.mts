@@ -206,7 +206,12 @@ for (let i = 0; i < targets.length; i++) {
   }
   errors = 0;
 
-  if (!positionals[0] && (placesTouched % CHECKPOINT_EVERY === 0 || i === targets.length - 1)) {
+  // Checkpoint only after real links — skip-only loops used to rewrite ~30MB every place.
+  if (
+    !positionals[0] &&
+    placesTouched > 0 &&
+    (placesTouched % CHECKPOINT_EVERY === 0 || i === targets.length - 1)
+  ) {
     write("sources", sources);
     write("place_sources", links);
     console.log(
@@ -214,7 +219,7 @@ for (let i = 0; i < targets.length; i++) {
     );
   }
 
-  if (!positionals[0]) await sleep(80);
+  if (!positionals[0] && placesTouched > 0) await sleep(80);
 }
 
 write("sources", sources);
