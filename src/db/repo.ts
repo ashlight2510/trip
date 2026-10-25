@@ -169,109 +169,13 @@ export interface MapArea {
 }
 
 export async function listMapPlaces(): Promise<MapPlace[]> {
-  const db = snapshot();
-  return db.places.map((p) => {
-    const region = db.regions.find((r) => r.id === p.region_id);
-    const city = cityOf(db, p.region_id);
-    const district = districtOf(db, p.region_id);
-    const media = mediaFor(db, p.id);
-    const cover = media.find((m) => m.is_cover && m.kind === "image") ?? media.find((m) => m.kind === "image");
-    const links = db.placeSources
-      .filter((ps) => ps.place_id === p.id)
-      .sort((a, b) => a.rank - b.rank)
-      .flatMap((ps) => {
-        const src = db.sources.find((s) => s.id === ps.source_id);
-        if (!src) return [];
-        return [
-          {
-            id: src.id,
-            type: src.type,
-            title: src.title,
-            url: src.url,
-            author: src.author,
-            provider: src.provider,
-            published_at: src.published_at,
-            snippet: src.snippet,
-            relevance: ps.relevance,
-            rank: ps.rank,
-            score: src.score,
-            view_count: src.view_count,
-          },
-        ];
-      });
-    const stop = db.courseStops.find((st) => st.place_id === p.id);
-    const course = stop ? db.courses.find((c) => c.id === stop.course_id && c.visibility === "public") : null;
-    return {
-      id: p.id,
-      name: p.name,
-      name_en: p.name_en,
-      category: p.category,
-      lat: p.lat,
-      lng: p.lng,
-      region_id: p.region_id,
-      district_id: district?.id ?? null,
-      district_name: district?.name ?? null,
-      city_id: city?.id ?? null,
-      city_name: city?.name ?? null,
-      region_name: region?.name ?? null,
-      address: p.address,
-      description: p.description,
-      tags: p.tags,
-      search_query: searchQueryFor(p, city),
-      source_count: links.length,
-      cover_url: cover?.url ?? null,
-      sources: links,
-      course_id: course?.id ?? null,
-    };
-  });
+  const { queryMapPlaces } = await import("./map-query");
+  return queryMapPlaces({ limit: 500 });
 }
 
 export async function listMapAreas(): Promise<MapArea[]> {
-  const places = await listMapPlaces();
-  const db = snapshot();
-  const cities = db.regions.filter((r) => r.level === "city");
-  const districts = db.regions.filter((r) => r.level === "district");
-
-  const cityAreas: MapArea[] = cities.flatMap((city) => {
-    const cityPlaces = places.filter((p) => p.city_id === city.id);
-    if (cityPlaces.length === 0) return [];
-    const kids = districts.filter((d) => d.parent_id === city.id);
-    const lat = cityPlaces.reduce((sum, p) => sum + p.lat, 0) / cityPlaces.length;
-    const lng = cityPlaces.reduce((sum, p) => sum + p.lng, 0) / cityPlaces.length;
-    return [
-      {
-        id: city.id,
-        name: city.name,
-        level: "city" as const,
-        parent_id: city.parent_id === city.id ? "kr" : city.parent_id,
-        lat: city.lat || lat,
-        lng: city.lng || lng,
-        place_count: cityPlaces.length,
-        child_count: kids.filter((d) => cityPlaces.some((p) => p.district_id === d.id)).length,
-      },
-    ];
-  });
-
-  const districtAreas: MapArea[] = districts.flatMap((d) => {
-    const dPlaces = places.filter((p) => p.district_id === d.id);
-    if (dPlaces.length === 0) return [];
-    const lat = dPlaces.reduce((sum, p) => sum + p.lat, 0) / dPlaces.length;
-    const lng = dPlaces.reduce((sum, p) => sum + p.lng, 0) / dPlaces.length;
-    return [
-      {
-        id: d.id,
-        name: d.name,
-        level: "district" as const,
-        parent_id: d.parent_id,
-        lat: d.lat || lat,
-        lng: d.lng || lng,
-        place_count: dPlaces.length,
-        child_count: dPlaces.length,
-      },
-    ];
-  });
-
-  return [...cityAreas, ...districtAreas];
+  const { listMapAreasFast } = await import("./map-query");
+  return listMapAreasFast();
 }
 
 export async function listCoursesWithCover(): Promise<(s.Course & { stopCount: number; coverUrl: string | null })[]> {

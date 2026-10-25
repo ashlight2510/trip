@@ -11,6 +11,7 @@ const checks: { name: string; env: string; requiredFor: string }[] = [
   { name: "카카오 JS", env: "NEXT_PUBLIC_KAKAO_MAP_KEY", requiredFor: "국내 로드뷰" },
   { name: "네이버 Client ID", env: "NAVER_CLIENT_ID", requiredFor: "블로그 후기 3개 (API HUB)" },
   { name: "네이버 Secret", env: "NAVER_CLIENT_SECRET", requiredFor: "블로그 후기 3개 (API HUB)" },
+  { name: "유튜브 Data", env: "YOUTUBE_DATA_API_KEY", requiredFor: "영상 후기 (npm run youtube:link)" },
   { name: "구글 Maps", env: "NEXT_PUBLIC_GOOGLE_MAPS_KEY", requiredFor: "해외 스트리트뷰 (선택)" },
 ];
 

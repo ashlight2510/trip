@@ -14,6 +14,7 @@ import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { MAX_PLACES_PER_CITY, categorySearchHints } from "../src/db/curation";
 import type { Place, PlaceExternalRef, Region } from "../src/db/schema";
+import { categorySeedTags } from "../src/lib/place-tags";
 import { loadEnv, now, read, requireEnv, write } from "./lib/store";
 
 interface CitySeed {
@@ -250,7 +251,7 @@ for (let i = 0; i < cities.length; i++) {
       lat,
       lng,
       description: null,
-      tags: [category, ...((categorySearchHints[category] ?? []).slice(0, 1))],
+      tags: [...categorySeedTags[category]],
       view_heading: null,
       palette: null,
       created_at: ts,

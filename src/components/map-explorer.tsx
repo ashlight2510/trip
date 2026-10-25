@@ -1,13 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MapArea, MapPlace } from "@/db/repo";
 import type { Place } from "@/db/schema";
 import { categoryColor, categoryGlyph, categoryIconSvg, categoryLabel } from "@/lib/categories";
+import { fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
+import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
 import { ReportLinkButton } from "@/components/report-link-button";
+
+const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
+const NEAR_RADIUS_KM = 28;
+const NEAR_LIMIT = 220;
 
 const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -104,16 +110,21 @@ function placeMatchScore(place: MapPlace, q: string): number {
   if (city === q || city.startsWith(q)) return 400;
   if (district.includes(q) || city.includes(q)) return 300;
   if (address.includes(q)) return 200;
-  if (place.tags.some((t) => t.toLowerCase().includes(q))) return 150;
+  const qBare = q.replace(/^#/, "");
+  if (place.tags.some((t) => t.toLowerCase() === qBare || t.toLowerCase().includes(qBare))) return 450;
   if (cat.includes(q)) return 100;
   return 0;
 }
 
-export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapArea[] }) {
+export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const fetchSeq = useRef(0);
   const [mapReady, setMapReady] = useState(false);
+  const [places, setPlaces] = useState<MapPlace[]>([]);
+  const [placesLoading, setPlacesLoading] = useState(false);
   const [level, setLevel] = useState<Level>("city");
   const [cityId, setCityId] = useState<string | null>(null);
   const [districtId, setDistrictId] = useState<string | null>(null);
@@ -126,6 +137,52 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
     () => areas.filter((a) => a.level === "district" && a.parent_id === cityId),
     [areas, cityId],
   );
+
+  const ingestPlaces = useEffectEvent((next: MapPlace[]) => {
+    setPlaces((prev) => mergePlaces(prev, next));
+  });
+
+  const loadNearby = useEffectEvent(async (lat: number, lng: number) => {
+    const seq = ++fetchSeq.current;
+    setPlacesLoading(true);
+    try {
+      const next = await fetchPlaces({ lat, lng, radiusKm: NEAR_RADIUS_KM, limit: NEAR_LIMIT });
+      if (seq !== fetchSeq.current) return;
+      ingestPlaces(next);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (seq === fetchSeq.current) setPlacesLoading(false);
+    }
+  });
+
+  const loadBounds = useEffectEvent(async () => {
+    const map = mapRef.current;
+    if (!map || query.trim()) return;
+    const b = map.getBounds();
+    const zoom = map.getZoom();
+    // City overview stays light — only fetch pins when zoomed in enough.
+    if (level === "city" && zoom < 9) return;
+    const seq = ++fetchSeq.current;
+    setPlacesLoading(true);
+    try {
+      const next = await fetchPlaces({
+        west: b.getWest(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        north: b.getNorth(),
+        cityId: cityId ?? undefined,
+        districtId: districtId ?? undefined,
+        limit: zoom >= 12 ? 350 : 220,
+      });
+      if (seq !== fetchSeq.current) return;
+      ingestPlaces(next);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      if (seq === fetchSeq.current) setPlacesLoading(false);
+    }
+  });
 
   const categoryOptions = useMemo(() => {
     const counts = new Map<string, number>();
@@ -196,18 +253,92 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
     fitLatLngs(map, cities, 7);
     setMapReady(true);
 
+    let moveTimer: ReturnType<typeof setTimeout> | null = null;
+    const onMoveEnd = () => {
+      if (moveTimer) clearTimeout(moveTimer);
+      moveTimer = setTimeout(() => {
+        void loadBounds();
+      }, 280);
+    };
+    map.on("moveend", onMoveEnd);
+
     const onResize = () => map.invalidateSize();
     window.addEventListener("resize", onResize);
     requestAnimationFrame(() => map.invalidateSize());
 
     return () => {
+      if (moveTimer) clearTimeout(moveTimer);
+      map.off("moveend", onMoveEnd);
       window.removeEventListener("resize", onResize);
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
+      userMarkerRef.current = null;
       setMapReady(false);
     };
   }, [cities]);
+
+  // Boot: nearby places from geolocation (or Seoul fallback).
+  useEffect(() => {
+    if (!mapReady) return;
+    let cancelled = false;
+
+    const apply = async (lat: number, lng: number, fly: boolean) => {
+      if (cancelled) return;
+      const map = mapRef.current;
+      if (map) {
+        if (userMarkerRef.current) userMarkerRef.current.remove();
+        userMarkerRef.current = L.circleMarker([lat, lng], {
+          radius: 7,
+          color: "#fff",
+          weight: 2,
+          fillColor: "#1b4965",
+          fillOpacity: 1,
+        }).addTo(map);
+        if (fly) map.flyTo([lat, lng], 11, { duration: 0.7 });
+      }
+      await loadNearby(lat, lng);
+    };
+
+    if (!navigator.geolocation) {
+      void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        void apply(pos.coords.latitude, pos.coords.longitude, true);
+      },
+      () => {
+        void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [mapReady]);
+
+  // Server search when typing — don't require the whole catalog in memory.
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) return;
+    const seq = ++fetchSeq.current;
+    const timer = setTimeout(() => {
+      setPlacesLoading(true);
+      void fetchPlaces({ q, limit: 80 })
+        .then((next) => {
+          if (seq !== fetchSeq.current) return;
+          ingestPlaces(next);
+        })
+        .catch(console.error)
+        .finally(() => {
+          if (seq === fetchSeq.current) setPlacesLoading(false);
+        });
+    }, 220);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -249,6 +380,18 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
         marker.on("click", () => enterDistrict(area));
         marker.addTo(layer);
       });
+      // Also show whatever places we already have for this city.
+      places
+        .filter((p) => p.city_id === cityId)
+        .slice(0, 120)
+        .forEach((place) => {
+          const marker = L.marker([place.lat, place.lng], {
+            icon: pinIcon(place.category, place.id === selectedPlaceId),
+            title: `${place.name} · ${categoryLabel[place.category]}`,
+          });
+          marker.on("click", () => openPlace(place));
+          marker.addTo(layer);
+        });
       return;
     }
 
@@ -260,15 +403,23 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
       marker.on("click", () => openPlace(place));
       marker.addTo(layer);
     });
-  }, [level, listCities, listDistricts, visiblePlaces, selectedPlaceId, mapReady, cityId, districtId, isSearching]);
+  }, [level, listCities, listDistricts, visiblePlaces, selectedPlaceId, mapReady, cityId, districtId, isSearching, places]);
 
-  function openPlace(place: MapPlace) {
+  async function openPlace(place: MapPlace) {
     setCityId(place.city_id);
     setDistrictId(place.district_id);
     setLevel("place");
     setSelectedPlaceId(place.id);
     setCategoryFilter("all");
     mapRef.current?.flyTo([place.lat, place.lng], Math.max(mapRef.current.getZoom(), 14), { duration: 0.45 });
+    if (!place.sources.length) {
+      try {
+        const detail = await fetchPlaceDetail(place.id);
+        if (detail) ingestPlaces([detail]);
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
   function enterCity(area: MapArea) {
@@ -279,6 +430,9 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
     setQuery("");
     const kids = areas.filter((a) => a.level === "district" && a.parent_id === area.id);
     mapRef.current && fitLatLngs(mapRef.current, kids.length ? kids : [area], 12);
+    void fetchPlaces({ cityId: area.id, limit: 250 })
+      .then(ingestPlaces)
+      .catch(console.error);
   }
 
   function enterDistrict(area: MapArea) {
@@ -290,6 +444,9 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
     setCategoryFilter("all");
     const pts = places.filter((p) => p.district_id === area.id);
     mapRef.current && fitLatLngs(mapRef.current, pts.length ? pts : [area], 15);
+    void fetchPlaces({ districtId: area.id, limit: 300 })
+      .then(ingestPlaces)
+      .catch(console.error);
   }
 
   function goCities() {
@@ -398,9 +555,11 @@ export function MapExplorer({ places, areas }: { places: MapPlace[]; areas: MapA
             </div>
           )}
           <p className="mt-2 text-[11px] font-medium tracking-wide text-stone-500">
-            {isSearching
-              ? `검색 · 장소 ${visiblePlaces.length}건${listCities.length ? ` · 시 ${listCities.length}` : ""}`
-              : title}
+            {placesLoading
+              ? "주변 장소를 불러오는 중…"
+              : isSearching
+                ? `검색 · 장소 ${visiblePlaces.length}건${listCities.length ? ` · 시 ${listCities.length}` : ""}`
+                : `${title} · 로드 ${places.length}곳`}
           </p>
         </header>
 
@@ -572,74 +731,145 @@ function Empty() {
   return <li className="px-2 py-6 text-center text-sm text-stone-500">검색 결과가 없어요</li>;
 }
 
-function PlacePanel({ place, onClose }: { place: MapPlace; onClose: () => void }) {
+function PlaceHashtags({ place }: { place: MapPlace }) {
+  const tags = enrichPlaceTags({
+    category: place.category,
+    name: place.name,
+    existing: place.tags,
+    texts: place.sources.map((s) => `${s.title} ${s.snippet ?? ""}`),
+  });
+
+  if (!tags.length) return null;
+
   return (
-    <section className="absolute inset-x-3 bottom-3 z-[500] max-h-[48%] overflow-y-auto rounded-2xl bg-white/95 p-4 shadow-xl backdrop-blur md:inset-x-auto md:bottom-5 md:right-5 md:max-h-[70%] md:w-[360px]">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <CategoryBadge category={place.category} active />
-          <div className="min-w-0">
-            <p className="text-[11px] tracking-wide text-stone-500">
-              {categoryLabel[place.category]}
-              {place.city_name ? ` · ${place.city_name}` : ""}
-              {place.district_name ? ` ${place.district_name}` : ""}
-            </p>
-            <h2 className="mt-0.5 text-xl font-bold text-stone-900">{place.name}</h2>
-            {place.address && <p className="mt-1 text-xs text-stone-500">{place.address}</p>}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
-          aria-label="닫기"
+    <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="장소 해시태그">
+      {tags.map((tag) => (
+        <li
+          key={tag}
+          className="rounded-full bg-[#1b4965]/[0.08] px-2.5 py-1 text-[12px] font-semibold tracking-tight text-[#1b4965]"
         >
-          ✕
-        </button>
-      </div>
+          {formatHashtag(tag)}
+        </li>
+      ))}
+    </ul>
+  );
+}
 
-      {place.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{place.description}</p>}
+function sourceBadge(src: MapPlace["sources"][number]) {
+  if (src.type === "youtube" || src.provider === "youtube") {
+    return { label: "YouTube", className: "bg-[#ff0000]/10 text-[#b00000]" };
+  }
+  if (src.provider === "naver_blog" || src.provider.includes("naver")) {
+    return { label: "네이버 블로그", className: "bg-[#03c75a]/15 text-[#028a3f]" };
+  }
+  if (src.provider.includes("tistory")) {
+    return { label: "티스토리", className: "bg-orange-100 text-orange-800" };
+  }
+  return { label: "후기", className: "bg-stone-100 text-stone-600" };
+}
 
-      <div className="mt-5">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">연결된 후기</h3>
-        {place.sources.length === 0 ? (
-          <div className="mt-2 space-y-2">
-            <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요.</p>
-            <ReportLinkButton placeId={place.id} />
+function PlacePanel({ place, onClose }: { place: MapPlace; onClose: () => void }) {
+  const vibe = enrichPlaceTags({
+    category: place.category,
+    name: place.name,
+    existing: place.tags,
+    texts: place.sources.map((s) => `${s.title} ${s.snippet ?? ""}`),
+  });
+
+  return (
+    <section className="absolute inset-x-3 bottom-3 z-[500] max-h-[52%] overflow-y-auto rounded-2xl bg-white/95 shadow-xl backdrop-blur md:inset-x-auto md:bottom-5 md:right-5 md:max-h-[75%] md:w-[380px]">
+      {place.cover_url && (
+        <div className="relative h-36 w-full overflow-hidden rounded-t-2xl bg-stone-200">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={place.cover_url} alt="" className="h-full w-full object-cover" draggable={false} />
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
+          <p className="absolute bottom-2 left-3 right-12 text-[11px] font-medium text-white/90">
+            {categoryLabel[place.category]}
+            {vibe[0] ? ` · ${formatHashtag(vibe[0])}` : ""}
+          </p>
+        </div>
+      )}
+
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            <CategoryBadge category={place.category} active />
+            <div className="min-w-0">
+              <p className="text-[11px] tracking-wide text-stone-500">
+                {categoryLabel[place.category]}
+                {place.city_name ? ` · ${place.city_name}` : ""}
+                {place.district_name ? ` ${place.district_name}` : ""}
+              </p>
+              <h2 className="mt-0.5 text-xl font-bold text-stone-900">{place.name}</h2>
+              {place.address && <p className="mt-1 text-xs text-stone-500">{place.address}</p>}
+            </div>
           </div>
-        ) : (
-          <ul className="mt-2 space-y-2">
-            {place.sources.map((src) => (
-              <li key={src.id} className="rounded-xl border border-stone-200 px-3 py-2.5">
-                <a href={src.url} target="_blank" rel="noreferrer" className="block hover:opacity-80">
-                  <p className="line-clamp-2 text-sm font-medium text-stone-900">
-                    <span className="mr-1 text-stone-400">{src.rank}.</span>
-                    {src.title}
-                  </p>
-                  <p className="mt-1 text-[11px] text-stone-500">
-                    {[src.author, src.score != null ? `점수 ${src.score}` : null, src.view_count != null ? `조회 ${src.view_count}` : null]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                  <p className="mt-1 text-[11px] font-medium text-sky-800">원문 보기 →</p>
-                </a>
-                <div className="mt-2">
-                  <ReportLinkButton placeId={place.id} sourceId={src.id} sourceUrl={src.url} />
-                </div>
-              </li>
-            ))}
-          </ul>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
+            aria-label="닫기"
+          >
+            ✕
+          </button>
+        </div>
+
+        <PlaceHashtags place={place} />
+
+        {place.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{place.description}</p>}
+
+        <div className="mt-5">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">연결된 후기</h3>
+          {place.sources.length === 0 ? (
+            <div className="mt-2 space-y-2">
+              <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요.</p>
+              <ReportLinkButton placeId={place.id} />
+            </div>
+          ) : (
+            <ul className="mt-2 space-y-2">
+              {place.sources.map((src) => {
+                const badge = sourceBadge(src);
+                return (
+                  <li key={src.id} className="rounded-xl border border-stone-200/90 bg-white px-3 py-2.5 shadow-sm">
+                    <a href={src.url} target="_blank" rel="noreferrer" className="block hover:opacity-85">
+                      <div className="flex items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                        {src.view_count != null && (
+                          <span className="text-[10px] text-stone-400">조회 {src.view_count.toLocaleString("ko-KR")}</span>
+                        )}
+                      </div>
+                      <p className="mt-1.5 line-clamp-2 text-sm font-semibold text-stone-900">{src.title}</p>
+                      {src.snippet && (
+                        <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-stone-500">{src.snippet}</p>
+                      )}
+                      <p className="mt-1.5 text-[11px] text-stone-500">
+                        {[src.author, src.score != null ? `관련도 ${src.score}` : null].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="mt-1 text-[11px] font-semibold text-[#1b4965]">
+                        {src.type === "youtube" ? "영상 보기 →" : "원문 보기 →"}
+                      </p>
+                    </a>
+                    <div className="mt-2">
+                      <ReportLinkButton placeId={place.id} sourceId={src.id} sourceUrl={src.url} />
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {place.course_id && (
+          <Link
+            href={`/trip/${place.course_id}`}
+            className="mt-4 block rounded-xl border border-dashed border-stone-300 px-3 py-2.5 text-center text-xs text-stone-500 hover:border-stone-400 hover:text-stone-700"
+          >
+            가상여행 POC 열어보기 (실험)
+          </Link>
         )}
       </div>
-
-      {place.course_id && (
-        <Link
-          href={`/trip/${place.course_id}`}
-          className="mt-4 block rounded-xl border border-dashed border-stone-300 px-3 py-2.5 text-center text-xs text-stone-500 hover:border-stone-400 hover:text-stone-700"
-        >
-          가상여행 POC 열어보기 (실험)
-        </Link>
-      )}
     </section>
   );
 }

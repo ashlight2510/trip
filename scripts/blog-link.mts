@@ -14,6 +14,7 @@ import { parseArgs } from "node:util";
 import { setTimeout as sleep } from "node:timers/promises";
 import { MAX_SOURCES_PER_PLACE } from "../src/db/curation";
 import type { Place, PlaceSource, Region, Source } from "../src/db/schema";
+import { enrichPlaceTags } from "../src/lib/place-tags";
 import { searchNaverBlogs } from "./lib/naver-search";
 import { loadEnv, now, read, write } from "./lib/store";
 
@@ -147,10 +148,19 @@ async function linkPlace(place: Place, queryOverride?: string): Promise<number> 
   }));
   links.push(...nextLinks);
 
+  place.tags = enrichPlaceTags({
+    category: place.category,
+    name: place.name,
+    existing: place.tags,
+    texts: top.map((c) => [c.source.title, c.source.snippet ?? ""].join(" ")),
+  });
+  place.updated_at = ts;
+
   if (positionals[0]) {
     console.log(
       `"${query}" → 후보 ${candidates.length}건 중 상위 ${nextLinks.length}건 연결 (${place.name})` +
-        (nextLinks.length ? `\n  ${nextLinks.map((l, i) => `${i + 1}. ${top[i].source.title}`).join("\n  ")}` : ""),
+        (nextLinks.length ? `\n  ${nextLinks.map((l, i) => `${i + 1}. ${top[i].source.title}`).join("\n  ")}` : "") +
+        `\n  tags ${place.tags.map((t) => `#${t}`).join(" ")}`,
     );
   }
 
@@ -214,6 +224,7 @@ for (let i = 0; i < targets.length; i++) {
   ) {
     write("sources", sources);
     write("place_sources", links);
+    write("places", places);
     console.log(
       `[${i + 1}/${targets.length}] 연결 ${placesTouched}곳 (+${linked}링크) skip=${skipped}`,
     );
@@ -224,6 +235,7 @@ for (let i = 0; i < targets.length; i++) {
 
 write("sources", sources);
 write("place_sources", links);
+write("places", places);
 
 if (!positionals[0]) {
   console.log(

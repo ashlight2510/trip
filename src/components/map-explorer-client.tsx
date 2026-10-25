@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import type { MapArea, MapPlace } from "@/db/repo";
+import type { MapArea } from "@/db/repo";
 
 const MapExplorer = dynamic(
   () => import("@/components/map-explorer").then((m) => m.MapExplorer),
@@ -13,6 +13,6 @@ const MapExplorer = dynamic(
   },
 );
 
-export function MapExplorerClient({ places, areas }: { places: MapPlace[]; areas: MapArea[] }) {
-  return <MapExplorer places={places} areas={areas} />;
+export function MapExplorerClient({ areas }: { areas: MapArea[] }) {
+  return <MapExplorer areas={areas} />;
 }

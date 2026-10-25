@@ -6,13 +6,16 @@
  *
  * Ranking signals (what we can actually get legally via APIs):
  * - Naver blog search: result order (sim) as a popularity/relevance proxy — no view count in the API
- * - YouTube Data API (later): viewCount, likeCount
+ * - YouTube Data API: viewCount (mix ~2 blogs + 1 video per place)
  * - Manual editor boost via `score` overrides
  *
  * Caps keep the map usable as the catalog grows.
  */
 export const MAX_SOURCES_PER_REGION = 3;
 export const MAX_SOURCES_PER_PLACE = 3;
+/** Preferred mix when YouTube is available. */
+export const MAX_BLOG_SOURCES_PER_PLACE = 2;
+export const MAX_YOUTUBE_SOURCES_PER_PLACE = 1;
 
 /** How many places to seed per city when first collecting. */
 export const MAX_PLACES_PER_CITY = 300;
