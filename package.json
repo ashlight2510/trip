@@ -14,6 +14,7 @@
     "blog:link": "tsx scripts/blog-link.mts",
     "blog:link:kakao": "tsx scripts/blog-link-kakao.mts",
     "youtube:link": "tsx scripts/youtube-link.mts",
+    "source:prune": "tsx scripts/source-prune.mts",
     "region:link": "tsx scripts/region-link.mts",
     "collect:kr": "tsx scripts/collect-kr-kakao.mts",
     "collect:kr:osm": "tsx scripts/collect-kr-cities.mts",

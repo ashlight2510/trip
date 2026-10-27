@@ -92,7 +92,7 @@ export const placeSource = z.object({
   place_id: id,
   source_id: id,
   /** 1 = best featured link for this place (cap: MAX_SOURCES_PER_PLACE). */
-  rank: z.number().int().min(1).max(3),
+  rank: z.number().int().min(1).max(10),
   relevance: z.number().min(0).max(1),
   note: z.string().nullable(),
   timestamp_sec: z.number().int().nonnegative().nullable(),
@@ -188,6 +188,19 @@ export const sourceReport = z.object({
   created_at: isoDate,
 });
 
+/**
+ * Manual ranking overlay for place↔source links.
+ * Kept separate from place_sources so collectors/prunes never wipe editor order.
+ * Later: same shape as a Postgres table.
+ */
+export const placeSourceBoost = z.object({
+  place_id: id,
+  source_id: id,
+  /** Higher = shown first. Up/down adjusts relative to neighbors. */
+  boost: z.number().int().min(-1000).max(1000),
+  updated_at: isoDate,
+});
+
 export const tables = {
   regions: region,
   places: place,
@@ -200,6 +213,7 @@ export const tables = {
   courses: course,
   course_stops: courseStop,
   source_reports: sourceReport,
+  place_source_boosts: placeSourceBoost,
 } as const;
 
 export type TableName = keyof typeof tables;
@@ -216,3 +230,4 @@ export type PlaceMedia = Row<"place_media">;
 export type Course = Row<"courses">;
 export type CourseStop = Row<"course_stops">;
 export type SourceReport = Row<"source_reports">;
+export type PlaceSourceBoost = Row<"place_source_boosts">;

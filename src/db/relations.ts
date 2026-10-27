@@ -66,6 +66,13 @@ export const relations: Record<
       { column: "source_id", table: "sources", nullable: true },
     ],
   },
+  place_source_boosts: {
+    primaryKey: ["place_id", "source_id"],
+    references: [
+      { column: "place_id", table: "places" },
+      { column: "source_id", table: "sources" },
+    ],
+  },
 };
 
 /** Parents before children, so inserts never violate a foreign key. */
@@ -81,4 +88,5 @@ export const insertOrder: TableName[] = [
   "courses",
   "course_stops",
   "source_reports",
+  "place_source_boosts",
 ];

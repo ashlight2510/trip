@@ -65,11 +65,11 @@ create table sources (
   fetched_at     timestamptz not null
 );
 
--- JSON: max 3 featured links per place (rank 1..3)
+-- JSON: max 10 featured links per place (rank 1..10)
 create table place_sources (
   place_id       text not null references places(id) on delete cascade,
   source_id      text not null references sources(id) on delete cascade,
-  rank           smallint not null check (rank between 1 and 3),
+  rank           smallint not null check (rank between 1 and 10),
   relevance      real not null,
   note           text,
   timestamp_sec  integer,
@@ -151,6 +151,15 @@ create table source_reports (
   note        text,
   status      text not null default 'open' check (status in ('open', 'resolved', 'dismissed')),
   created_at  timestamptz not null default now()
+);
+
+-- JSON → later Postgres: manual up/down ranking overlay (collectors do not touch this)
+create table place_source_boosts (
+  place_id    text not null references places(id) on delete cascade,
+  source_id   text not null references sources(id) on delete cascade,
+  boost       integer not null default 0 check (boost between -1000 and 1000),
+  updated_at  timestamptz not null,
+  primary key (place_id, source_id)
 );
 
 -- later: one row per auth user (Supabase auth.users)

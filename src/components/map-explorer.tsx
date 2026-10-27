@@ -10,6 +10,7 @@ import { categoryColor, categoryGlyph, categoryIconSvg, categoryLabel } from "@/
 import { fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
 import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
 import { ReportLinkButton } from "@/components/report-link-button";
+import { SourceRankControls } from "@/components/source-rank-controls";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -412,13 +413,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     setSelectedPlaceId(place.id);
     setCategoryFilter("all");
     mapRef.current?.flyTo([place.lat, place.lng], Math.max(mapRef.current.getZoom(), 14), { duration: 0.45 });
-    if (!place.sources.length) {
-      try {
-        const detail = await fetchPlaceDetail(place.id);
-        if (detail) ingestPlaces([detail]);
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      const detail = await fetchPlaceDetail(place.id);
+      if (detail) ingestPlaces([detail]);
+    } catch (e) {
+      console.error(e);
     }
   }
 
@@ -477,7 +476,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머</p>
           <h1 className="mt-1 text-2xl font-bold text-stone-900">여행지 지도</h1>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">
-            시 → 구·동 → 장소. 후기는 지역·장소당 대표 3개만 원문 링크로 연결합니다.
+            시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다.
           </p>
 
           <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
@@ -720,7 +719,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0 z-0" />
         {selectedPlace && (level === "place" || isSearching) && (
-          <PlacePanel place={selectedPlace} onClose={() => setSelectedPlaceId(null)} />
+          <PlacePanel
+            place={selectedPlace}
+            onClose={() => setSelectedPlaceId(null)}
+            onSourcesChanged={async (placeId) => {
+              try {
+                const detail = await fetchPlaceDetail(placeId);
+                if (detail) ingestPlaces([detail]);
+              } catch (e) {
+                console.error(e);
+              }
+            }}
+          />
         )}
       </div>
     </div>
@@ -768,7 +778,15 @@ function sourceBadge(src: MapPlace["sources"][number]) {
   return { label: "후기", className: "bg-stone-100 text-stone-600" };
 }
 
-function PlacePanel({ place, onClose }: { place: MapPlace; onClose: () => void }) {
+function PlacePanel({
+  place,
+  onClose,
+  onSourcesChanged,
+}: {
+  place: MapPlace;
+  onClose: () => void;
+  onSourcesChanged?: (placeId: string) => void | Promise<void>;
+}) {
   const vibe = enrichPlaceTags({
     category: place.category,
     name: place.name,
@@ -827,12 +845,13 @@ function PlacePanel({ place, onClose }: { place: MapPlace; onClose: () => void }
             </div>
           ) : (
             <ul className="mt-2 space-y-2">
-              {place.sources.map((src) => {
+              {place.sources.map((src, i) => {
                 const badge = sourceBadge(src);
                 return (
                   <li key={src.id} className="rounded-xl border border-stone-200/90 bg-white px-3 py-2.5 shadow-sm">
                     <a href={src.url} target="_blank" rel="noreferrer" className="block hover:opacity-85">
                       <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold tabular-nums text-stone-400">{i + 1}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>
                           {badge.label}
                         </span>
@@ -851,7 +870,15 @@ function PlacePanel({ place, onClose }: { place: MapPlace; onClose: () => void }
                         {src.type === "youtube" ? "영상 보기 →" : "원문 보기 →"}
                       </p>
                     </a>
-                    <div className="mt-2">
+                    <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                      <SourceRankControls
+                        placeId={place.id}
+                        sourceId={src.id}
+                        boost={src.boost ?? 0}
+                        canUp={i > 0}
+                        canDown={i < place.sources.length - 1}
+                        onRanked={() => onSourcesChanged?.(place.id)}
+                      />
                       <ReportLinkButton placeId={place.id} sourceId={src.id} sourceUrl={src.url} />
                     </div>
                   </li>

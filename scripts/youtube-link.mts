@@ -1,6 +1,7 @@
 /**
  * Link top YouTube videos to places (metadata + URL only).
- * Mix policy: keep up to 2 blogs, add 1 YouTube → max MAX_SOURCES_PER_PLACE.
+ * Mix policy: keep up to MAX_BLOG blogs, add up to MAX_YOUTUBE videos → max MAX_SOURCES_PER_PLACE.
+ * Videos ranked by viewCount after visit-intent filter.
  *
  *   npm run youtube:link -- <place_id>
  *   npm run youtube:link -- --limit 50
@@ -8,9 +9,15 @@
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { setTimeout as sleep } from "node:timers/promises";
-import { MAX_SOURCES_PER_PLACE } from "../src/db/curation";
+import {
+  MAX_BLOG_SOURCES_PER_PLACE,
+  MAX_SOURCES_PER_PLACE,
+  MAX_YOUTUBE_SOURCES_PER_PLACE,
+  categorySearchHints,
+} from "../src/db/curation";
 import type { Place, PlaceSource, Region, Source } from "../src/db/schema";
 import { enrichPlaceTags } from "../src/lib/place-tags";
+import { scoreVisitRelevance } from "./lib/source-relevance";
 import { loadEnv, now, read, write } from "./lib/store";
 import { searchYoutubeVideos } from "./lib/youtube-search";
 
@@ -34,8 +41,8 @@ const sources = read("sources");
 let links = read("place_sources");
 
 const CHECKPOINT_EVERY = 20;
-const MAX_YT = 1;
-const MAX_BLOG = Math.max(1, MAX_SOURCES_PER_PLACE - MAX_YT);
+const MAX_YT = MAX_YOUTUBE_SOURCES_PER_PLACE;
+const MAX_BLOG = MAX_BLOG_SOURCES_PER_PLACE;
 
 function cityName(regionId: string, regs: Region[]) {
   const seen = new Set<string>();
@@ -50,12 +57,12 @@ function cityName(regionId: string, regs: Region[]) {
   return null;
 }
 
-function hasYoutube(placeId: string) {
-  return links.some((l) => {
+function youtubeCount(placeId: string) {
+  return links.filter((l) => {
     if (l.place_id !== placeId) return false;
     const src = sources.find((s) => s.id === l.source_id);
     return src?.type === "youtube" || src?.provider === "youtube";
-  });
+  }).length;
 }
 
 function existingSourcesFor(placeId: string): Source[] {
@@ -68,20 +75,54 @@ function existingSourcesFor(placeId: string): Source[] {
     });
 }
 
+function ytQuery(place: Place, city: string | null) {
+  const cityPart = city?.replace(/(시|군|구)$/, "") ?? "";
+  const hint = (categorySearchHints[place.category] ?? ["가볼만한곳"])[0];
+  return [cityPart, place.name, hint, "여행"].filter(Boolean).join(" ");
+}
+
+function viewScore(viewCount: number | null | undefined, visitScore: number) {
+  const v =
+    viewCount != null ? Math.min(100, Math.round(Math.log10(viewCount + 1) * 20)) : 40;
+  return Math.round(visitScore * 0.55 + v * 0.45);
+}
+
 async function linkPlace(place: Place): Promise<number> {
-  if (!values.force && hasYoutube(place.id)) return 0;
+  if (!values.force && youtubeCount(place.id) >= MAX_YT) return 0;
 
   const city = cityName(place.region_id, regions);
-  const query = [city?.replace(/(시|군|구)$/, ""), place.name, "여행"].filter(Boolean).join(" ");
+  const query = ytQuery(place, city);
   const ts = now();
-  const items = await searchYoutubeVideos(query, 5);
+  const items = await searchYoutubeVideos(query, 10);
   if (!items.length) return 0;
 
-  // Prefer higher view count among top search hits
-  const picked = [...items].sort((a, b) => (b.viewCount ?? 0) - (a.viewCount ?? 0)).slice(0, MAX_YT);
+  const scored = items
+    .map((item, i) => {
+      const visit = scoreVisitRelevance({
+        title: item.title,
+        snippet: item.description || "",
+        placeName: place.name,
+        category: place.category,
+        cityName: city,
+        searchRank: i,
+        searchPoolSize: items.length,
+        publishedAt: item.publishedAt ? item.publishedAt.slice(0, 10) : null,
+        viewCount: item.viewCount,
+      });
+      return { item, visit };
+    })
+    .filter((x) => x.visit.ok)
+    .sort(
+      (a, b) =>
+        (b.item.viewCount ?? 0) - (a.item.viewCount ?? 0) || b.visit.score - a.visit.score,
+    )
+    .slice(0, MAX_YT);
 
-  const ytSources: Source[] = [];
-  for (const item of picked) {
+  if (!scored.length) return 0;
+
+  const ytSources: { source: Source; score: number }[] = [];
+  for (const { item, visit } of scored) {
+    const score = viewScore(item.viewCount, visit.score);
     let src = sources.find((s) => s.url === item.url);
     if (!src) {
       src = {
@@ -96,7 +137,7 @@ async function linkPlace(place: Place): Promise<number> {
         snippet: item.description || null,
         thumbnail_url: item.thumbnailUrl,
         view_count: item.viewCount,
-        score: item.viewCount != null ? Math.min(100, Math.round(Math.log10(item.viewCount + 1) * 20)) : 50,
+        score,
         fetched_at: ts,
       };
       sources.push(src);
@@ -104,21 +145,40 @@ async function linkPlace(place: Place): Promise<number> {
       src.view_count = item.viewCount ?? src.view_count;
       src.thumbnail_url = item.thumbnailUrl ?? src.thumbnail_url;
       src.fetched_at = ts;
-      src.score = Math.max(src.score ?? 0, item.viewCount != null ? Math.min(100, Math.round(Math.log10(item.viewCount + 1) * 20)) : 0);
+      src.score = Math.max(src.score ?? 0, score);
     }
-    ytSources.push(src);
+    ytSources.push({ source: src, score });
   }
 
   const prev = existingSourcesFor(place.id);
-  const blogs = prev.filter((s) => s.type !== "youtube" && s.provider !== "youtube").slice(0, MAX_BLOG);
-  const mixed = [...blogs, ...ytSources].slice(0, MAX_SOURCES_PER_PLACE);
+  const blogs = prev
+    .filter((s) => s.type !== "youtube" && s.provider !== "youtube")
+    .map((s) => {
+      const r = scoreVisitRelevance({
+        title: s.title,
+        snippet: s.snippet ?? "",
+        placeName: place.name,
+        category: place.category,
+        cityName: city,
+        publishedAt: s.published_at,
+        viewCount: s.view_count,
+      });
+      return { source: s, score: r.score, ok: r.ok };
+    })
+    .filter((b) => b.ok)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_BLOG);
+
+  const mixed = [...blogs, ...ytSources]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_SOURCES_PER_PLACE);
 
   links = links.filter((l) => l.place_id !== place.id);
-  const next: PlaceSource[] = mixed.map((s, i) => ({
+  const next: PlaceSource[] = mixed.map((c, i) => ({
     place_id: place.id,
-    source_id: s.id,
-    rank: (i + 1) as 1 | 2 | 3,
-    relevance: (s.score ?? 50) / 100,
+    source_id: c.source.id,
+    rank: i + 1,
+    relevance: c.score / 100,
     note: null,
     timestamp_sec: null,
   }));
@@ -128,14 +188,21 @@ async function linkPlace(place: Place): Promise<number> {
     category: place.category,
     name: place.name,
     existing: place.tags,
-    texts: mixed.map((s) => `${s.title} ${s.snippet ?? ""}`),
+    texts: mixed.map((c) => `${c.source.title} ${c.source.snippet ?? ""}`),
   });
   place.updated_at = ts;
 
   if (positionals[0]) {
     console.log(
       `"${query}" → 유튜브 ${ytSources.length}건 믹스 (${place.name})\n` +
-        mixed.map((s, i) => `  ${i + 1}. [${s.type}] ${s.title}`).join("\n"),
+        mixed
+          .map(
+            (c, i) =>
+              `  ${i + 1}. [${c.source.type}] ${c.source.title}` +
+              (c.source.view_count != null ? ` · ${c.source.view_count.toLocaleString()}회` : "") +
+              ` (${c.score})`,
+          )
+          .join("\n"),
     );
   }
   return ytSources.length;
@@ -165,7 +232,7 @@ let errors = 0;
 
 for (let i = 0; i < targets.length; i++) {
   const place = targets[i]!;
-  if (!values.force && hasYoutube(place.id)) {
+  if (!values.force && youtubeCount(place.id) >= MAX_YT) {
     skipped++;
     continue;
   }

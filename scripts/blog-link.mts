@@ -1,25 +1,35 @@
 /**
  * Link top Naver blog posts to places (metadata + URL only).
- * Default: keep at most MAX_SOURCES_PER_PLACE (3) ranked links.
+ * Default: keep at most MAX_BLOG_SOURCES_PER_PLACE ranked visit-intent links,
+ * preserving existing YouTube rows (up to MAX_YOUTUBE_SOURCES_PER_PLACE).
  *
  *   npm run blog:link -- <place_id>
  *   npm run blog:link -- --limit 100
  *   npm run blog:link -- --force --limit 50
  *
- * Popularity: Naver search API has no view count — we use search rank (sort=sim)
- * as a score proxy. YouTube can fill real view_count later.
+ * Popularity: Naver search API has no view count — visit-intent score on
+ * title/snippet + search rank. YouTube fills real view_count later.
  */
 import { createHash } from "node:crypto";
 import { parseArgs } from "node:util";
 import { setTimeout as sleep } from "node:timers/promises";
-import { MAX_SOURCES_PER_PLACE } from "../src/db/curation";
+import {
+  MAX_BLOG_SOURCES_PER_PLACE,
+  MAX_SOURCES_PER_PLACE,
+  MAX_YOUTUBE_SOURCES_PER_PLACE,
+} from "../src/db/curation";
 import type { Place, PlaceSource, Region, Source } from "../src/db/schema";
 import { enrichPlaceTags } from "../src/lib/place-tags";
-import { searchNaverBlogs } from "./lib/naver-search";
+import { searchNaverBlogs, type NaverBlogItem } from "./lib/naver-search";
+import {
+  placeSearchQuery,
+  placeSearchQueryAlt,
+  scoreVisitRelevance,
+} from "./lib/source-relevance";
 import { loadEnv, now, read, write } from "./lib/store";
 
 const USAGE = `사용법:
-  npm run blog:link -- <place_id> [--query "<검색어>"] [--count 3]
+  npm run blog:link -- <place_id> [--query "<검색어>"] [--count 7]
   npm run blog:link -- --limit 100
   npm run blog:link -- --force --limit 50`;
 
@@ -27,7 +37,7 @@ const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     query: { type: "string" },
-    count: { type: "string", default: String(MAX_SOURCES_PER_PLACE) },
+    count: { type: "string", default: String(MAX_BLOG_SOURCES_PER_PLACE) },
     limit: { type: "string" },
     force: { type: "boolean", default: false },
   },
@@ -40,9 +50,12 @@ const regions = read("regions");
 const sources = read("sources");
 let links = read("place_sources");
 
-const want = Math.min(MAX_SOURCES_PER_PLACE, Math.max(1, Number(values.count)));
+const want = Math.min(MAX_BLOG_SOURCES_PER_PLACE, Math.max(1, Number(values.count)));
 const fetchN = Math.min(20, Math.max(want * 3, want));
 const CHECKPOINT_EVERY = 25;
+const MAX_PER_AUTHOR = 2;
+/** If primary query yields fewer than this, run alt query. */
+const ALT_QUERY_IF_BELOW = Math.max(3, Math.ceil(want / 2));
 
 function cityName(regionId: string, regs: Region[]) {
   const seen = new Set<string>();
@@ -79,9 +92,6 @@ const asUrl = (s: string) => {
 const providerOf = (url: string) =>
   url.includes("blog.naver.com") ? "naver_blog" : url.includes("tistory.com") ? "tistory" : "blog";
 
-const isJunk = (title: string, snippet: string) =>
-  /체험단|원고료|광고|협찬|쿠팡파트너스|클릭하면/i.test(`${title} ${snippet}`);
-
 function hasRealNaverBlog(placeId: string) {
   return links.some((l) => {
     if (l.place_id !== placeId) return false;
@@ -90,24 +100,38 @@ function hasRealNaverBlog(placeId: string) {
   });
 }
 
-async function linkPlace(place: Place, queryOverride?: string): Promise<number> {
-  if (!values.force && hasRealNaverBlog(place.id)) return 0;
+type Cand = { source: Source; relevance: number; score: number; authorKey: string };
 
-  const city = cityName(place.region_id, regions);
-  const query =
-    queryOverride ?? [city?.replace(/(시|군|구)$/, ""), place.name].filter(Boolean).join(" ");
-  const ts = now();
-  const items = await searchNaverBlogs(query, fetchN);
-  const candidates: { source: Source; relevance: number; score: number }[] = [];
-
+function ingestItems(
+  place: Place,
+  city: string | null,
+  items: NaverBlogItem[],
+  ts: string,
+  into: Map<string, Cand>,
+) {
   items.forEach((item, i) => {
     const url = asUrl(item.link);
-    if (!url) return;
+    if (!url || into.has(url)) return;
     const title = clean(item.title) || "(제목 없음)";
-    const snippet = clean(item.description).slice(0, 400) || null;
-    if (isJunk(title, snippet ?? "")) return;
+    const snippet = clean(item.description).slice(0, 400) || "";
+    const published = /^\d{8}$/.test(item.postdate)
+      ? `${item.postdate.slice(0, 4)}-${item.postdate.slice(4, 6)}-${item.postdate.slice(6, 8)}`
+      : null;
+    const author = clean(item.bloggername) || null;
 
-    const score = Math.round(((fetchN - i) / fetchN) * 100);
+    const scored = scoreVisitRelevance({
+      title,
+      snippet,
+      placeName: place.name,
+      category: place.category,
+      cityName: city,
+      searchRank: i,
+      searchPoolSize: Math.max(items.length, fetchN),
+      publishedAt: published,
+    });
+    if (!scored.ok) return;
+
+    const score = scored.score;
     let src = sources.find((s) => s.url === url);
     if (!src) {
       src = {
@@ -116,12 +140,10 @@ async function linkPlace(place: Place, queryOverride?: string): Promise<number> 
         provider: providerOf(url),
         url,
         title,
-        author: clean(item.bloggername) || null,
+        author,
         author_url: asUrl(item.bloggerlink),
-        published_at: /^\d{8}$/.test(item.postdate)
-          ? `${item.postdate.slice(0, 4)}-${item.postdate.slice(4, 6)}-${item.postdate.slice(6, 8)}`
-          : null,
-        snippet,
+        published_at: published,
+        snippet: snippet || null,
         thumbnail_url: null,
         view_count: null,
         score,
@@ -130,18 +152,81 @@ async function linkPlace(place: Place, queryOverride?: string): Promise<number> 
       sources.push(src);
     } else {
       src.score = Math.max(src.score ?? 0, score);
+      src.title = title;
+      src.snippet = snippet || src.snippet;
+      if (author) src.author = author;
       src.fetched_at = ts;
     }
-    candidates.push({ source: src, relevance: score / 100, score });
+    into.set(url, {
+      source: src,
+      relevance: score / 100,
+      score,
+      authorKey: (author || src.author || url).toLowerCase(),
+    });
   });
+}
 
-  candidates.sort((a, b) => b.score - a.score);
-  const top = candidates.slice(0, want);
+function pickDiverse(cands: Cand[], limit: number): Cand[] {
+  const sorted = [...cands].sort((a, b) => b.score - a.score);
+  const authorCount = new Map<string, number>();
+  const out: Cand[] = [];
+  for (const c of sorted) {
+    const n = authorCount.get(c.authorKey) ?? 0;
+    if (n >= MAX_PER_AUTHOR) continue;
+    authorCount.set(c.authorKey, n + 1);
+    out.push(c);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+async function linkPlace(place: Place, queryOverride?: string): Promise<number> {
+  if (!values.force && hasRealNaverBlog(place.id)) return 0;
+
+  const city = cityName(place.region_id, regions);
+  const primary = queryOverride ?? placeSearchQuery(place.name, city, place.category);
+  const ts = now();
+  const byUrl = new Map<string, Cand>();
+
+  const primaryItems = await searchNaverBlogs(primary, fetchN);
+  ingestItems(place, city, primaryItems, ts, byUrl);
+
+  if (!queryOverride && byUrl.size < ALT_QUERY_IF_BELOW) {
+    const alt = placeSearchQueryAlt(place.name, city, place.category);
+    if (alt !== primary) {
+      await sleep(60);
+      const altItems = await searchNaverBlogs(alt, fetchN);
+      ingestItems(place, city, altItems, ts, byUrl);
+    }
+  }
+
+  const top = pickDiverse([...byUrl.values()], want);
+
+  const keepYt = links
+    .filter((l) => l.place_id === place.id)
+    .flatMap((l) => {
+      const s = sources.find((x) => x.id === l.source_id);
+      if (!s) return [];
+      if (s.type === "youtube" || s.provider === "youtube") {
+        return [{ source: s, relevance: l.relevance, score: s.score ?? Math.round(l.relevance * 100) }];
+      }
+      return [];
+    })
+    .sort((a, b) => (b.source.view_count ?? 0) - (a.source.view_count ?? 0) || b.score - a.score)
+    .slice(0, MAX_YOUTUBE_SOURCES_PER_PLACE);
+
+  const mixed = [
+    ...top.map((c) => ({ source: c.source, relevance: c.relevance, score: c.score })),
+    ...keepYt,
+  ]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, MAX_SOURCES_PER_PLACE);
+
   links = links.filter((l) => l.place_id !== place.id);
-  const nextLinks: PlaceSource[] = top.map((c, i) => ({
+  const nextLinks: PlaceSource[] = mixed.map((c, i) => ({
     place_id: place.id,
     source_id: c.source.id,
-    rank: (i + 1) as 1 | 2 | 3,
+    rank: i + 1,
     relevance: c.relevance,
     note: null,
     timestamp_sec: null,
@@ -152,19 +237,24 @@ async function linkPlace(place: Place, queryOverride?: string): Promise<number> 
     category: place.category,
     name: place.name,
     existing: place.tags,
-    texts: top.map((c) => [c.source.title, c.source.snippet ?? ""].join(" ")),
+    texts: mixed.map((c) => [c.source.title, c.source.snippet ?? ""].join(" ")),
   });
   place.updated_at = ts;
 
   if (positionals[0]) {
     console.log(
-      `"${query}" → 후보 ${candidates.length}건 중 상위 ${nextLinks.length}건 연결 (${place.name})` +
-        (nextLinks.length ? `\n  ${nextLinks.map((l, i) => `${i + 1}. ${top[i].source.title}`).join("\n  ")}` : "") +
+      `"${primary}" → 후보 ${byUrl.size}건 중 상위 ${nextLinks.length}건 연결 (${place.name})` +
+        (nextLinks.length
+          ? `\n  ${nextLinks.map((l, i) => `${i + 1}. [${mixed[i].source.type}] ${mixed[i].source.title} (${mixed[i].score})`).join("\n  ")}`
+          : "") +
         `\n  tags ${place.tags.map((t) => `#${t}`).join(" ")}`,
     );
   }
 
-  return nextLinks.length;
+  return nextLinks.filter((l) => {
+    const s = mixed.find((m) => m.source.id === l.source_id)?.source;
+    return s && s.type !== "youtube" && s.provider !== "youtube";
+  }).length;
 }
 
 let targets = places;
@@ -178,7 +268,6 @@ if (positionals[0]) {
 } else if (values.limit) {
   targets = places.slice(0, Number(values.limit));
 } else if (!values.limit && !positionals[0]) {
-  // full catalog — skip already-linked unless --force
   targets = places;
 }
 
@@ -216,7 +305,6 @@ for (let i = 0; i < targets.length; i++) {
   }
   errors = 0;
 
-  // Checkpoint only after real links — skip-only loops used to rewrite ~30MB every place.
   if (
     !positionals[0] &&
     placesTouched > 0 &&

@@ -2,6 +2,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { compareSourceSort } from "@/lib/source-rank";
 import * as s from "./schema";
 import type { MapArea, MapPlace, MapPlaceSource } from "./repo";
 
@@ -12,6 +13,7 @@ type Db = {
   places: s.Place[];
   sources: s.Source[];
   placeSources: s.PlaceSource[];
+  placeSourceBoosts: s.PlaceSourceBoost[];
   media: s.PlaceMedia[];
   courses: s.Course[];
   courseStops: s.CourseStop[];
@@ -21,6 +23,7 @@ type Indexes = {
   regionById: Map<string, s.Region>;
   sourceById: Map<string, s.Source>;
   placeSourcesByPlace: Map<string, s.PlaceSource[]>;
+  boostByPlaceSource: Map<string, number>;
   mediaByPlace: Map<string, s.PlaceMedia[]>;
   courseByPlace: Map<string, string>;
   cityByRegion: Map<string, s.Region | undefined>;
@@ -65,6 +68,9 @@ function ancestors(regionById: Map<string, s.Region>, regionId: string | null | 
 function buildIndexes(db: Db): Indexes {
   const regionById = new Map(db.regions.map((r) => [r.id, r]));
   const sourceById = new Map(db.sources.map((x) => [x.id, x]));
+  const boostByPlaceSource = new Map(
+    db.placeSourceBoosts.map((b) => [`${b.place_id}::${b.source_id}`, b.boost]),
+  );
   const placeSourcesByPlace = new Map<string, s.PlaceSource[]>();
   for (const ps of db.placeSources) {
     const list = placeSourcesByPlace.get(ps.place_id);
@@ -104,6 +110,7 @@ function buildIndexes(db: Db): Indexes {
     regionById,
     sourceById,
     placeSourcesByPlace,
+    boostByPlaceSource,
     mediaByPlace,
     courseByPlace,
     cityByRegion,
@@ -112,7 +119,16 @@ function buildIndexes(db: Db): Indexes {
 }
 
 export function getMapDb(): Cache {
-  const stamp = ["regions", "places", "sources", "place_sources", "place_media", "courses", "course_stops"]
+  const stamp = [
+    "regions",
+    "places",
+    "sources",
+    "place_sources",
+    "place_source_boosts",
+    "place_media",
+    "courses",
+    "course_stops",
+  ]
     .map(tableStamp)
     .join("|");
   if (cache?.stamp === stamp) return cache;
@@ -122,6 +138,7 @@ export function getMapDb(): Cache {
     places: loadTable("places"),
     sources: loadTable("sources"),
     placeSources: loadTable("place_sources"),
+    placeSourceBoosts: loadTable("place_source_boosts"),
     media: loadTable("place_media"),
     courses: loadTable("courses"),
     courseStops: loadTable("course_stops"),
@@ -136,9 +153,10 @@ function searchQueryFor(place: s.Place, city: s.Region | undefined) {
 
 function sourcesFor(ix: Indexes, placeId: string): MapPlaceSource[] {
   const links = ix.placeSourcesByPlace.get(placeId) ?? [];
-  return links.flatMap((ps) => {
+  const rows = links.flatMap((ps) => {
     const src = ix.sourceById.get(ps.source_id);
     if (!src) return [];
+    const boost = ix.boostByPlaceSource.get(`${placeId}::${ps.source_id}`) ?? 0;
     return [
       {
         id: src.id,
@@ -153,9 +171,17 @@ function sourcesFor(ix: Indexes, placeId: string): MapPlaceSource[] {
         rank: ps.rank,
         score: src.score,
         view_count: src.view_count,
+        boost,
       },
     ];
   });
+  rows.sort((a, b) =>
+    compareSourceSort(
+      { boost: a.boost, relevance: a.relevance, view_count: a.view_count, rank: a.rank },
+      { boost: b.boost, relevance: b.relevance, view_count: b.view_count, rank: b.rank },
+    ),
+  );
+  return rows.map((r, i) => ({ ...r, rank: i + 1 }));
 }
 
 export function toMapPlace(place: s.Place, ix: Indexes, opts: { includeSources: boolean }): MapPlace {

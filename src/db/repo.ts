@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import type { LayerSpec } from "@/lib/sound/engine";
+import { compareSourceSort } from "@/lib/source-rank";
 import * as s from "./schema";
 
 /**
@@ -23,6 +24,7 @@ function snapshot() {
     places: load("places"),
     sources: load("sources"),
     placeSources: load("place_sources"),
+    placeSourceBoosts: load("place_source_boosts"),
     regionSources: load("region_sources"),
     soundscape: load("soundscape_layers"),
     media: load("place_media"),
@@ -132,6 +134,8 @@ export interface MapPlaceSource {
   rank: number;
   score: number | null;
   view_count: number | null;
+  /** Manual editor boost from place_source_boosts (0 = default). */
+  boost: number;
 }
 
 export interface MapPlace {
@@ -197,13 +201,30 @@ export async function getPlace(id: string) {
   const db = snapshot();
   const place = db.places.find((p) => p.id === id);
   if (!place) return null;
+  const boostOf = (sourceId: string) =>
+    db.placeSourceBoosts.find((b) => b.place_id === id && b.source_id === sourceId)?.boost ?? 0;
   const sources = db.placeSources
     .filter((ps) => ps.place_id === id)
-    .sort((a, b) => b.relevance - a.relevance)
     .flatMap((ps) => {
       const source = db.sources.find((src) => src.id === ps.source_id);
-      return source ? [{ ...source, relevance: ps.relevance, note: ps.note, timestamp_sec: ps.timestamp_sec }] : [];
-    });
+      if (!source) return [];
+      return [
+        {
+          ...source,
+          relevance: ps.relevance,
+          note: ps.note,
+          timestamp_sec: ps.timestamp_sec,
+          boost: boostOf(ps.source_id),
+          rank: ps.rank,
+        },
+      ];
+    })
+    .sort((a, b) =>
+      compareSourceSort(
+        { boost: a.boost, relevance: a.relevance, view_count: a.view_count, rank: a.rank },
+        { boost: b.boost, relevance: b.relevance, view_count: b.view_count, rank: b.rank },
+      ),
+    );
   return {
     place,
     region: db.regions.find((r) => r.id === place.region_id),
