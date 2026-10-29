@@ -15,6 +15,9 @@ import { SourceRankControls } from "@/components/source-rank-controls";
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
 const NEAR_LIMIT = 220;
+/** Show place pins on the map once the user has zoomed in this far (no city click required). */
+const PLACE_PIN_ZOOM = 9;
+const PLACE_PIN_CAP = 150;
 
 const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
@@ -124,6 +127,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const fetchSeq = useRef(0);
   const [mapReady, setMapReady] = useState(false);
+  const [mapZoom, setMapZoom] = useState(7);
   const [places, setPlaces] = useState<MapPlace[]>([]);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [level, setLevel] = useState<Level>("city");
@@ -132,6 +136,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
+  const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
 
   const cities = useMemo(() => areas.filter((a) => a.level === "city"), [areas]);
   const districts = useMemo(
@@ -163,7 +168,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const b = map.getBounds();
     const zoom = map.getZoom();
     // City overview stays light — only fetch pins when zoomed in enough.
-    if (level === "city" && zoom < 9) return;
+    if (level === "city" && zoom < PLACE_PIN_ZOOM) return;
     const seq = ++fetchSeq.current;
     setPlacesLoading(true);
     try {
@@ -252,15 +257,19 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     fitLatLngs(map, cities, 7);
+    setMapZoom(map.getZoom());
     setMapReady(true);
 
     let moveTimer: ReturnType<typeof setTimeout> | null = null;
+    const onZoomEnd = () => setMapZoom(map.getZoom());
     const onMoveEnd = () => {
+      setMapZoom(map.getZoom());
       if (moveTimer) clearTimeout(moveTimer);
       moveTimer = setTimeout(() => {
         void loadBounds();
       }, 280);
     };
+    map.on("zoomend", onZoomEnd);
     map.on("moveend", onMoveEnd);
 
     const onResize = () => map.invalidateSize();
@@ -269,6 +278,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
     return () => {
       if (moveTimer) clearTimeout(moveTimer);
+      map.off("zoomend", onZoomEnd);
       map.off("moveend", onMoveEnd);
       window.removeEventListener("resize", onResize);
       map.remove();
@@ -361,30 +371,50 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     }
 
     if (level === "city") {
-      listCities.forEach((area) => {
-        const marker = L.marker([area.lat, area.lng], {
-          icon: areaIcon(area.name, area.place_count, "city", area.id === cityId),
-          title: area.name,
+      // Keep city chips while overview-ish; fade them out once pins take over.
+      if (!showPlacePins || mapZoom < 12) {
+        listCities.forEach((area) => {
+          const marker = L.marker([area.lat, area.lng], {
+            icon: areaIcon(area.name, area.place_count, "city", area.id === cityId),
+            title: area.name,
+          });
+          marker.on("click", () => enterCity(area));
+          marker.addTo(layer);
         });
-        marker.on("click", () => enterCity(area));
-        marker.addTo(layer);
-      });
+      }
+      if (showPlacePins) {
+        const bounds = map.getBounds();
+        visiblePlaces
+          .filter((p) => bounds.contains([p.lat, p.lng]))
+          .slice(0, PLACE_PIN_CAP)
+          .forEach((place) => {
+            const marker = L.marker([place.lat, place.lng], {
+              icon: pinIcon(place.category, place.id === selectedPlaceId),
+              title: `${place.name} · ${categoryLabel[place.category]}`,
+            });
+            marker.on("click", () => openPlace(place));
+            marker.addTo(layer);
+          });
+      }
       return;
     }
 
     if (level === "district") {
-      listDistricts.forEach((area) => {
-        const marker = L.marker([area.lat, area.lng], {
-          icon: areaIcon(area.name, area.place_count, "district", area.id === districtId),
-          title: area.name,
+      if (!showPlacePins || mapZoom < 13) {
+        listDistricts.forEach((area) => {
+          const marker = L.marker([area.lat, area.lng], {
+            icon: areaIcon(area.name, area.place_count, "district", area.id === districtId),
+            title: area.name,
+          });
+          marker.on("click", () => enterDistrict(area));
+          marker.addTo(layer);
         });
-        marker.on("click", () => enterDistrict(area));
-        marker.addTo(layer);
-      });
+      }
       // Also show whatever places we already have for this city.
+      const bounds = map.getBounds();
       places
-        .filter((p) => p.city_id === cityId)
-        .slice(0, 120)
+        .filter((p) => p.city_id === cityId && (!showPlacePins || bounds.contains([p.lat, p.lng])))
+        .slice(0, PLACE_PIN_CAP)
         .forEach((place) => {
           const marker = L.marker([place.lat, place.lng], {
             icon: pinIcon(place.category, place.id === selectedPlaceId),
@@ -404,7 +434,20 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       marker.on("click", () => openPlace(place));
       marker.addTo(layer);
     });
-  }, [level, listCities, listDistricts, visiblePlaces, selectedPlaceId, mapReady, cityId, districtId, isSearching, places]);
+  }, [
+    level,
+    listCities,
+    listDistricts,
+    visiblePlaces,
+    selectedPlaceId,
+    mapReady,
+    mapZoom,
+    showPlacePins,
+    cityId,
+    districtId,
+    isSearching,
+    places,
+  ]);
 
   async function openPlace(place: MapPlace) {
     setCityId(place.city_id);
