@@ -24,5 +24,8 @@ export async function GET(req: Request) {
     limit: num(url.searchParams.get("limit")) ?? (url.searchParams.get("q") ? 80 : 250),
     includeSources: url.searchParams.get("includeSources") === "1",
   });
-  return Response.json({ places });
+  return Response.json(
+    { places },
+    { headers: { "Cache-Control": "no-store, max-age=0" } },
+  );
 }

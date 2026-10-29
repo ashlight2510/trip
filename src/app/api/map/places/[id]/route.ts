@@ -6,5 +6,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const place = getMapPlace(id);
   if (!place) return Response.json({ error: "not_found" }, { status: 404 });
-  return Response.json({ place });
+  return Response.json(
+    { place },
+    { headers: { "Cache-Control": "no-store, max-age=0" } },
+  );
 }

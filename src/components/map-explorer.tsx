@@ -131,6 +131,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [mapReady, setMapReady] = useState(false);
   const [mapZoom, setMapZoom] = useState(7);
   const [places, setPlaces] = useState<MapPlace[]>([]);
+  /** Latest server search hits (includes area-nearby). Null when not searching. */
+  const [searchHits, setSearchHits] = useState<MapPlace[] | null>(null);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [level, setLevel] = useState<Level>("city");
   const [cityId, setCityId] = useState<string | null>(null);
@@ -209,24 +211,20 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const isSearching = searchQ.length > 0;
 
   const visiblePlaces = useMemo(() => {
-    let list = places;
     if (!isSearching) {
+      let list = places;
       if (cityId) list = list.filter((p) => p.city_id === cityId);
       if (districtId) list = list.filter((p) => p.district_id === districtId);
       if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
       return list;
     }
 
-    // Unified search: ignore city/district drill-down so "경복궁" works from the top.
+    // Prefer server search hits (already includes matched 동/시 + nearby).
+    // Don't re-filter by name — that dropped 원당시장 etc. next to "주교동".
+    let list = searchHits ?? places.filter((p) => placeMatchScore(p, searchQ) > 0);
     if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-    const scored: { place: MapPlace; score: number }[] = [];
-    for (const p of list) {
-      const score = placeMatchScore(p, searchQ);
-      if (score > 0) scored.push({ place: p, score });
-    }
-    scored.sort((a, b) => b.score - a.score || a.place.name.localeCompare(b.place.name, "ko"));
-    return scored.slice(0, 80).map((s) => s.place);
-  }, [places, cityId, districtId, searchQ, isSearching, categoryFilter]);
+    return list.slice(0, 120);
+  }, [places, searchHits, cityId, districtId, searchQ, isSearching, categoryFilter]);
 
   const listCities = useMemo(() => {
     if (!isSearching) return cities;
@@ -253,7 +251,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const host = hostRef.current;
     if (!host || mapRef.current) return;
 
-    const map = L.map(host, { zoomControl: false, attributionControl: true });
+    // Mac trackpad two-finger scroll maps to wheel zoom — soften sensitivity & allow fractional levels.
+    const map = L.map(host, {
+      zoomControl: false,
+      attributionControl: true,
+      scrollWheelZoom: true,
+      wheelPxPerZoomLevel: 180, // default 60 — higher = gentler trackpad zoom
+      wheelDebounceTime: 20,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      // Keep the point under the cursor stable while zooming (feels less jumpy).
+    });
     L.tileLayer(OSM_URL, { attribution: OSM_ATTR, maxZoom: 19 }).addTo(map);
     L.control.zoom({ position: "topright" }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
@@ -336,13 +344,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   // Server search when typing — don't require the whole catalog in memory.
   useEffect(() => {
     const q = query.trim();
-    if (!q) return;
+    if (!q) {
+      setSearchHits(null);
+      return;
+    }
     const seq = ++fetchSeq.current;
     const timer = setTimeout(() => {
       setPlacesLoading(true);
-      void fetchPlaces({ q, limit: 80 })
+      void fetchPlaces({ q, limit: 120 })
         .then((next) => {
           if (seq !== fetchSeq.current) return;
+          setSearchHits(next);
           ingestPlaces(next);
         })
         .catch(console.error)

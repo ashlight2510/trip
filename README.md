@@ -19,7 +19,10 @@ yarn dev
 
 http://localhost:3000
 
-프로덕션:
+로컬에서 코드·데이터·순위(▲▼)를 **재시작 없이** 바로 보려면 항상 `yarn dev` 를 쓰세요.  
+`yarn start` 는 `yarn build` 한 결과만 서빙해서, 작업 중에는 반영이 안 됩니다.
+
+프로덕션 확인:
 
 ```bash
 yarn build && yarn start

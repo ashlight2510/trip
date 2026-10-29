@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "preview": "next build && next start",
     "lint": "eslint",
     "data:check": "tsx scripts/data-check.ts",
     "data:sql": "tsx scripts/export-sql.ts",

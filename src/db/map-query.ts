@@ -247,6 +247,29 @@ function placeMatchScore(place: s.Place, cityName: string | undefined, districtN
   return 0;
 }
 
+/** Strip common admin suffixes so "주교" matches region "주교동". */
+function bareAreaName(name: string) {
+  return name
+    .toLowerCase()
+    .replace(/(특별자치시|광역시|특별시|시|군|구|동|읍|면)$/u, "")
+    .trim();
+}
+
+/** Strong area-name hits only — used to expand "동/시" search to nearby places. */
+function regionQueryScore(regionName: string, q: string): number {
+  const n = regionName.toLowerCase();
+  if (n === q) return 100;
+  if (n.startsWith(q) && q.length >= 2) return 90;
+  const bare = bareAreaName(regionName);
+  const qBare = bareAreaName(q);
+  // "주교" → 주교동/주교면. "주교동" must not also expand 주교면 via bare strip.
+  if (q === qBare && bare && bare === qBare) return 95;
+  return 0;
+}
+
+/** How far around a matched 동/시 to also show places (km). */
+const SEARCH_AREA_RADIUS_KM = 3;
+
 export type MapPlaceQuery = {
   lat?: number;
   lng?: number;
@@ -270,6 +293,36 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
 
   type Cand = { place: s.Place; score: number; dist: number };
   const cands: Cand[] = [];
+  const seen = new Set<string>();
+
+  // Area anchors: matched 동/시/구 so we can show places nearby even if name doesn't contain q.
+  const areaAnchors: { lat: number; lng: number; score: number; regionId: string }[] = [];
+  if (q) {
+    for (const r of db.regions) {
+      if (r.level !== "district" && r.level !== "city") continue;
+      const rs = regionQueryScore(r.name, q);
+      if (rs <= 0) continue;
+      areaAnchors.push({ lat: r.lat, lng: r.lng, score: rs, regionId: r.id });
+    }
+    areaAnchors.sort((a, b) => b.score - a.score);
+  }
+  const matchedRegionIds = new Set(areaAnchors.map((a) => a.regionId));
+  // Prefer strongest anchors (exact 동) when expanding geographically.
+  const expandAnchors = areaAnchors.filter((a) => a.score >= 90).slice(0, 5);
+  const areaRadius = query.radiusKm ?? SEARCH_AREA_RADIUS_KM;
+
+  const pushCand = (place: s.Place, score: number, dist: number) => {
+    if (seen.has(place.id)) {
+      const existing = cands.find((c) => c.place.id === place.id);
+      if (existing && score > existing.score) {
+        existing.score = score;
+        existing.dist = dist;
+      }
+      return;
+    }
+    seen.add(place.id);
+    cands.push({ place, score, dist });
+  };
 
   for (const place of db.places) {
     const city = ix.cityByRegion.get(place.region_id);
@@ -301,21 +354,68 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
       if (!q && dist > radius) continue;
     }
 
-    let score = 0;
     if (q) {
-      score = placeMatchScore(place, city?.name, district?.name, q);
-      if (score <= 0) continue;
-    } else if (query.lat != null && query.lng != null) {
-      score = Math.max(0, 1000 - dist * 10);
-    } else {
-      score = 1;
-    }
+      let score = placeMatchScore(place, city?.name, district?.name, q);
 
-    cands.push({ place, score, dist });
+      // Place belongs to a matched district/city region.
+      if (score <= 0 && matchedRegionIds.has(place.region_id)) {
+        score = 480;
+      }
+      if (score <= 0 && district && matchedRegionIds.has(district.id)) {
+        score = 470;
+      }
+      if (score <= 0 && city && matchedRegionIds.has(city.id)) {
+        score = 420;
+      }
+
+      // Near a matched 동/시 centroid (the main fix for "주교동" → nearby pins).
+      let bestNear = Infinity;
+      if (expandAnchors.length) {
+        for (const a of expandAnchors) {
+          const d = haversineKm(a.lat, a.lng, place.lat, place.lng);
+          if (d < bestNear) bestNear = d;
+        }
+        if (score <= 0 && bestNear <= areaRadius) {
+          dist = bestNear;
+          score = Math.max(50, Math.round(320 - bestNear * 40));
+        }
+        // Drop weak substring hits far from the matched area (e.g. "경주교동" for q=주교동).
+        if (score > 0 && score < 900 && bestNear > areaRadius * 4) {
+          score = 0;
+        }
+      }
+
+      if (score <= 0) continue;
+      if (Number.isFinite(bestNear) && bestNear < Infinity) dist = bestNear;
+      pushCand(place, score, dist);
+    } else if (query.lat != null && query.lng != null) {
+      pushCand(place, Math.max(0, 1000 - dist * 10), dist);
+    } else {
+      pushCand(place, 1, dist);
+    }
+  }
+
+  // If text hits exist but no area match, still fan out a bit around top hits
+  // so a landmark search also shows nearby food/cafe pins.
+  if (q && !expandAnchors.length) {
+    const seeds = [...cands].sort((a, b) => b.score - a.score).slice(0, 8);
+    if (seeds.length) {
+      for (const place of db.places) {
+        if (seen.has(place.id)) continue;
+        let best = Infinity;
+        for (const s of seeds) {
+          const d = haversineKm(s.place.lat, s.place.lng, place.lat, place.lng);
+          if (d < best) best = d;
+        }
+        if (best <= Math.min(areaRadius, 2)) {
+          pushCand(place, Math.max(40, Math.round(200 - best * 50)), best);
+        }
+      }
+    }
   }
 
   cands.sort((a, b) => {
-    if (q) return b.score - a.score || a.place.name.localeCompare(b.place.name, "ko");
+    if (q) return b.score - a.score || a.dist - b.dist || a.place.name.localeCompare(b.place.name, "ko");
     if (query.lat != null) return a.dist - b.dist;
     return b.score - a.score;
   });
