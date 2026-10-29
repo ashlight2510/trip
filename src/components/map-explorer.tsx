@@ -54,13 +54,15 @@ function areaIcon(label: string, count: number, kind: "city" | "district", activ
   });
 }
 
-/** Teardrop map pin with category glyph — readable at dense zoom. */
+/** Teardrop map pin with category glyph — sized for glanceability on the map. */
 function pinIcon(category: Place["category"], active: boolean) {
   const color = categoryColor[category];
-  const w = active ? 36 : 30;
-  const h = active ? 44 : 38;
-  const glyph = categoryIconSvg(category, active ? 16 : 14);
-  const ring = active ? "0 0 0 4px rgba(27,73,101,.28)" : "none";
+  const w = active ? 48 : 42;
+  const h = active ? 60 : 52;
+  const glyphSize = active ? 22 : 20;
+  const glyph = categoryIconSvg(category, glyphSize);
+  const ring = active ? "0 0 0 5px rgba(27,73,101,.3)" : "none";
+  const glyphTop = active ? 15 : 13;
   return L.divIcon({
     className: "pn-place-pin",
     iconSize: [w, h],
@@ -68,18 +70,18 @@ function pinIcon(category: Place["category"], active: boolean) {
     popupAnchor: [0, -(h - 8)],
     html: `<button type="button" aria-label="${categoryLabel[category]}" style="
       width:${w}px;height:${h}px;padding:0;border:0;background:transparent;cursor:pointer;
-      filter:drop-shadow(0 2px 6px rgba(0,0,0,.32));
+      filter:drop-shadow(0 3px 8px rgba(0,0,0,.4));
     ">
       <span style="
         position:relative;display:block;width:${w}px;height:${h}px;
       ">
         <svg width="${w}" height="${h}" viewBox="0 0 30 38" aria-hidden="true" style="display:block">
           <path d="M15 1C7.3 1 1 7.3 1 15.1 1 24.2 15 37 15 37s14-12.8 14-21.9C29 7.3 22.7 1 15 1z"
-            fill="${color}" stroke="#fff" stroke-width="2"/>
+            fill="${color}" stroke="#fff" stroke-width="2.25"/>
         </svg>
         <span style="
-          position:absolute;left:50%;top:11px;transform:translateX(-50%);
-          width:18px;height:18px;display:grid;place-items:center;color:#fff;
+          position:absolute;left:50%;top:${glyphTop}px;transform:translateX(-50%);
+          width:${glyphSize + 4}px;height:${glyphSize + 4}px;display:grid;place-items:center;color:#fff;
           ${active ? `box-shadow:${ring};border-radius:50%;` : ""}
         ">${glyph}</span>
       </span>
