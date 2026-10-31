@@ -28,7 +28,9 @@ while true; do
     echo "[watch] DONE $(date)" >> "$LOG"
     exit 0
   fi
-  yarn blog:link >> "$LOG" 2>&1
+  # empty-only: skip places that already have naver/tistory blogs
+  # budget: Naver API Hub ~25k/day — leave headroom for other tools
+  yarn blog:link --empty-only --budget "${BUDGET:-25000}" >> "$LOG" 2>&1
   code=$?
   echo "[watch] yarn exit=${code} $(date)" >> "$LOG"
   sleep 3

@@ -17,6 +17,7 @@ import {
 } from "../src/db/curation";
 import type { Place, PlaceSource, Region, Source } from "../src/db/schema";
 import { enrichPlaceTags } from "../src/lib/place-tags";
+import { sortPlacesVisitFirst } from "./lib/place-quality";
 import { scoreVisitRelevance } from "./lib/source-relevance";
 import { loadEnv, now, read, write } from "./lib/store";
 import { searchYoutubeVideos } from "./lib/youtube-search";
@@ -24,7 +25,8 @@ import { searchYoutubeVideos } from "./lib/youtube-search";
 const USAGE = `사용법:
   yarn youtube:link -- <place_id>
   yarn youtube:link -- --limit 50
-  yarn youtube:link -- --budget 80`;
+  yarn youtube:link -- --budget 80
+  yarn youtube:link -- --empty-only --country KR --category landmark,heritage,beach,park,forest,viewpoint --budget 100`;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -33,6 +35,8 @@ const { positionals, values } = parseArgs({
     force: { type: "boolean", default: false },
     budget: { type: "string" },
     "empty-only": { type: "boolean", default: false },
+    category: { type: "string" },
+    country: { type: "string" },
   },
 });
 
@@ -212,6 +216,17 @@ async function linkPlace(place: Place): Promise<number> {
 }
 
 const apiBudget = values.budget ? Math.max(1, Number(values.budget)) : Infinity;
+const categoryFilter = values.category
+  ? new Set(values.category.split(",").map((s) => s.trim()).filter(Boolean))
+  : null;
+const countryFilter = values.country?.trim().toUpperCase() || null;
+const regionById = new Map(regions.map((r) => [r.id, r]));
+function placeCountryCode(place: Place) {
+  const reg = regionById.get(place.region_id);
+  if (reg?.country_code) return reg.country_code.toUpperCase();
+  const prefix = place.id.split("-")[0]?.toUpperCase();
+  return prefix && prefix.length === 2 ? prefix : "KR";
+}
 
 let targets = places;
 if (positionals[0]) {
@@ -222,6 +237,9 @@ if (positionals[0]) {
   }
   targets = [one];
 } else {
+  targets = sortPlacesVisitFirst(places);
+  if (countryFilter) targets = targets.filter((p) => placeCountryCode(p) === countryFilter);
+  if (categoryFilter?.size) targets = targets.filter((p) => categoryFilter.has(p.category));
   if (values["empty-only"]) {
     targets = targets.filter((p) => youtubeCount(p.id) === 0);
   }

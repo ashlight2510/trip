@@ -24,6 +24,7 @@ export async function searchNaverBlogs(query: string, display: number): Promise<
       "X-NCP-APIGW-API-KEY-ID": clientId,
       "X-NCP-APIGW-API-KEY": clientSecret,
     },
+    signal: AbortSignal.timeout(20_000),
   });
   if (!res.ok) {
     throw new Error(`네이버 검색 API 오류 ${res.status}: ${await res.text()}`);

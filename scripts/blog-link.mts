@@ -33,7 +33,8 @@ const USAGE = `사용법:
   yarn blog:link -- <place_id> [--query "<검색어>"] [--count 7]
   yarn blog:link -- --limit 100
   yarn blog:link -- --force --only-thin --limit 200
-  yarn blog:link -- --category landmark,park,beach --budget 5000`;
+  yarn blog:link -- --category landmark,park,beach --budget 5000
+  yarn blog:link -- --empty-only --country KR --category landmark,heritage,park,forest,beach,viewpoint,street,market --budget 20000`;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -45,6 +46,8 @@ const { positionals, values } = parseArgs({
     "only-thin": { type: "boolean", default: false },
     "empty-only": { type: "boolean", default: false },
     category: { type: "string" },
+    /** ISO country code, e.g. KR — skips overseas Naver (low relevance). */
+    country: { type: "string" },
     budget: { type: "string" },
   },
 });
@@ -279,9 +282,18 @@ const categoryFilter = values.category
         .filter(Boolean),
     )
   : null;
+const countryFilter = values.country?.trim().toUpperCase() || null;
 const apiBudget = values.budget ? Math.max(1, Number(values.budget)) : Infinity;
 const onlyThin = Boolean(values["only-thin"]);
 const emptyOnly = Boolean(values["empty-only"]);
+
+const regionById = new Map(regions.map((r) => [r.id, r]));
+function placeCountryCode(place: Place) {
+  const reg = regionById.get(place.region_id);
+  if (reg?.country_code) return reg.country_code.toUpperCase();
+  const prefix = place.id.split("-")[0]?.toUpperCase();
+  return prefix && prefix.length === 2 ? prefix : "KR";
+}
 
 let targets = places;
 if (positionals[0]) {
@@ -293,6 +305,9 @@ if (positionals[0]) {
   targets = [one];
 } else {
   targets = sortPlacesVisitFirst(places);
+  if (countryFilter) {
+    targets = targets.filter((p) => placeCountryCode(p) === countryFilter);
+  }
   if (categoryFilter?.size) {
     targets = targets.filter((p) => categoryFilter.has(p.category));
   }
@@ -354,11 +369,10 @@ for (let i = 0; i < targets.length; i++) {
   }
   errors = 0;
 
-  if (
-    !positionals[0] &&
-    placesTouched > 0 &&
-    (placesTouched % CHECKPOINT_EVERY === 0 || i === targets.length - 1)
-  ) {
+  // Checkpoint on successes, and also every N attempts so long zero-hit stretches still flush/log.
+  const attemptCheckpoint = (i + 1) % 100 === 0 || i === targets.length - 1;
+  const successCheckpoint = placesTouched > 0 && placesTouched % CHECKPOINT_EVERY === 0;
+  if (!positionals[0] && (successCheckpoint || attemptCheckpoint)) {
     write("sources", sources);
     write("place_sources", links);
     write("places", places);
@@ -367,7 +381,7 @@ for (let i = 0; i < targets.length; i++) {
     );
   }
 
-  if (!positionals[0] && placesTouched > 0) await sleep(80);
+  if (!positionals[0]) await sleep(40);
 }
 
 write("sources", sources);

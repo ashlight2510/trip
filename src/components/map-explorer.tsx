@@ -245,6 +245,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [searchNearMe, setSearchNearMe] = useState(false);
   const [userLoc, setUserLoc] = useState(DEFAULT_CENTER);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
+  /** Default on: map feels curated while blog coverage is still filling. */
+  const [reviewsOnly, setReviewsOnly] = useState(true);
   const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
 
   const cities = useMemo(() => areas.filter((a) => a.level === "city"), [areas]);
@@ -323,12 +325,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const isSearching = searchQ.length > 0;
 
   const visiblePlaces = useMemo(() => {
+    const withReviews = (list: MapPlace[]) =>
+      reviewsOnly ? list.filter((p) => p.source_count > 0) : list;
+
     if (!isSearching) {
       let list = places;
       if (cityId) list = list.filter((p) => p.city_id === cityId);
       if (districtId) list = list.filter((p) => p.district_id === districtId);
       if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-      return list;
+      return withReviews(list);
     }
 
     // Prefer server search hits (already includes matched 동/시 + nearby).
@@ -339,8 +344,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       list = [...list].sort((a, b) => placeMatchScore(b, searchQ) - placeMatchScore(a, searchQ));
     }
     if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-    return list.slice(0, 200);
-  }, [places, searchHits, cityId, districtId, searchQ, isSearching, categoryFilter]);
+    return withReviews(list).slice(0, 200);
+  }, [places, searchHits, cityId, districtId, searchQ, isSearching, categoryFilter, reviewsOnly]);
 
   const listCities = useMemo(() => {
     if (!isSearching) return cities;
@@ -773,21 +778,39 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-sky-700/30 placeholder:text-stone-400 focus:ring-2"
             />
           </label>
-          <div className="mt-2 inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
-            <button
-              type="button"
-              onClick={() => setSearchNearMe(false)}
-              className={`rounded-full px-2.5 py-1 ${!searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-            >
-              {t.scopeNationwide}
-            </button>
-            <button
-              type="button"
-              onClick={() => setSearchNearMe(true)}
-              className={`rounded-full px-2.5 py-1 ${searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-            >
-              {t.scopeNearMe}
-            </button>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
+              <button
+                type="button"
+                onClick={() => setSearchNearMe(false)}
+                className={`rounded-full px-2.5 py-1 ${!searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+              >
+                {t.scopeNationwide}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSearchNearMe(true)}
+                className={`rounded-full px-2.5 py-1 ${searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+              >
+                {t.scopeNearMe}
+              </button>
+            </div>
+            <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
+              <button
+                type="button"
+                onClick={() => setReviewsOnly(true)}
+                className={`rounded-full px-2.5 py-1 ${reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+              >
+                {t.reviewsOnly}
+              </button>
+              <button
+                type="button"
+                onClick={() => setReviewsOnly(false)}
+                className={`rounded-full px-2.5 py-1 ${!reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+              >
+                {t.reviewsAll}
+              </button>
+            </div>
           </div>
 
           {showCategoryFilter && (

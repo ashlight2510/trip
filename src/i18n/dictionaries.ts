@@ -43,6 +43,8 @@ export const dictionaries = {
     searchPlaceholderNear: "근처 숲카페, 카페, 해변…",
     scopeNationwide: "전국",
     scopeNearMe: "내 위치",
+    reviewsOnly: "후기 있는 곳만",
+    reviewsAll: "후기 없는 곳 포함",
     loadingNearby: "주변 장소를 불러오는 중…",
     searchResults: (places: number, cities: number) =>
       `검색 · 장소 ${places}건${cities ? ` · 시 ${cities}` : ""}`,
@@ -96,6 +98,8 @@ export const dictionaries = {
     searchPlaceholderNear: "Nearby cafe, beach, park…",
     scopeNationwide: "Nationwide",
     scopeNearMe: "Near me",
+    reviewsOnly: "With reviews only",
+    reviewsAll: "Include unreviewed",
     loadingNearby: "Loading nearby places…",
     searchResults: (places: number, cities: number) =>
       `Search · ${places} places${cities ? ` · ${cities} cities` : ""}`,
