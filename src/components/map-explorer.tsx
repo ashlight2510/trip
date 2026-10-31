@@ -383,12 +383,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     setMapReady(true);
 
     let cancelled = false;
-    void attachOpenFreeMap(map, locale).then((handle) => {
+    void attachOpenFreeMap(map, locale, L).then((handle) => {
       if (cancelled) {
         handle.remove();
         return;
       }
       basemapRef.current = handle;
+    }).catch((err) => {
+      console.warn("[map] basemap attach failed", err);
     });
 
     // Proportional zoom: small finger move → small zoom; no snap, no inertia drip.

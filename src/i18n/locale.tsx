@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
@@ -39,17 +40,15 @@ function writeCookieLocale(locale: Locale) {
   document.documentElement.lang = locale === "ko" ? "ko" : "en";
 }
 
-export function LocaleProvider({
-  children,
-  initialLocale = DEFAULT_LOCALE,
-}: {
-  children: ReactNode;
-  initialLocale?: Locale;
-}) {
-  const [locale, setLocaleState] = useState<Locale>(() => {
-    if (typeof document !== "undefined") return readCookieLocale();
-    return initialLocale;
-  });
+export function LocaleProvider({ children }: { children: ReactNode }) {
+  // SSR defaults to Korean; hydrate from cookie after mount (avoids root layout cookies()).
+  const [locale, setLocaleState] = useState<Locale>(DEFAULT_LOCALE);
+
+  useEffect(() => {
+    const fromCookie = readCookieLocale();
+    setLocaleState(fromCookie);
+    document.documentElement.lang = fromCookie === "ko" ? "ko" : "en";
+  }, []);
 
   const setLocale = useCallback((next: Locale) => {
     setLocaleState(next);

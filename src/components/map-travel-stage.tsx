@@ -184,7 +184,7 @@ export function MapTravelStage({
       });
       L.control.zoom({ position: "bottomright" }).addTo(map);
       pinsRef.current = L.layerGroup().addTo(map);
-      const basemap = await attachOpenFreeMap(map, locale);
+      const basemap = await attachOpenFreeMap(map, locale, L);
       if (cancelled) {
         basemap.remove();
         return;
