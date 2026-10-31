@@ -103,6 +103,93 @@ function CategoryBadge({ category, active = false }: { category: Place["category
   );
 }
 
+function CategoryFilterBar({
+  options,
+  value,
+  onChange,
+  className = "flex flex-wrap gap-1.5",
+}: {
+  options: [string, number][];
+  value: string | "all";
+  onChange: (next: string | "all") => void;
+  className?: string;
+}) {
+  if (options.length === 0) return null;
+  const total = options.reduce((sum, [, n]) => sum + n, 0);
+  return (
+    <div className={className} role="toolbar" aria-label="장소 카테고리 필터">
+      <button
+        type="button"
+        onClick={() => onChange("all")}
+        className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${
+          value === "all" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+        }`}
+      >
+        전체 {total}
+      </button>
+      {options.map(([cat, n]) => {
+        const key = cat as Place["category"];
+        const on = value === cat;
+        return (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => onChange(on ? "all" : cat)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11px] ${
+              on ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+            }`}
+          >
+            <span
+              className="grid size-5 place-items-center rounded-full"
+              style={{ background: on ? "rgba(255,255,255,.18)" : categoryColor[key] }}
+              dangerouslySetInnerHTML={{
+                __html: `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" style="display:block;color:#fff">${categoryGlyph[key]}</svg>`,
+              }}
+            />
+            {categoryLabel[key] ?? cat} {n}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function PlaceListItem({
+  place,
+  active,
+  onSelect,
+}: {
+  place: MapPlace;
+  active: boolean;
+  onSelect: (place: MapPlace) => void;
+}) {
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={() => onSelect(place)}
+        className={`mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition ${
+          active ? "bg-white shadow-sm ring-1 ring-stone-200" : "hover:bg-white/70"
+        }`}
+      >
+        <div className="flex items-start gap-3">
+          <CategoryBadge category={place.category} active={active} />
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2">
+              <h2 className="truncate font-semibold text-stone-900">{place.name}</h2>
+              <span className="shrink-0 text-[11px] text-stone-500">{categoryLabel[place.category]}</span>
+            </div>
+            <p className="mt-0.5 truncate text-xs text-stone-500">
+              {[place.city_name, place.district_name].filter(Boolean).join(" · ") || place.address}
+            </p>
+            <p className="mt-1 text-[11px] text-stone-500">연결된 후기 {place.source_count}건</p>
+          </div>
+        </div>
+      </button>
+    </li>
+  );
+}
+
 function placeMatchScore(place: MapPlace, q: string): number {
   const name = place.name.toLowerCase();
   const city = place.city_name?.toLowerCase() ?? "";
@@ -203,7 +290,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       if (districtId && p.district_id !== districtId) continue;
       counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    // Prefer known category order, then fall back by count for anything unexpected.
+    const known = (Object.keys(categoryLabel) as Place["category"][])
+      .filter((cat) => counts.has(cat))
+      .map((cat) => [cat, counts.get(cat) ?? 0] as [string, number]);
+    const extras = [...counts.entries()]
+      .filter(([cat]) => !(cat in categoryLabel))
+      .sort((a, b) => b[1] - a[1]);
+    return [...known, ...extras];
   }, [places, cityId, districtId]);
 
   const city = cities.find((c) => c.id === cityId) ?? null;
@@ -453,10 +547,10 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           marker.addTo(layer);
         });
       }
-      // Also show whatever places we already have for this city.
+      // Place pins respect the active category filter.
       const bounds = map.getBounds();
-      places
-        .filter((p) => p.city_id === cityId && (!showPlacePins || bounds.contains([p.lat, p.lng])))
+      visiblePlaces
+        .filter((p) => !showPlacePins || bounds.contains([p.lat, p.lng]))
         .slice(0, PLACE_PIN_CAP)
         .forEach((place) => {
           const marker = L.marker([place.lat, place.lng], {
@@ -497,7 +591,6 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     setDistrictId(place.district_id);
     setLevel("place");
     setSelectedPlaceId(place.id);
-    setCategoryFilter("all");
     mapRef.current?.flyTo([place.lat, place.lng], Math.max(mapRef.current.getZoom(), 14), { duration: 0.45 });
     try {
       const detail = await fetchPlaceDetail(place.id);
@@ -526,7 +619,6 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     setDistrictId(area.id);
     setSelectedPlaceId(null);
     setQuery("");
-    setCategoryFilter("all");
     const pts = places.filter((p) => p.district_id === area.id);
     mapRef.current && fitLatLngs(mapRef.current, pts.length ? pts : [area], 15);
     void fetchPlaces({ districtId: area.id, limit: 300 })
@@ -554,6 +646,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
   const title =
     level === "city" ? "시 선택" : level === "district" ? `${city?.name ?? ""} · 구·동` : `${district?.name ?? ""} · 장소`;
+  const showCategoryFilter =
+    categoryOptions.length > 0 &&
+    (showPlacePins || level !== "city" || isSearching || categoryFilter !== "all");
+  const showFilteredPlaceList =
+    !isSearching &&
+    (level === "place" ||
+      categoryFilter !== "all" ||
+      (level === "city" && showPlacePins) ||
+      (level === "district" && showPlacePins && categoryFilter !== "all"));
 
   return (
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
@@ -603,48 +704,22 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             />
           </label>
 
-          {!isSearching && level === "place" && categoryOptions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              <button
-                type="button"
-                onClick={() => setCategoryFilter("all")}
-                className={`rounded-full px-2.5 py-1 text-[11px] ${
-                  categoryFilter === "all" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200"
-                }`}
-              >
-                전체
-              </button>
-              {categoryOptions.map(([cat, n]) => {
-                const key = cat as Place["category"];
-                const on = categoryFilter === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategoryFilter(cat)}
-                    className={`inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[11px] ${
-                      on ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200"
-                    }`}
-                  >
-                    <span
-                      className="grid size-5 place-items-center rounded-full"
-                      style={{ background: on ? "rgba(255,255,255,.18)" : categoryColor[key] }}
-                      dangerouslySetInnerHTML={{
-                        __html: `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" style="display:block;color:${on ? "#fff" : "#fff"}">${categoryGlyph[key]}</svg>`,
-                      }}
-                    />
-                    {categoryLabel[key] ?? cat} {n}
-                  </button>
-                );
-              })}
-            </div>
+          {showCategoryFilter && (
+            <CategoryFilterBar
+              options={categoryOptions}
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              className="mt-3 flex flex-wrap gap-1.5"
+            />
           )}
           <p className="mt-2 text-[11px] font-medium tracking-wide text-stone-500">
             {placesLoading
               ? "주변 장소를 불러오는 중…"
               : isSearching
                 ? `검색 · 장소 ${visiblePlaces.length}건${listCities.length ? ` · 시 ${listCities.length}` : ""}`
-                : `${title} · 로드 ${places.length}곳`}
+                : categoryFilter !== "all"
+                  ? `${categoryLabel[categoryFilter as Place["category"]] ?? categoryFilter} · ${visiblePlaces.length}곳`
+                  : `${title} · 로드 ${places.length}곳`}
           </p>
         </header>
 
@@ -654,34 +729,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               <Empty />
             ) : (
               <>
-                {visiblePlaces.map((place) => {
-                  const active = place.id === selectedPlaceId;
-                  return (
-                    <li key={place.id}>
-                      <button
-                        type="button"
-                        onClick={() => openPlace(place)}
-                        className={`mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition ${
-                          active ? "bg-white shadow-sm ring-1 ring-stone-200" : "hover:bg-white/70"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <CategoryBadge category={place.category} active={active} />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-baseline justify-between gap-2">
-                              <h2 className="truncate font-semibold text-stone-900">{place.name}</h2>
-                              <span className="shrink-0 text-[11px] text-stone-500">{categoryLabel[place.category]}</span>
-                            </div>
-                            <p className="mt-0.5 truncate text-xs text-stone-500">
-                              {[place.city_name, place.district_name].filter(Boolean).join(" · ") || place.address}
-                            </p>
-                            <p className="mt-1 text-[11px] text-stone-500">연결된 후기 {place.source_count}건</p>
-                          </div>
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
+                {visiblePlaces.map((place) => (
+                  <PlaceListItem
+                    key={place.id}
+                    place={place}
+                    active={place.id === selectedPlaceId}
+                    onSelect={openPlace}
+                  />
+                ))}
                 {listCities.length > 0 && (
                   <li className="px-2 pb-1 pt-3 text-[11px] font-medium tracking-wide text-stone-500">시</li>
                 )}
@@ -722,7 +777,24 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             )
           ) : (
             <>
-              {level === "city" &&
+              {showFilteredPlaceList && (
+                <>
+                  {visiblePlaces.length === 0 ? (
+                    <Empty />
+                  ) : (
+                    visiblePlaces.map((place) => (
+                      <PlaceListItem
+                        key={place.id}
+                        place={place}
+                        active={place.id === selectedPlaceId}
+                        onSelect={openPlace}
+                      />
+                    ))
+                  )}
+                </>
+              )}
+
+              {!showFilteredPlaceList && level === "city" &&
                 (listCities.length === 0 ? (
                   <Empty />
                 ) : (
@@ -743,7 +815,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                   ))
                 ))}
 
-              {level === "district" &&
+              {!showFilteredPlaceList && level === "district" &&
                 (listDistricts.length === 0 ? (
                   <Empty />
                 ) : (
@@ -763,40 +835,6 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                     </li>
                   ))
                 ))}
-
-              {level === "place" &&
-                (visiblePlaces.length === 0 ? (
-                  <Empty />
-                ) : (
-                  visiblePlaces.map((place) => {
-                    const active = place.id === selectedPlaceId;
-                    return (
-                      <li key={place.id}>
-                        <button
-                          type="button"
-                          onClick={() => openPlace(place)}
-                          className={`mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition ${
-                            active ? "bg-white shadow-sm ring-1 ring-stone-200" : "hover:bg-white/70"
-                          }`}
-                        >
-                          <div className="flex items-start gap-3">
-                            <CategoryBadge category={place.category} active={active} />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-baseline justify-between gap-2">
-                                <h2 className="truncate font-semibold text-stone-900">{place.name}</h2>
-                                <span className="shrink-0 text-[11px] text-stone-500">{categoryLabel[place.category]}</span>
-                              </div>
-                              <p className="mt-0.5 truncate text-xs text-stone-500">
-                                {place.district_name ?? place.address}
-                              </p>
-                              <p className="mt-1 text-[11px] text-stone-500">연결된 후기 {place.source_count}건</p>
-                            </div>
-                          </div>
-                        </button>
-                      </li>
-                    );
-                  })
-                ))}
             </>
           )}
         </ul>
@@ -804,6 +842,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0 z-0" />
+        {showCategoryFilter && (
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start">
+            <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[#f7f5f1]/95 p-2 shadow-md ring-1 ring-stone-200/80 backdrop-blur">
+              <CategoryFilterBar
+                options={categoryOptions}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+                className="flex w-max gap-1.5"
+              />
+            </div>
+          </div>
+        )}
         {selectedPlace && (level === "place" || isSearching) && (
           <PlacePanel
             place={selectedPlace}
