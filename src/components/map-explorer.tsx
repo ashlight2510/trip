@@ -1024,14 +1024,23 @@ function PlacePanel({
           )}
         </div>
 
-        {place.course_id && (
+        <div className="mt-4 space-y-2">
           <Link
-            href={`/trip/${place.course_id}`}
-            className="mt-4 block rounded-xl border border-dashed border-stone-300 px-3 py-2.5 text-center text-xs text-stone-500 hover:border-stone-400 hover:text-stone-700"
+            href={`/trip/place/${place.id}`}
+            className="block rounded-xl bg-[#1b4965] px-3 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-[#163a52]"
           >
-            가상여행 POC 열어보기 (실험)
+            나홀로 여행 떠나기
           </Link>
-        )}
+          <p className="text-center text-[11px] text-stone-500">카카오 로드뷰로 그 자리에 서서 둘러봅니다</p>
+          {place.course_id && (
+            <Link
+              href={`/trip/${place.course_id}`}
+              className="block rounded-xl border border-dashed border-stone-300 px-3 py-2 text-center text-xs text-stone-500 hover:border-stone-400 hover:text-stone-700"
+            >
+              코스 가상여행 열기
+            </Link>
+          )}
+        </div>
       </div>
     </section>
   );

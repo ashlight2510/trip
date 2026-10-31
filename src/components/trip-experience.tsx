@@ -1,20 +1,24 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { CourseView } from "@/db/repo";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CourseView, MapPlace, StopView } from "@/db/repo";
 import { SoundEngine } from "@/lib/sound/engine";
 import { soundLabels } from "@/lib/sound/generators";
+import { TRAVEL_MODES, travelModeMeta, type TravelMode, type TravelPose } from "@/lib/travel-mode";
+import { COMPANIONS, CompanionHandOverlay, CompanionPreview, type CompanionKind } from "./companion-hand";
 import { Compass } from "./compass";
+import { MapTravelStage } from "./map-travel-stage-client";
 import { PlacePhotoStage, PlaceVideoStage } from "./place-media-stage";
 import { RoadviewStage, type StageInfo, type StageNotice } from "./roadview-stage";
 
-type ViewMode = "photo" | "roadview" | "video";
+type ViewMode = "roadview" | "travel" | "photo" | "video";
 
 const NOTICES: Record<StageNotice, string> = {
-  "key-missing": "로드뷰 API 키가 없어 사진·영상으로 보여드려요. 키를 넣으면 로드뷰도 켤 수 있어요.",
-  "no-pano": "이 근처에는 로드뷰가 없어 사진·영상으로 보여드려요.",
-  "load-failed": "로드뷰를 불러오지 못했어요. 사진·영상으로 둘러보세요.",
+  "key-missing":
+    "로드뷰 키가 없어 대체 화면이에요. .env.local 에 NEXT_PUBLIC_KAKAO_MAP_KEY 를 넣으면 거리뷰가 켜집니다.",
+  "no-pano": "이 좌표 근처에는 카카오 로드뷰가 없어요. 지도 탭에서 다른 곳으로 이동해 보세요.",
+  "load-failed": "로드뷰를 불러오지 못했어요. 잠시 후 다시 시도해 보세요.",
 };
 
 const TIMERS = [0, 15, 30, 60];
@@ -22,10 +26,35 @@ const AUTO_ROTATE_DEG_PER_SEC = 2.5;
 const IDLE_BEFORE_ROTATE_MS = 4000;
 const TIMER_FADE_SEC = 10;
 
-export function TripExperience({ view }: { view: CourseView }) {
+function lookStopFrom(base: StopView, pose: TravelPose, focus: MapPlace | null): StopView {
+  return {
+    ...base,
+    heading: pose.heading,
+    tip: focus ? `${focus.name} 앞에 서 있어요.` : base.tip,
+    place: {
+      ...base.place,
+      id: focus?.id ?? base.place.id,
+      name: focus?.name ?? base.place.name,
+      lat: focus?.lat ?? pose.lat,
+      lng: focus?.lng ?? pose.lng,
+      address: focus?.address ?? base.place.address,
+      category: focus?.category ?? base.place.category,
+    },
+  };
+}
+
+export function TripExperience({
+  view,
+  preferRoadview = false,
+}: {
+  view: CourseView;
+  /** Solo place trip: start in 거리뷰. */
+  preferRoadview?: boolean;
+}) {
   const { course, stops } = view;
+  const solo = preferRoadview || stops.length === 1;
   const [index, setIndex] = useState(0);
-  const stop = stops[index];
+  const stop = stops[index]!;
   const { place } = stop;
 
   const engineRef = useRef<SoundEngine | null>(null);
@@ -36,10 +65,29 @@ export function TripExperience({ view }: { view: CourseView }) {
   const [stage, setStage] = useState<StageInfo | null>(null);
   const [healing, setHealing] = useState(false);
   const [timerMin, setTimerMin] = useState(0);
+  const [travelMode, setTravelMode] = useState<TravelMode>("walk");
+  const [companion, setCompanion] = useState<CompanionKind>("alone");
+  const [pose, setPose] = useState<TravelPose>({
+    lat: place.lat,
+    lng: place.lng,
+    heading: stop.heading,
+    speedMps: 0,
+  });
+  const [focusPlace, setFocusPlace] = useState<MapPlace | null>(null);
+  const [mapVisited, setMapVisited] = useState(false);
+
   const photos = stop.media.filter((m) => m.kind === "image");
   const video = stop.media.find((m) => m.kind === "youtube") ?? null;
-  const [mode, setMode] = useState<ViewMode>(() => (photos.length ? "photo" : video ? "video" : "roadview"));
+  const reviewLinks = (stop.sources ?? []).filter(
+    (s) => s.type === "blog" || s.type === "youtube" || s.provider.includes("blog") || s.provider === "youtube",
+  );
+  const [mode, setMode] = useState<ViewMode>("roadview");
   const lastInteraction = useRef(0);
+
+  const lookStop = useMemo(() => lookStopFrom(stop, pose, focusPlace), [stop, pose, focusPlace]);
+  const panelName = focusPlace?.name ?? place.name;
+  const panelAddress = focusPlace?.address ?? place.address;
+  const holdingHands = companion !== "alone";
 
   const onHeading = useCallback((deg: number) => {
     setHeading(deg);
@@ -54,6 +102,11 @@ export function TripExperience({ view }: { view: CourseView }) {
     [onHeading],
   );
 
+  function selectMode(next: ViewMode) {
+    if (next === "travel") setMapVisited(true);
+    setMode(next);
+  }
+
   async function start() {
     const engine = (engineRef.current ??= new SoundEngine());
     await engine.start();
@@ -61,6 +114,7 @@ export function TripExperience({ view }: { view: CourseView }) {
     engine.setVolume(volume);
     engine.setHeading(heading);
     engine.setScene(stop.soundscape, 3);
+    setMode("roadview");
     setStarted(true);
     setPlaying(true);
   }
@@ -70,6 +124,13 @@ export function TripExperience({ view }: { view: CourseView }) {
   }, [started, stop]);
 
   useEffect(() => () => void engineRef.current?.close(), []);
+
+  useEffect(() => {
+    if (!started || !playing) return;
+    const base = volume;
+    const boost = Math.min(0.15, pose.speedMps / 400);
+    engineRef.current?.setVolume(Math.min(1, base + boost));
+  }, [pose.speedMps, started, playing, volume]);
 
   async function togglePlaying() {
     const engine = engineRef.current;
@@ -86,13 +147,19 @@ export function TripExperience({ view }: { view: CourseView }) {
 
   function goTo(i: number) {
     const next = (i + stops.length) % stops.length;
-    const nextStop = stops[next];
-    const nextPhotos = nextStop.media.filter((m) => m.kind === "image");
-    const nextVideo = nextStop.media.find((m) => m.kind === "youtube");
+    const nextStop = stops[next]!;
     setStage(null);
     setIndex(next);
     setHeading(nextStop.heading);
-    setMode(nextPhotos.length ? "photo" : nextVideo ? "video" : "roadview");
+    setPose({
+      lat: nextStop.place.lat,
+      lng: nextStop.place.lng,
+      heading: nextStop.heading,
+      speedMps: 0,
+    });
+    setFocusPlace(null);
+    setMapVisited(false);
+    setMode("roadview");
   }
 
   useEffect(() => {
@@ -132,25 +199,60 @@ export function TripExperience({ view }: { view: CourseView }) {
 
   const chrome = `transition-opacity duration-700 ${healing ? "pointer-events-none opacity-0" : "opacity-100"}`;
   const attribution = [stage?.provider.attribution, "환경음: Web Audio 실시간 합성"].filter(Boolean).join(" · ");
+  const meta = travelModeMeta(travelMode);
+  const companionMeta = COMPANIONS.find((c) => c.id === companion) ?? COMPANIONS[0]!;
 
   const modes: { id: ViewMode; label: string; enabled: boolean }[] = [
+    { id: "roadview", label: "거리뷰", enabled: true },
+    { id: "travel", label: "지도 여행", enabled: true },
     { id: "photo", label: "현장 사진", enabled: photos.length > 0 },
-    { id: "roadview", label: "로드뷰", enabled: true },
-    { id: "video", label: "홍보 영상", enabled: Boolean(video) },
+    { id: "video", label: "영상", enabled: Boolean(video) },
   ];
+
+  const showHands = started && holdingHands && (mode === "roadview" || (mode === "photo" && photos.length === 0));
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-black text-white">
       <div className="absolute inset-0" onPointerDownCapture={() => (lastInteraction.current = Date.now())}>
+        {started && mapVisited && (
+          <MapTravelStage
+            key={place.id}
+            startLat={pose.lat}
+            startLng={pose.lng}
+            startHeading={pose.heading}
+            travelMode={travelMode}
+            homePlaceId={place.id}
+            active={mode === "travel"}
+            onPose={(p) => {
+              setPose(p);
+              setHeading(p.heading);
+              engineRef.current?.setHeading(p.heading);
+            }}
+            onArrive={(p) => setFocusPlace(p)}
+            onOpenRoadview={(p) => {
+              if (p) setFocusPlace(p);
+              setMode("roadview");
+            }}
+          />
+        )}
         {mode === "photo" && photos.length > 0 && <PlacePhotoStage key={place.id} images={photos} />}
         {mode === "video" && video && <PlaceVideoStage key={video.id} video={video} />}
-        {mode === "roadview" && <RoadviewStage stop={stop} onReady={onReady} onHeading={onHeading} />}
+        {mode === "roadview" && (
+          <RoadviewStage key={`${lookStop.place.id}-${lookStop.place.lat.toFixed(5)}`} stop={lookStop} onReady={onReady} onHeading={onHeading} />
+        )}
         {mode === "photo" && photos.length === 0 && !video && (
-          <RoadviewStage stop={stop} onReady={onReady} onHeading={onHeading} />
+          <RoadviewStage stop={lookStop} onReady={onReady} onHeading={onHeading} />
         )}
       </div>
 
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-black/70" />
+      {mode !== "travel" && (
+        <div className="pointer-events-none absolute inset-0 z-[1] bg-gradient-to-b from-black/50 via-transparent to-black/70" />
+      )}
+      {mode === "travel" && (
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-[1] h-28 bg-gradient-to-b from-black/55 to-transparent" />
+      )}
+
+      {showHands && <CompanionHandOverlay kind={companion} heading={heading} />}
 
       <header className={`pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5 ${chrome}`}>
         <div className="pointer-events-auto">
@@ -158,12 +260,14 @@ export function TripExperience({ view }: { view: CourseView }) {
             풍경너머
           </Link>
           <h1 className="mt-1 text-lg font-semibold">{course.title}</h1>
+          {course.subtitle && <p className="mt-0.5 text-xs text-white/55">{course.subtitle}</p>}
           <div className="mt-3 flex flex-wrap gap-1.5">
             {modes.map((m) => (
               <button
                 key={m.id}
-                disabled={!m.enabled}
-                onClick={() => setMode(m.id)}
+                type="button"
+                disabled={!m.enabled || !started}
+                onClick={() => selectMode(m.id)}
                 className={`rounded-full px-3 py-1 text-xs transition ${
                   mode === m.id ? "bg-white text-black" : "bg-white/15 text-white/85 hover:bg-white/25"
                 } disabled:cursor-not-allowed disabled:opacity-30`}
@@ -172,75 +276,181 @@ export function TripExperience({ view }: { view: CourseView }) {
               </button>
             ))}
           </div>
+          {started && mode === "travel" && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {TRAVEL_MODES.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setTravelMode(m.id)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] transition ${
+                    travelMode === m.id ? "bg-amber-300 text-black" : "bg-white/10 text-white/80 hover:bg-white/20"
+                  }`}
+                  title={m.hint}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {started && mode === "roadview" && (
+            <div className="mt-2 flex max-w-[min(100vw-2.5rem,28rem)] flex-wrap gap-1.5">
+              {COMPANIONS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCompanion(c.id)}
+                  className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] transition ${
+                    companion === c.id ? "bg-rose-200 text-black" : "bg-white/10 text-white/80 hover:bg-white/20"
+                  }`}
+                  title={c.hint}
+                >
+                  <CompanionPreview kind={c.id} />
+                  {c.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="pointer-events-auto flex flex-col items-end gap-2">
           {mode === "roadview" && <Compass heading={heading} layers={stop.soundscape} />}
           {mode === "roadview" && attribution && <p className="text-[11px] text-white/60">{attribution}</p>}
+          {mode === "travel" && (
+            <p className="rounded-full bg-black/45 px-3 py-1 text-[11px] text-white/85 backdrop-blur">
+              {meta.label} · 체감 {Math.round(pose.speedMps * 3.6)} km/h
+            </p>
+          )}
         </div>
       </header>
 
       {mode === "roadview" && stage?.notice && (
-        <p className={`pointer-events-none absolute left-1/2 top-28 w-[min(90vw,32rem)] -translate-x-1/2 rounded-xl bg-black/50 px-4 py-2 text-center text-sm text-white/85 backdrop-blur ${chrome}`}>
-          {NOTICES[stage.notice]}
-        </p>
+        <div
+          className={`pointer-events-none absolute left-1/2 top-28 w-[min(90vw,32rem)] -translate-x-1/2 space-y-2 rounded-xl bg-black/55 px-4 py-3 text-center backdrop-blur ${chrome}`}
+        >
+          <p className="text-sm text-white/90">{NOTICES[stage.notice]}</p>
+        </div>
       )}
 
-      <section className={`pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 md:flex-row md:items-end md:justify-between ${chrome}`}>
-        <article className="pointer-events-auto max-w-xl rounded-2xl bg-black/45 p-5 backdrop-blur-md">
-          <p className="text-xs text-white/60">
-            {index + 1} / {stops.length} · {place.address ?? stop.region?.name}
-          </p>
-          <h2 className="mt-1 text-2xl font-bold">{place.name}</h2>
-          {place.description && <p className="mt-2 text-sm leading-relaxed text-white/85">{place.description}</p>}
+      <section
+        className={`pointer-events-none absolute inset-x-0 bottom-0 flex flex-col gap-3 p-5 md:flex-row md:items-end md:justify-between ${chrome}`}
+      >
+        <article
+          className={`pointer-events-auto max-w-xl rounded-2xl bg-black/45 p-5 backdrop-blur-md ${
+            mode === "travel" ? "mb-24 md:mb-28" : holdingHands ? "mb-16" : ""
+          }`}
+        >
+          {!solo && (
+            <p className="text-xs text-white/60">
+              {index + 1} / {stops.length} · {panelAddress ?? stop.region?.name}
+            </p>
+          )}
+          {solo && panelAddress && <p className="text-xs text-white/60">{panelAddress}</p>}
+          <h2 className="mt-1 text-2xl font-bold">{panelName}</h2>
+          {place.description && !focusPlace && (
+            <p className="mt-2 text-sm leading-relaxed text-white/85">{place.description}</p>
+          )}
           {stop.tip && <p className="mt-2 text-sm text-sky-200/90">{stop.tip}</p>}
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {stop.soundscape.map((l, i) => (
-              <span key={i} className="rounded-full bg-white/12 px-2.5 py-0.5 text-xs text-white/80">
-                {soundLabels[l.kind]}
-                {l.label && l.label !== soundLabels[l.kind] ? ` · ${l.label} 방향` : ""}
-              </span>
-            ))}
-          </div>
+          {mode === "roadview" && (
+            <p className="mt-2 text-xs text-white/65">
+              {holdingHands
+                ? "손을 잡은 채 거리뷰를 둘러보세요. 화살표를 눌러 길을 따라 걸을 수 있어요."
+                : "거리뷰를 드래그해 둘러보고, 화살표로 길을 따라 걸어 보세요."}
+            </p>
+          )}
+          {mode === "travel" && (
+            <p className="mt-2 text-xs text-white/65">근처 파란 핀에 가까이 가면 도착 · 거리뷰로 내려볼 수 있어요.</p>
+          )}
+
+          {reviewLinks.length > 0 && mode !== "travel" && (
+            <ul className="mt-4 max-h-36 space-y-1.5 overflow-y-auto">
+              {reviewLinks.slice(0, 6).map((src) => (
+                <li key={src.id}>
+                  <a
+                    href={src.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block truncate text-xs text-white/80 underline-offset-2 hover:text-white hover:underline"
+                  >
+                    {src.type === "youtube" || src.provider === "youtube" ? "▶ " : ""}
+                    {src.title}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {stop.soundscape.length > 0 && mode === "roadview" && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {stop.soundscape.map((l, i) => (
+                <span key={i} className="rounded-full bg-white/12 px-2.5 py-0.5 text-xs text-white/80">
+                  {soundLabels[l.kind]}
+                  {l.label && l.label !== soundLabels[l.kind] ? ` · ${l.label} 방향` : ""}
+                </span>
+              ))}
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap gap-3 text-xs">
-            {video?.credit_url && (
-              <a className="underline-offset-2 hover:underline" href={video.credit_url} target="_blank" rel="noreferrer">
-                공식 관광 채널
-              </a>
-            )}
+            <a
+              className="underline-offset-2 hover:underline"
+              href={`https://map.kakao.com/link/roadview/${lookStop.place.lat},${lookStop.place.lng}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              카카오맵 로드뷰
+            </a>
             <a
               className="underline-offset-2 hover:underline"
               href={`https://search.naver.com/search.naver?ssc=tab.blog.all&query=${encodeURIComponent(stop.searchQuery)}`}
               target="_blank"
               rel="noreferrer"
             >
-              블로그 후기
+              네이버 블로그
             </a>
           </div>
         </article>
 
-        <div className="pointer-events-auto flex flex-col gap-3 rounded-2xl bg-black/45 p-4 backdrop-blur-md md:w-80">
-          <div className="flex items-center justify-between gap-2">
-            <button onClick={() => goTo(index - 1)} className="rounded-full px-3 py-1.5 text-sm hover:bg-white/10" aria-label="이전 장소">
-              ← 이전
-            </button>
-            <div className="flex gap-1.5">
-              {stops.map((s, i) => (
-                <button
-                  key={s.place.id}
-                  onClick={() => goTo(i)}
-                  title={s.place.name}
-                  aria-label={s.place.name}
-                  className={`size-2.5 rounded-full ${i === index ? "bg-white" : "bg-white/35 hover:bg-white/60"}`}
-                />
-              ))}
+        <div
+          className={`pointer-events-auto flex flex-col gap-3 rounded-2xl bg-black/45 p-4 backdrop-blur-md md:w-80 ${
+            mode === "travel" ? "mb-24 md:mb-28" : holdingHands ? "mb-16" : ""
+          }`}
+        >
+          {!solo && (
+            <div className="flex items-center justify-between gap-2">
+              <button
+                type="button"
+                onClick={() => goTo(index - 1)}
+                className="rounded-full px-3 py-1.5 text-sm hover:bg-white/10"
+                aria-label="이전 장소"
+              >
+                ← 이전
+              </button>
+              <div className="flex gap-1.5">
+                {stops.map((s, i) => (
+                  <button
+                    key={s.place.id}
+                    type="button"
+                    onClick={() => goTo(i)}
+                    title={s.place.name}
+                    aria-label={s.place.name}
+                    className={`size-2.5 rounded-full ${i === index ? "bg-white" : "bg-white/35 hover:bg-white/60"}`}
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                onClick={() => goTo(index + 1)}
+                className="rounded-full px-3 py-1.5 text-sm hover:bg-white/10"
+                aria-label="다음 장소"
+              >
+                다음 →
+              </button>
             </div>
-            <button onClick={() => goTo(index + 1)} className="rounded-full px-3 py-1.5 text-sm hover:bg-white/10" aria-label="다음 장소">
-              다음 →
-            </button>
-          </div>
+          )}
 
           <div className="flex items-center gap-3">
             <button
+              type="button"
               onClick={togglePlaying}
               disabled={!started}
               className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black disabled:opacity-40"
@@ -261,8 +471,9 @@ export function TripExperience({ view }: { view: CourseView }) {
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() => setHealing(true)}
-              disabled={!started}
+              disabled={!started || mode === "travel"}
               className="flex-1 rounded-full border border-white/30 px-4 py-1.5 text-sm hover:bg-white/10 disabled:opacity-40"
             >
               힐링 모드
@@ -285,6 +496,7 @@ export function TripExperience({ view }: { view: CourseView }) {
 
       {healing && (
         <button
+          type="button"
           onClick={() => setHealing(false)}
           className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-full bg-black/30 px-4 py-1.5 text-xs text-white/50 backdrop-blur transition hover:text-white"
         >
@@ -293,14 +505,41 @@ export function TripExperience({ view }: { view: CourseView }) {
       )}
 
       {!started && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-6 bg-black/55 p-6 text-center backdrop-blur-sm">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/60 p-6 text-center backdrop-blur-sm">
           <p className="text-sm tracking-[0.3em] text-white/60">풍경너머</p>
-          <h2 className="text-3xl font-bold md:text-4xl">{course.title}</h2>
+          <h2 className="text-3xl font-bold md:text-4xl">{solo ? place.name : course.title}</h2>
           <p className="max-w-md text-white/75">
-            관광청·지자체·커먼즈의 현장 사진과 홍보 영상, 그리고 그 장소에 맞는 소리로 먼저 다녀오세요.
+            거리뷰 속에서 길을 따라 걸어 보세요. 원하면 손을 잡고, 같이 걷는 기분으로 둘러볼 수 있어요.
           </p>
-          <button onClick={start} className="rounded-full bg-white px-8 py-3 font-semibold text-black hover:bg-white/90">
-            떠나기
+          <div className="w-full max-w-2xl">
+            <p className="mb-2 text-xs tracking-wide text-white/55">누구와 손잡고 떠나나요</p>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {COMPANIONS.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => setCompanion(c.id)}
+                  className={`rounded-2xl px-3 py-3 text-left transition ${
+                    companion === c.id ? "bg-rose-200 text-black ring-2 ring-rose-100" : "bg-white/15 text-white hover:bg-white/25"
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    <CompanionPreview kind={c.id} />
+                    <span className="text-sm font-semibold">{c.label}</span>
+                  </span>
+                  <span className={`mt-1 block text-[11px] leading-snug ${companion === c.id ? "text-black/60" : "text-white/60"}`}>
+                    {c.hint}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={start}
+            className="rounded-full bg-amber-300 px-8 py-3 font-semibold text-black hover:bg-amber-200"
+          >
+            {holdingHands ? `${companionMeta.label} · 손잡고 떠나기` : "거리뷰로 떠나기"}
           </button>
         </div>
       )}

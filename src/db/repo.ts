@@ -54,6 +54,8 @@ export interface StopView {
   searchQuery: string;
   soundscape: LayerSpec[];
   media: s.PlaceMedia[];
+  /** Outbound blog/video links for this place (place-trip solo explore). */
+  sources?: MapPlaceSource[];
 }
 
 function ancestors(db: ReturnType<typeof snapshot>, regionId: string | null | undefined): s.Region[] {
@@ -232,4 +234,48 @@ export async function getPlace(id: string) {
     soundscape: soundscapeFor(db, id),
     media: mediaFor(db, id),
   };
+}
+
+/** Single-stop “나홀로 여행” view — Kakao roadview at place coords, no course required. */
+export async function getPlaceTrip(placeId: string): Promise<CourseView | null> {
+  const detail = await getPlace(placeId);
+  if (!detail) return null;
+  const { place, region, sources, soundscape, media } = detail;
+  const city = cityOf(snapshot(), place.region_id);
+  const now = new Date().toISOString();
+  const course: s.Course = {
+    id: `solo-${place.id}`,
+    title: `${place.name} · 나홀로 여행`,
+    subtitle: city?.name ? `${city.name}에서 먼저 서 보기` : "로드뷰로 그 자리에 서 보기",
+    country_code: region?.country_code ?? "KR",
+    cover: (place.palette as [string, string] | null) ?? ["#1b4965", "#5fa8a3"],
+    visibility: "unlisted",
+    created_at: now,
+    updated_at: now,
+  };
+  const stop: StopView = {
+    place,
+    region,
+    heading: place.view_heading ?? 0,
+    tip: "드래그해서 둘러보세요. 후기는 원문 링크로 이어집니다.",
+    searchQuery: searchQueryFor(place, city),
+    soundscape,
+    media,
+    sources: sources.map((src, i) => ({
+      id: src.id,
+      type: src.type,
+      title: src.title,
+      url: src.url,
+      author: src.author,
+      provider: src.provider,
+      published_at: src.published_at,
+      snippet: src.snippet,
+      relevance: src.relevance,
+      rank: i + 1,
+      score: src.score,
+      view_count: src.view_count,
+      boost: src.boost,
+    })),
+  };
+  return { course, stops: [stop] };
 }

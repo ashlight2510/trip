@@ -49,3 +49,17 @@ body {
 .animate-kenburns {
   animation: kenburns 18s ease-out forwards;
 }
+
+@keyframes companion-walk {
+  0%,
+  100% {
+    transform: translateX(var(--hand-sway, 0px)) translateY(12%) rotate(-1.2deg);
+  }
+  50% {
+    transform: translateX(var(--hand-sway, 0px)) translateY(8%) rotate(1.2deg);
+  }
+}
+
+.animate-companion-walk {
+  animation: companion-walk 2.4s ease-in-out infinite;
+}
