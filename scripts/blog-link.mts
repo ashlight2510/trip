@@ -21,6 +21,7 @@ import {
 import type { Place, PlaceSource, Region, Source } from "../src/db/schema";
 import { enrichPlaceTags } from "../src/lib/place-tags";
 import { searchNaverBlogs, type NaverBlogItem } from "./lib/naver-search";
+import { sortPlacesVisitFirst } from "./lib/place-quality";
 import {
   placeSearchQuery,
   placeSearchQueryAlt,
@@ -29,9 +30,10 @@ import {
 import { loadEnv, now, read, write } from "./lib/store";
 
 const USAGE = `사용법:
-  npm run blog:link -- <place_id> [--query "<검색어>"] [--count 7]
-  npm run blog:link -- --limit 100
-  npm run blog:link -- --force --limit 50`;
+  yarn blog:link -- <place_id> [--query "<검색어>"] [--count 7]
+  yarn blog:link -- --limit 100
+  yarn blog:link -- --force --only-thin --limit 200
+  yarn blog:link -- --category landmark,park,beach --budget 5000`;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
@@ -40,6 +42,10 @@ const { positionals, values } = parseArgs({
     count: { type: "string", default: String(MAX_BLOG_SOURCES_PER_PLACE) },
     limit: { type: "string" },
     force: { type: "boolean", default: false },
+    "only-thin": { type: "boolean", default: false },
+    "empty-only": { type: "boolean", default: false },
+    category: { type: "string" },
+    budget: { type: "string" },
   },
 });
 
@@ -98,6 +104,14 @@ function hasRealNaverBlog(placeId: string) {
     const src = sources.find((s) => s.id === l.source_id);
     return src?.provider === "naver_blog" || src?.provider === "tistory";
   });
+}
+
+function realBlogCount(placeId: string) {
+  return links.filter((l) => {
+    if (l.place_id !== placeId) return false;
+    const src = sources.find((s) => s.id === l.source_id);
+    return src?.provider === "naver_blog" || src?.provider === "tistory";
+  }).length;
 }
 
 type Cand = { source: Source; relevance: number; score: number; authorKey: string };
@@ -257,6 +271,18 @@ async function linkPlace(place: Place, queryOverride?: string): Promise<number> 
   }).length;
 }
 
+const categoryFilter = values.category
+  ? new Set(
+      values.category
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean),
+    )
+  : null;
+const apiBudget = values.budget ? Math.max(1, Number(values.budget)) : Infinity;
+const onlyThin = Boolean(values["only-thin"]);
+const emptyOnly = Boolean(values["empty-only"]);
+
 let targets = places;
 if (positionals[0]) {
   const one = places.find((p) => p.id === positionals[0]);
@@ -265,10 +291,22 @@ if (positionals[0]) {
     process.exit(1);
   }
   targets = [one];
-} else if (values.limit) {
-  targets = places.slice(0, Number(values.limit));
-} else if (!values.limit && !positionals[0]) {
-  targets = places;
+} else {
+  targets = sortPlacesVisitFirst(places);
+  if (categoryFilter?.size) {
+    targets = targets.filter((p) => categoryFilter.has(p.category));
+  }
+  if (onlyThin) {
+    targets = targets.filter((p) => {
+      const n = realBlogCount(p.id);
+      return n >= 1 && n <= 2;
+    });
+  } else if (emptyOnly) {
+    targets = targets.filter((p) => !hasRealNaverBlog(p.id));
+  }
+  if (values.limit) {
+    targets = targets.slice(0, Number(values.limit));
+  }
 }
 
 if (!targets.length) {
@@ -280,6 +318,7 @@ let linked = 0;
 let placesTouched = 0;
 let skipped = 0;
 let errors = 0;
+let apiCalls = 0;
 
 for (let i = 0; i < targets.length; i++) {
   const place = targets[i]!;
@@ -287,8 +326,18 @@ for (let i = 0; i < targets.length; i++) {
     skipped++;
     continue;
   }
+  if (onlyThin && !values.force) {
+    // thin refresh requires re-search
+  }
+  if (apiCalls >= apiBudget) {
+    console.log(`API budget ${apiBudget} 소진 — 중단 (touched=${placesTouched})`);
+    break;
+  }
   try {
+    const before = apiCalls;
+    // each linkPlace does 1–2 searches; approximate after by counting attempts
     const n = await linkPlace(place, positionals[0] ? values.query : undefined);
+    apiCalls = before + 2; // upper bound per place (primary + optional alt)
     if (n) {
       linked += n;
       placesTouched++;
@@ -314,7 +363,7 @@ for (let i = 0; i < targets.length; i++) {
     write("place_sources", links);
     write("places", places);
     console.log(
-      `[${i + 1}/${targets.length}] 연결 ${placesTouched}곳 (+${linked}링크) skip=${skipped}`,
+      `[${i + 1}/${targets.length}] 연결 ${placesTouched}곳 (+${linked}링크) skip=${skipped} api~${apiCalls}`,
     );
   }
 

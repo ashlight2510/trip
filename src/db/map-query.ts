@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 import { compareSourceSort } from "@/lib/source-rank";
+import { scorePlaceSearch } from "@/lib/place-search";
+import { SOURCE_VOTE_HIDE_AT } from "./curation";
 import * as s from "./schema";
 import type { MapArea, MapPlace, MapPlaceSource } from "./repo";
 
@@ -14,6 +16,7 @@ type Db = {
   sources: s.Source[];
   placeSources: s.PlaceSource[];
   placeSourceBoosts: s.PlaceSourceBoost[];
+  placeSourceVoteScores: s.PlaceSourceVoteScore[];
   media: s.PlaceMedia[];
   courses: s.Course[];
   courseStops: s.CourseStop[];
@@ -24,6 +27,7 @@ type Indexes = {
   sourceById: Map<string, s.Source>;
   placeSourcesByPlace: Map<string, s.PlaceSource[]>;
   boostByPlaceSource: Map<string, number>;
+  voteScoreByPlaceSource: Map<string, number>;
   mediaByPlace: Map<string, s.PlaceMedia[]>;
   courseByPlace: Map<string, string>;
   cityByRegion: Map<string, s.Region | undefined>;
@@ -71,6 +75,9 @@ function buildIndexes(db: Db): Indexes {
   const boostByPlaceSource = new Map(
     db.placeSourceBoosts.map((b) => [`${b.place_id}::${b.source_id}`, b.boost]),
   );
+  const voteScoreByPlaceSource = new Map(
+    db.placeSourceVoteScores.map((v) => [`${v.place_id}::${v.source_id}`, v.score]),
+  );
   const placeSourcesByPlace = new Map<string, s.PlaceSource[]>();
   for (const ps of db.placeSources) {
     const list = placeSourcesByPlace.get(ps.place_id);
@@ -111,6 +118,7 @@ function buildIndexes(db: Db): Indexes {
     sourceById,
     placeSourcesByPlace,
     boostByPlaceSource,
+    voteScoreByPlaceSource,
     mediaByPlace,
     courseByPlace,
     cityByRegion,
@@ -125,6 +133,7 @@ export function getMapDb(): Cache {
     "sources",
     "place_sources",
     "place_source_boosts",
+    "place_source_vote_scores",
     "place_media",
     "courses",
     "course_stops",
@@ -139,6 +148,7 @@ export function getMapDb(): Cache {
     sources: loadTable("sources"),
     placeSources: loadTable("place_sources"),
     placeSourceBoosts: loadTable("place_source_boosts"),
+    placeSourceVoteScores: loadTable("place_source_vote_scores"),
     media: loadTable("place_media"),
     courses: loadTable("courses"),
     courseStops: loadTable("course_stops"),
@@ -156,7 +166,10 @@ function sourcesFor(ix: Indexes, placeId: string): MapPlaceSource[] {
   const rows = links.flatMap((ps) => {
     const src = ix.sourceById.get(ps.source_id);
     if (!src) return [];
-    const boost = ix.boostByPlaceSource.get(`${placeId}::${ps.source_id}`) ?? 0;
+    const key = `${placeId}::${ps.source_id}`;
+    const community_score = ix.voteScoreByPlaceSource.get(key) ?? 0;
+    if (community_score <= SOURCE_VOTE_HIDE_AT) return [];
+    const boost = ix.boostByPlaceSource.get(key) ?? 0;
     return [
       {
         id: src.id,
@@ -172,13 +185,24 @@ function sourcesFor(ix: Indexes, placeId: string): MapPlaceSource[] {
         score: src.score,
         view_count: src.view_count,
         boost,
+        community_score,
       },
     ];
   });
   rows.sort((a, b) =>
     compareSourceSort(
-      { boost: a.boost, relevance: a.relevance, view_count: a.view_count, rank: a.rank },
-      { boost: b.boost, relevance: b.relevance, view_count: b.view_count, rank: b.rank },
+      {
+        boost: a.boost + a.community_score,
+        relevance: a.relevance,
+        view_count: a.view_count,
+        rank: a.rank,
+      },
+      {
+        boost: b.boost + b.community_score,
+        relevance: b.relevance,
+        view_count: b.view_count,
+        rank: b.rank,
+      },
     ),
   );
   return rows.map((r, i) => ({ ...r, rank: i + 1 }));
@@ -207,6 +231,8 @@ export function toMapPlace(place: s.Place, ix: Indexes, opts: { includeSources: 
     district_name: district?.name ?? null,
     city_id: city?.id ?? null,
     city_name: city?.name ?? null,
+    city_name_en: city?.name_en ?? null,
+    district_name_en: district?.name_en ?? null,
     region_name: region?.name ?? null,
     address: place.address,
     description: place.description,
@@ -231,20 +257,19 @@ function haversineKm(aLat: number, aLng: number, bLat: number, bLng: number) {
 }
 
 function placeMatchScore(place: s.Place, cityName: string | undefined, districtName: string | null | undefined, q: string) {
-  const name = place.name.toLowerCase();
-  const city = cityName?.toLowerCase() ?? "";
-  const district = districtName?.toLowerCase() ?? "";
-  const address = place.address?.toLowerCase() ?? "";
-  if (name === q) return 1000;
-  if (name.startsWith(q)) return 900;
-  if (name.includes(q)) return 700;
-  if (district === q || district.startsWith(q)) return 500;
-  if (city === q || city.startsWith(q)) return 400;
-  if (district.includes(q) || city.includes(q)) return 300;
-  if (address.includes(q)) return 200;
-  const qBare = q.replace(/^#/, "");
-  if (place.tags.some((t) => t.toLowerCase() === qBare || t.toLowerCase().includes(qBare))) return 450;
-  return 0;
+  return scorePlaceSearch(
+    {
+      name: place.name,
+      nameEn: place.name_en,
+      category: place.category,
+      address: place.address,
+      description: place.description,
+      tags: place.tags,
+      cityName,
+      districtName,
+    },
+    q,
+  );
 }
 
 /** Strip common admin suffixes so "주교" matches region "주교동". */
@@ -279,6 +304,8 @@ export type MapPlaceQuery = {
   east?: number;
   north?: number;
   q?: string;
+  /** When "near" with lat/lng, text search is limited to radiusKm around the user. */
+  scope?: "near" | "all";
   cityId?: string;
   districtId?: string;
   limit?: number;
@@ -290,14 +317,18 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
   const limit = Math.min(Math.max(query.limit ?? 200, 1), 500);
   const includeSources = Boolean(query.includeSources);
   const q = query.q?.trim().toLowerCase() ?? "";
+  const nearScope =
+    query.scope === "near" && query.lat != null && query.lng != null && Boolean(q);
+  const nearRadiusKm = query.radiusKm ?? 25;
 
   type Cand = { place: s.Place; score: number; dist: number };
   const cands: Cand[] = [];
   const seen = new Set<string>();
 
   // Area anchors: matched 동/시/구 so we can show places nearby even if name doesn't contain q.
+  // Skip nationwide area expansion when searching near the user — stay local.
   const areaAnchors: { lat: number; lng: number; score: number; regionId: string }[] = [];
-  if (q) {
+  if (q && !nearScope) {
     for (const r of db.regions) {
       if (r.level !== "district" && r.level !== "city") continue;
       const rs = regionQueryScore(r.name, q);
@@ -309,7 +340,8 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
   const matchedRegionIds = new Set(areaAnchors.map((a) => a.regionId));
   // Prefer strongest anchors (exact 동) when expanding geographically.
   const expandAnchors = areaAnchors.filter((a) => a.score >= 90).slice(0, 5);
-  const areaRadius = query.radiusKm ?? SEARCH_AREA_RADIUS_KM;
+  /** Radius around a matched 동/시 — independent of user near-me radius. */
+  const areaRadius = SEARCH_AREA_RADIUS_KM;
 
   const pushCand = (place: s.Place, score: number, dist: number) => {
     if (seen.has(place.id)) {
@@ -328,10 +360,15 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
     const city = ix.cityByRegion.get(place.region_id);
     const district = ix.districtByRegion.get(place.region_id);
 
-    if (query.cityId && city?.id !== query.cityId) continue;
-    if (query.districtId && district?.id !== query.districtId) continue;
+    // Free-text search is nationwide — don't require a selected city/district.
+    if (!q) {
+      if (query.cityId && city?.id !== query.cityId) continue;
+      if (query.districtId && district?.id !== query.districtId) continue;
+    }
 
+    // Bbox only for browse/pan loads — text search stays nationwide.
     if (
+      !q &&
       query.west != null &&
       query.south != null &&
       query.east != null &&
@@ -350,8 +387,8 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
     let dist = 0;
     if (query.lat != null && query.lng != null) {
       dist = haversineKm(query.lat, query.lng, place.lat, place.lng);
-      const radius = query.radiusKm ?? 30;
-      if (!q && dist > radius) continue;
+      const radius = nearScope ? nearRadiusKm : (query.radiusKm ?? 30);
+      if ((!q || nearScope) && dist > radius) continue;
     }
 
     if (q) {
@@ -380,7 +417,8 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
           score = Math.max(50, Math.round(320 - bestNear * 40));
         }
         // Drop weak substring hits far from the matched area (e.g. "경주교동" for q=주교동).
-        if (score > 0 && score < 900 && bestNear > areaRadius * 4) {
+        // Do not apply this to strong keyword/category hits (숲카페 등 전국 검색).
+        if (score > 0 && score < 400 && bestNear > areaRadius * 4) {
           score = 0;
         }
       }
@@ -415,6 +453,7 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
   }
 
   cands.sort((a, b) => {
+    if (q && nearScope) return a.dist - b.dist || b.score - a.score || a.place.name.localeCompare(b.place.name, "ko");
     if (q) return b.score - a.score || a.dist - b.dist || a.place.name.localeCompare(b.place.name, "ko");
     if (query.lat != null) return a.dist - b.dist;
     return b.score - a.score;
@@ -470,6 +509,7 @@ export function listMapAreasFast(): MapArea[] {
       {
         id: city.id,
         name: city.name,
+        name_en: city.name_en,
         level: "city" as const,
         parent_id: city.parent_id === city.id ? "kr" : city.parent_id,
         lat: city.lat || st.lat / st.count,
@@ -487,6 +527,7 @@ export function listMapAreasFast(): MapArea[] {
       {
         id: d.id,
         name: d.name,
+        name_en: d.name_en,
         level: "district" as const,
         parent_id: d.parent_id,
         lat: d.lat || st.lat / st.count,

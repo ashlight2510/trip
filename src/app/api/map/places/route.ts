@@ -10,6 +10,7 @@ function num(v: string | null): number | undefined {
 export async function GET(req: Request) {
   await connection();
   const url = new URL(req.url);
+  const scopeRaw = url.searchParams.get("scope");
   const places = queryMapPlaces({
     lat: num(url.searchParams.get("lat")),
     lng: num(url.searchParams.get("lng")),
@@ -19,9 +20,10 @@ export async function GET(req: Request) {
     east: num(url.searchParams.get("east")),
     north: num(url.searchParams.get("north")),
     q: url.searchParams.get("q") ?? undefined,
+    scope: scopeRaw === "near" ? "near" : "all",
     cityId: url.searchParams.get("cityId") ?? undefined,
     districtId: url.searchParams.get("districtId") ?? undefined,
-    limit: num(url.searchParams.get("limit")) ?? (url.searchParams.get("q") ? 80 : 250),
+    limit: num(url.searchParams.get("limit")) ?? (url.searchParams.get("q") ? 200 : 250),
     includeSources: url.searchParams.get("includeSources") === "1",
   });
   return Response.json(

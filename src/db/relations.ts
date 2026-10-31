@@ -73,6 +73,30 @@ export const relations: Record<
       { column: "source_id", table: "sources" },
     ],
   },
+  user_contributions: {
+    primaryKey: ["id"],
+    references: [
+      { column: "place_id", table: "places" },
+      { column: "source_id", table: "sources", nullable: true },
+    ],
+  },
+  contributor_wallets: {
+    primaryKey: ["contributor_id"],
+  },
+  place_source_vote_scores: {
+    primaryKey: ["place_id", "source_id"],
+    references: [
+      { column: "place_id", table: "places" },
+      { column: "source_id", table: "sources" },
+    ],
+  },
+  place_source_votes: {
+    primaryKey: ["contributor_id", "place_id", "source_id"],
+    references: [
+      { column: "place_id", table: "places" },
+      { column: "source_id", table: "sources" },
+    ],
+  },
 };
 
 /** Parents before children, so inserts never violate a foreign key. */
@@ -89,4 +113,8 @@ export const insertOrder: TableName[] = [
   "course_stops",
   "source_reports",
   "place_source_boosts",
+  "user_contributions",
+  "contributor_wallets",
+  "place_source_vote_scores",
+  "place_source_votes",
 ];

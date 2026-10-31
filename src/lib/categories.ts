@@ -1,17 +1,12 @@
 import type { Place } from "@/db/schema";
+import { dictionaries, type Locale } from "@/i18n/dictionaries";
 
-export const categoryLabel: Record<Place["category"], string> = {
-  beach: "해변",
-  cafe: "카페",
-  forest: "숲",
-  market: "시장",
-  heritage: "문화유산",
-  landmark: "명소",
-  restaurant: "맛집",
-  park: "공원",
-  street: "거리",
-  viewpoint: "전망",
-};
+/** Default Korean labels — prefer `categoryLabelFor(locale)` in UI. */
+export const categoryLabel: Record<Place["category"], string> = dictionaries.ko.category;
+
+export function categoryLabelFor(locale: Locale): Record<Place["category"], string> {
+  return dictionaries[locale].category;
+}
 
 /** Marker fill colors — cool coastal palette, not purple/cream AI defaults. */
 export const categoryColor: Record<Place["category"], string> = {

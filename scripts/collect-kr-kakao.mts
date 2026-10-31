@@ -15,6 +15,7 @@ import { parseArgs } from "node:util";
 import { MAX_PLACES_PER_CITY, categorySearchHints } from "../src/db/curation";
 import type { Place, PlaceExternalRef, Region } from "../src/db/schema";
 import { categorySeedTags } from "../src/lib/place-tags";
+import { isHardDropPlace } from "./lib/place-quality";
 import { loadEnv, now, read, requireEnv, write } from "./lib/store";
 
 interface CitySeed {
@@ -211,10 +212,12 @@ for (let i = 0; i < cities.length; i++) {
 
   const need = MAX_PLACES_PER_CITY - existing;
   const ranked = [...found.values()].filter((d) => {
-    // Prefer tourism-ish categories; still allow cafes/markets that came from those queries
-    const t = d.category_name;
-    if (/아파트|부동산|중개|학원|병원|은행|주유소|주차장/.test(t)) return false;
-    return true;
+    const category = guessCategory(d);
+    return !isHardDropPlace({
+      name: d.place_name,
+      category,
+      categoryText: d.category_name,
+    });
   });
 
   let cityAdded = 0;

@@ -6,21 +6,26 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { MapArea, MapPlace } from "@/db/repo";
 import type { Place } from "@/db/schema";
-import { categoryColor, categoryGlyph, categoryIconSvg, categoryLabel } from "@/lib/categories";
+import { categoryColor, categoryGlyph, categoryIconSvg } from "@/lib/categories";
 import { fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
+import { attachOpenFreeMap, type BasemapHandle } from "@/lib/map-basemap";
+import { scorePlaceSearch } from "@/lib/place-search";
 import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
+import { displayName } from "@/i18n/display-name";
+import { LangToggle, useLocale, useT } from "@/i18n/locale";
+import { ContributeLinkForm } from "@/components/contribute-link-form";
+import { PointsBadge } from "@/components/points-badge";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
+import { SourceVoteControls } from "@/components/source-vote-controls";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
+const SEARCH_NEAR_RADIUS_KM = 25;
 const NEAR_LIMIT = 220;
 /** Show place pins on the map once the user has zoomed in this far (no city click required). */
 const PLACE_PIN_ZOOM = 9;
 const PLACE_PIN_CAP = 150;
-
-const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 type Level = "city" | "district" | "place";
 
@@ -55,7 +60,7 @@ function areaIcon(label: string, count: number, kind: "city" | "district", activ
 }
 
 /** Teardrop map pin with category glyph — sized for glanceability on the map. */
-function pinIcon(category: Place["category"], active: boolean) {
+function pinIcon(category: Place["category"], active: boolean, ariaLabel: string) {
   const color = categoryColor[category];
   const w = active ? 48 : 42;
   const h = active ? 60 : 52;
@@ -68,7 +73,7 @@ function pinIcon(category: Place["category"], active: boolean) {
     iconSize: [w, h],
     iconAnchor: [w / 2, h - 2],
     popupAnchor: [0, -(h - 8)],
-    html: `<button type="button" aria-label="${categoryLabel[category]}" style="
+    html: `<button type="button" aria-label="${ariaLabel}" style="
       width:${w}px;height:${h}px;padding:0;border:0;background:transparent;cursor:pointer;
       filter:drop-shadow(0 3px 8px rgba(0,0,0,.4));
     ">
@@ -114,10 +119,11 @@ function CategoryFilterBar({
   onChange: (next: string | "all") => void;
   className?: string;
 }) {
+  const t = useT();
   if (options.length === 0) return null;
   const total = options.reduce((sum, [, n]) => sum + n, 0);
   return (
-    <div className={className} role="toolbar" aria-label="장소 카테고리 필터">
+    <div className={className} role="toolbar" aria-label={t.categoryFilter}>
       <button
         type="button"
         onClick={() => onChange("all")}
@@ -125,7 +131,7 @@ function CategoryFilterBar({
           value === "all" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
         }`}
       >
-        전체 {total}
+        {t.all} {total}
       </button>
       {options.map(([cat, n]) => {
         const key = cat as Place["category"];
@@ -146,7 +152,7 @@ function CategoryFilterBar({
                 __html: `<svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" style="display:block;color:#fff">${categoryGlyph[key]}</svg>`,
               }}
             />
-            {categoryLabel[key] ?? cat} {n}
+            {t.category[key] ?? cat} {n}
           </button>
         );
       })}
@@ -163,6 +169,14 @@ function PlaceListItem({
   active: boolean;
   onSelect: (place: MapPlace) => void;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
+  const cityLabel = place.city_name
+    ? displayName({ name: place.city_name, name_en: place.city_name_en }, locale)
+    : null;
+  const districtLabel = place.district_name
+    ? displayName({ name: place.district_name, name_en: place.district_name_en }, locale)
+    : null;
   return (
     <li>
       <button
@@ -176,13 +190,13 @@ function PlaceListItem({
           <CategoryBadge category={place.category} active={active} />
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
-              <h2 className="truncate font-semibold text-stone-900">{place.name}</h2>
-              <span className="shrink-0 text-[11px] text-stone-500">{categoryLabel[place.category]}</span>
+              <h2 className="truncate font-semibold text-stone-900">{displayName(place, locale)}</h2>
+              <span className="shrink-0 text-[11px] text-stone-500">{t.category[place.category]}</span>
             </div>
             <p className="mt-0.5 truncate text-xs text-stone-500">
-              {[place.city_name, place.district_name].filter(Boolean).join(" · ") || place.address}
+              {[cityLabel, districtLabel].filter(Boolean).join(" · ") || place.address}
             </p>
-            <p className="mt-1 text-[11px] text-stone-500">연결된 후기 {place.source_count}건</p>
+            <p className="mt-1 text-[11px] text-stone-500">{t.linkedReviews(place.source_count)}</p>
           </div>
         </div>
       </button>
@@ -191,29 +205,29 @@ function PlaceListItem({
 }
 
 function placeMatchScore(place: MapPlace, q: string): number {
-  const name = place.name.toLowerCase();
-  const city = place.city_name?.toLowerCase() ?? "";
-  const district = place.district_name?.toLowerCase() ?? "";
-  const address = place.address?.toLowerCase() ?? "";
-  const cat = categoryLabel[place.category] ?? "";
-  if (name === q) return 1000;
-  if (name.startsWith(q)) return 900;
-  if (name.includes(q)) return 700;
-  if (district === q || district.startsWith(q)) return 500;
-  if (city === q || city.startsWith(q)) return 400;
-  if (district.includes(q) || city.includes(q)) return 300;
-  if (address.includes(q)) return 200;
-  const qBare = q.replace(/^#/, "");
-  if (place.tags.some((t) => t.toLowerCase() === qBare || t.toLowerCase().includes(qBare))) return 450;
-  if (cat.includes(q)) return 100;
-  return 0;
+  return scorePlaceSearch(
+    {
+      name: place.name,
+      nameEn: place.name_en,
+      category: place.category,
+      address: place.address,
+      description: place.description,
+      tags: place.tags,
+      cityName: place.city_name,
+      districtName: place.district_name,
+    },
+    q,
+  );
 }
 
 export function MapExplorer({ areas }: { areas: MapArea[] }) {
+  const t = useT();
+  const { locale } = useLocale();
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const basemapRef = useRef<BasemapHandle | null>(null);
   const fetchSeq = useRef(0);
   /** Last search query we auto-fit the map for — avoid re-fitting on every zoom (trackpad bounce). */
   const fittedSearchQ = useRef<string | null>(null);
@@ -228,6 +242,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [districtId, setDistrictId] = useState<string | null>(null);
   const [selectedPlaceId, setSelectedPlaceId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [searchNearMe, setSearchNearMe] = useState(false);
+  const [userLoc, setUserLoc] = useState(DEFAULT_CENTER);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
   const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
 
@@ -291,14 +307,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       counts.set(p.category, (counts.get(p.category) ?? 0) + 1);
     }
     // Prefer known category order, then fall back by count for anything unexpected.
-    const known = (Object.keys(categoryLabel) as Place["category"][])
+    const known = (Object.keys(t.category) as Place["category"][])
       .filter((cat) => counts.has(cat))
       .map((cat) => [cat, counts.get(cat) ?? 0] as [string, number]);
     const extras = [...counts.entries()]
-      .filter(([cat]) => !(cat in categoryLabel))
+      .filter(([cat]) => !(cat in t.category))
       .sort((a, b) => b[1] - a[1]);
     return [...known, ...extras];
-  }, [places, cityId, districtId]);
+  }, [places, cityId, districtId, t.category]);
 
   const city = cities.find((c) => c.id === cityId) ?? null;
   const district = areas.find((a) => a.id === districtId) ?? null;
@@ -317,9 +333,13 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
     // Prefer server search hits (already includes matched 동/시 + nearby).
     // Don't re-filter by name — that dropped 원당시장 etc. next to "주교동".
+    // Nationwide text search — ignore selected city/district; optional category chip only.
     let list = searchHits ?? places.filter((p) => placeMatchScore(p, searchQ) > 0);
+    if (!searchHits) {
+      list = [...list].sort((a, b) => placeMatchScore(b, searchQ) - placeMatchScore(a, searchQ));
+    }
     if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-    return list.slice(0, 120);
+    return list.slice(0, 200);
   }, [places, searchHits, cityId, districtId, searchQ, isSearching, categoryFilter]);
 
   const listCities = useMemo(() => {
@@ -355,13 +375,21 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       zoomSnap: 0,
       zoomDelta: 1,
     });
-    L.tileLayer(OSM_URL, { attribution: OSM_ATTR, maxZoom: 19 }).addTo(map);
     L.control.zoom({ position: "topright" }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     fitLatLngs(map, cities, 7);
     setMapZoom(map.getZoom());
     setMapReady(true);
+
+    let cancelled = false;
+    void attachOpenFreeMap(map, locale).then((handle) => {
+      if (cancelled) {
+        handle.remove();
+        return;
+      }
+      basemapRef.current = handle;
+    });
 
     // Proportional zoom: small finger move → small zoom; no snap, no inertia drip.
     const WHEEL_PX_PER_ZOOM = 60;
@@ -383,7 +411,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         map.getMinZoom(),
         Math.min(map.getMaxZoom(), map.getZoom() - dy / WHEEL_PX_PER_ZOOM),
       );
-      map.setZoomAround(map.mouseEventToContainerPoint(e), next, { animate: false });
+      // Zoom around map center (not cursor) so the view doesn't drift off-screen.
+      const centerPt = map.getSize().divideBy(2);
+      map.setZoomAround(centerPt, next, { animate: false });
     };
     host.addEventListener("wheel", onWheel, { passive: false });
 
@@ -404,18 +434,27 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     requestAnimationFrame(() => map.invalidateSize());
 
     return () => {
+      cancelled = true;
       if (moveTimer) clearTimeout(moveTimer);
       host.removeEventListener("wheel", onWheel);
       map.off("zoomend", onZoomEnd);
       map.off("moveend", onMoveEnd);
       window.removeEventListener("resize", onResize);
+      basemapRef.current?.remove();
+      basemapRef.current = null;
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
       userMarkerRef.current = null;
       setMapReady(false);
     };
+    // locale applied via separate effect — don't rebuild the map on lang change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cities]);
+
+  useEffect(() => {
+    basemapRef.current?.setLocale(locale);
+  }, [locale]);
 
   // Boot: nearby places from geolocation (or Seoul fallback).
   useEffect(() => {
@@ -439,16 +478,21 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       await loadNearby(lat, lng);
     };
 
+    const remember = (lat: number, lng: number) => setUserLoc({ lat, lng });
+
     if (!navigator.geolocation) {
+      remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
       void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
       return;
     }
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        remember(pos.coords.latitude, pos.coords.longitude);
         void apply(pos.coords.latitude, pos.coords.longitude, true);
       },
       () => {
+        remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
         void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
       },
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
@@ -470,7 +514,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const seq = ++fetchSeq.current;
     const timer = setTimeout(() => {
       setPlacesLoading(true);
-      void fetchPlaces({ q, limit: 120 })
+      const params: Record<string, string | number | undefined> = { q, limit: 200 };
+      if (searchNearMe) {
+        params.lat = userLoc.lat;
+        params.lng = userLoc.lng;
+        params.radiusKm = SEARCH_NEAR_RADIUS_KM;
+        params.scope = "near";
+      }
+      void fetchPlaces(params)
         .then((next) => {
           if (seq !== fetchSeq.current) return;
           setSearchHits(next);
@@ -482,7 +533,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         });
     }, 220);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, searchNearMe, userLoc.lat, userLoc.lng]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -493,16 +544,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     if (isSearching) {
       visiblePlaces.forEach((place) => {
         const marker = L.marker([place.lat, place.lng], {
-          icon: pinIcon(place.category, place.id === selectedPlaceId),
-          title: `${place.name} · ${categoryLabel[place.category]}`,
+          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
         });
         marker.on("click", () => openPlace(place));
         marker.addTo(layer);
       });
       // Fit once per search query — refitting on zoomend caused trackpad zoom rebound.
-      if (visiblePlaces.length && fittedSearchQ.current !== searchQ) {
-        fittedSearchQ.current = searchQ;
-        fitLatLngs(map, visiblePlaces, 12);
+      const fitKey = `${searchQ}|${searchNearMe ? "near" : "all"}`;
+      if (visiblePlaces.length && fittedSearchQ.current !== fitKey) {
+        fittedSearchQ.current = fitKey;
+        fitLatLngs(map, visiblePlaces, searchNearMe ? 14 : 12);
       }
       return;
     }
@@ -511,9 +563,10 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       // Keep city chips while overview-ish; fade them out once pins take over.
       if (!showPlacePins || mapZoom < 12) {
         listCities.forEach((area) => {
+          const label = displayName(area, locale);
           const marker = L.marker([area.lat, area.lng], {
-            icon: areaIcon(area.name, area.place_count, "city", area.id === cityId),
-            title: area.name,
+            icon: areaIcon(label, area.place_count, "city", area.id === cityId),
+            title: label,
           });
           marker.on("click", () => enterCity(area));
           marker.addTo(layer);
@@ -526,8 +579,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           .slice(0, PLACE_PIN_CAP)
           .forEach((place) => {
             const marker = L.marker([place.lat, place.lng], {
-              icon: pinIcon(place.category, place.id === selectedPlaceId),
-              title: `${place.name} · ${categoryLabel[place.category]}`,
+              icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+              title: `${displayName(place, locale)} · ${t.category[place.category]}`,
             });
             marker.on("click", () => openPlace(place));
             marker.addTo(layer);
@@ -539,9 +592,10 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     if (level === "district") {
       if (!showPlacePins || mapZoom < 13) {
         listDistricts.forEach((area) => {
+          const label = displayName(area, locale);
           const marker = L.marker([area.lat, area.lng], {
-            icon: areaIcon(area.name, area.place_count, "district", area.id === districtId),
-            title: area.name,
+            icon: areaIcon(label, area.place_count, "district", area.id === districtId),
+            title: label,
           });
           marker.on("click", () => enterDistrict(area));
           marker.addTo(layer);
@@ -554,8 +608,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         .slice(0, PLACE_PIN_CAP)
         .forEach((place) => {
           const marker = L.marker([place.lat, place.lng], {
-            icon: pinIcon(place.category, place.id === selectedPlaceId),
-            title: `${place.name} · ${categoryLabel[place.category]}`,
+            icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+            title: `${displayName(place, locale)} · ${t.category[place.category]}`,
           });
           marker.on("click", () => openPlace(place));
           marker.addTo(layer);
@@ -565,8 +619,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
     visiblePlaces.forEach((place) => {
       const marker = L.marker([place.lat, place.lng], {
-        icon: pinIcon(place.category, place.id === selectedPlaceId),
-        title: `${place.name} · ${categoryLabel[place.category]}`,
+        icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+        title: `${displayName(place, locale)} · ${t.category[place.category]}`,
       });
       marker.on("click", () => openPlace(place));
       marker.addTo(layer);
@@ -583,7 +637,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     cityId,
     districtId,
     isSearching,
+    searchNearMe,
+    searchQ,
     places,
+    locale,
+    t.category,
   ]);
 
   async function openPlace(place: MapPlace) {
@@ -644,8 +702,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     mapRef.current && fitLatLngs(mapRef.current, districts.length ? districts : [city], 12);
   }
 
+  const cityLabel = city ? displayName(city, locale) : "";
+  const districtLabel = district ? displayName(district, locale) : "";
   const title =
-    level === "city" ? "시 선택" : level === "district" ? `${city?.name ?? ""} · 구·동` : `${district?.name ?? ""} · 장소`;
+    level === "city"
+      ? t.pickCity
+      : level === "district"
+        ? t.districtLevel(cityLabel)
+        : t.placeLevel(districtLabel);
   const showCategoryFilter =
     categoryOptions.length > 0 &&
     (showPlacePins || level !== "city" || isSearching || categoryFilter !== "all");
@@ -660,11 +724,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
       <aside className="z-10 flex max-h-[46vh] w-full flex-col border-b border-stone-200 bg-[#f7f5f1] md:max-h-none md:w-[380px] md:border-b-0 md:border-r">
         <header className="shrink-0 px-5 pb-3 pt-5">
-          <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머</p>
-          <h1 className="mt-1 text-2xl font-bold text-stone-900">여행지 지도</h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-600">
-            시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다.
-          </p>
+          <div className="flex items-start justify-between gap-2">
+            <p className="text-xs tracking-[0.28em] text-stone-500">{t.brand}</p>
+            <div className="flex items-center gap-2">
+              <LangToggle />
+              <PointsBadge />
+            </div>
+          </div>
+          <h1 className="mt-1 text-2xl font-bold text-stone-900">{t.mapTitle}</h1>
+          <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.mapBlurb}</p>
 
           <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
             <button
@@ -672,7 +740,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               onClick={goCities}
               className={`rounded-full px-2.5 py-1 ${level === "city" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
             >
-              전체 시
+              {t.allCities}
             </button>
             {city && (
               <>
@@ -682,27 +750,43 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                   onClick={goDistricts}
                   className={`rounded-full px-2.5 py-1 ${level === "district" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
                 >
-                  {city.name}
+                  {cityLabel}
                 </button>
               </>
             )}
             {district && level === "place" && (
               <>
                 <span className="text-stone-400">/</span>
-                <span className="rounded-full bg-stone-900 px-2.5 py-1 text-white">{district.name}</span>
+                <span className="rounded-full bg-stone-900 px-2.5 py-1 text-white">{districtLabel}</span>
               </>
             )}
           </nav>
 
           <label className="mt-3 block">
-            <span className="sr-only">통합검색</span>
+            <span className="sr-only">{t.searchLabel}</span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="경복궁, 해운대, 성수동…"
+              placeholder={searchNearMe ? t.searchPlaceholderNear : t.searchPlaceholderNationwide}
               className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-sky-700/30 placeholder:text-stone-400 focus:ring-2"
             />
           </label>
+          <div className="mt-2 inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
+            <button
+              type="button"
+              onClick={() => setSearchNearMe(false)}
+              className={`rounded-full px-2.5 py-1 ${!searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+            >
+              {t.scopeNationwide}
+            </button>
+            <button
+              type="button"
+              onClick={() => setSearchNearMe(true)}
+              className={`rounded-full px-2.5 py-1 ${searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+            >
+              {t.scopeNearMe}
+            </button>
+          </div>
 
           {showCategoryFilter && (
             <CategoryFilterBar
@@ -714,12 +798,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           )}
           <p className="mt-2 text-[11px] font-medium tracking-wide text-stone-500">
             {placesLoading
-              ? "주변 장소를 불러오는 중…"
+              ? t.loadingNearby
               : isSearching
-                ? `검색 · 장소 ${visiblePlaces.length}건${listCities.length ? ` · 시 ${listCities.length}` : ""}`
+                ? t.searchResults(visiblePlaces.length, listCities.length)
                 : categoryFilter !== "all"
-                  ? `${categoryLabel[categoryFilter as Place["category"]] ?? categoryFilter} · ${visiblePlaces.length}곳`
-                  : `${title} · 로드 ${places.length}곳`}
+                  ? `${t.category[categoryFilter as Place["category"]] ?? categoryFilter} · ${t.placesCount(visiblePlaces.length)}`
+                  : t.loadedCount(title, places.length)}
           </p>
         </header>
 
@@ -738,7 +822,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                   />
                 ))}
                 {listCities.length > 0 && (
-                  <li className="px-2 pb-1 pt-3 text-[11px] font-medium tracking-wide text-stone-500">시</li>
+                  <li className="px-2 pb-1 pt-3 text-[11px] font-medium tracking-wide text-stone-500">{t.citiesSection}</li>
                 )}
                 {listCities.map((area) => (
                   <li key={`city-${area.id}`}>
@@ -748,15 +832,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                       className="mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition hover:bg-white/70"
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <h2 className="font-semibold text-stone-900">{area.name}</h2>
-                        <span className="text-[11px] text-stone-500">{area.place_count}곳</span>
+                        <h2 className="font-semibold text-stone-900">{displayName(area, locale)}</h2>
+                        <span className="text-[11px] text-stone-500">{t.placesCount(area.place_count)}</span>
                       </div>
-                      <p className="mt-0.5 text-xs text-stone-500">시로 이동</p>
+                      <p className="mt-0.5 text-xs text-stone-500">{t.goToCity}</p>
                     </button>
                   </li>
                 ))}
                 {listDistricts.length > 0 && (
-                  <li className="px-2 pb-1 pt-3 text-[11px] font-medium tracking-wide text-stone-500">구·동</li>
+                  <li className="px-2 pb-1 pt-3 text-[11px] font-medium tracking-wide text-stone-500">{t.districtsSection}</li>
                 )}
                 {listDistricts.map((area) => (
                   <li key={`district-${area.id}`}>
@@ -766,8 +850,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                       className="mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition hover:bg-white/70"
                     >
                       <div className="flex items-baseline justify-between gap-2">
-                        <h2 className="font-semibold text-stone-900">{area.name}</h2>
-                        <span className="text-[11px] text-stone-500">{area.place_count}곳</span>
+                        <h2 className="font-semibold text-stone-900">{displayName(area, locale)}</h2>
+                        <span className="text-[11px] text-stone-500">{t.placesCount(area.place_count)}</span>
                       </div>
                       <p className="mt-0.5 text-xs text-stone-500">구·동으로 이동</p>
                     </button>
@@ -806,8 +890,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                         className="mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition hover:bg-white/70"
                       >
                         <div className="flex items-baseline justify-between gap-2">
-                          <h2 className="font-semibold text-stone-900">{area.name}</h2>
-                          <span className="text-[11px] text-stone-500">{area.place_count}곳</span>
+                          <h2 className="font-semibold text-stone-900">{displayName(area, locale)}</h2>
+                          <span className="text-[11px] text-stone-500">{t.placesCount(area.place_count)}</span>
                         </div>
                         <p className="mt-0.5 text-xs text-stone-500">구·동 {area.child_count}개 · 클릭해서 확대</p>
                       </button>
@@ -827,8 +911,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                         className="mb-1.5 w-full rounded-2xl px-3 py-3 text-left transition hover:bg-white/70"
                       >
                         <div className="flex items-baseline justify-between gap-2">
-                          <h2 className="font-semibold text-stone-900">{area.name}</h2>
-                          <span className="text-[11px] text-stone-500">{area.place_count}곳</span>
+                          <h2 className="font-semibold text-stone-900">{displayName(area, locale)}</h2>
+                          <span className="text-[11px] text-stone-500">{t.placesCount(area.place_count)}</span>
                         </div>
                         <p className="mt-0.5 text-xs text-stone-500">클릭해서 장소 보기</p>
                       </button>
@@ -842,8 +926,13 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0 z-0" />
+        <div className="pointer-events-none absolute right-3 top-3 z-[520] md:right-4">
+          <div className="pointer-events-auto drop-shadow-md">
+            <PointsBadge />
+          </div>
+        </div>
         {showCategoryFilter && (
-          <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start">
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start md:pr-28">
             <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[#f7f5f1]/95 p-2 shadow-md ring-1 ring-stone-200/80 backdrop-blur">
               <CategoryFilterBar
                 options={categoryOptions}
@@ -874,7 +963,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 }
 
 function Empty() {
-  return <li className="px-2 py-6 text-center text-sm text-stone-500">검색 결과가 없어요</li>;
+  const t = useT();
+  return <li className="px-2 py-6 text-center text-sm text-stone-500">{t.emptySearch}</li>;
 }
 
 function PlaceHashtags({ place }: { place: MapPlace }) {
@@ -923,12 +1013,20 @@ function PlacePanel({
   onClose: () => void;
   onSourcesChanged?: (placeId: string) => void | Promise<void>;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
   const vibe = enrichPlaceTags({
     category: place.category,
     name: place.name,
     existing: place.tags,
     texts: place.sources.map((s) => `${s.title} ${s.snippet ?? ""}`),
   });
+  const cityLabel = place.city_name
+    ? displayName({ name: place.city_name, name_en: place.city_name_en }, locale)
+    : "";
+  const districtLabel = place.district_name
+    ? displayName({ name: place.district_name, name_en: place.district_name_en }, locale)
+    : "";
 
   return (
     <section className="absolute inset-x-3 bottom-3 z-[500] max-h-[52%] overflow-y-auto rounded-2xl bg-white/95 shadow-xl backdrop-blur md:inset-x-auto md:bottom-5 md:right-5 md:max-h-[75%] md:w-[380px]">
@@ -938,34 +1036,49 @@ function PlacePanel({
           <img src={place.cover_url} alt="" className="h-full w-full object-cover" draggable={false} />
           <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/45 to-transparent" />
           <p className="absolute bottom-2 left-3 right-12 text-[11px] font-medium text-white/90">
-            {categoryLabel[place.category]}
+            {t.category[place.category]}
             {vibe[0] ? ` · ${formatHashtag(vibe[0])}` : ""}
           </p>
         </div>
       )}
 
       <div className="p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div className="flex min-w-0 items-start gap-3">
             <CategoryBadge category={place.category} active />
             <div className="min-w-0">
               <p className="text-[11px] tracking-wide text-stone-500">
-                {categoryLabel[place.category]}
-                {place.city_name ? ` · ${place.city_name}` : ""}
-                {place.district_name ? ` ${place.district_name}` : ""}
+                {t.category[place.category]}
+                {cityLabel ? ` · ${cityLabel}` : ""}
+                {districtLabel ? ` ${districtLabel}` : ""}
               </p>
-              <h2 className="mt-0.5 text-xl font-bold text-stone-900">{place.name}</h2>
+              <h2 className="mt-0.5 text-xl font-bold text-stone-900">{displayName(place, locale)}</h2>
               {place.address && <p className="mt-1 text-xs text-stone-500">{place.address}</p>}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
-            aria-label="닫기"
-          >
-            ✕
-          </button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href={`/trip/place/${place.id}`}
+              title={t.soloTrip}
+              className="inline-flex items-center gap-1 rounded-full bg-[#1b4965] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#163a52]"
+            >
+              <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
+                <path
+                  fill="currentColor"
+                  d="M12 2a7 7 0 0 0-7 7c0 5.25 7 13 7 13s7-7.75 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6a2.5 2.5 0 0 1 0 5.5z"
+                />
+              </svg>
+              {locale === "en" ? "Solo" : "나홀로"}
+            </Link>
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-full px-2 py-1 text-sm text-stone-500 hover:bg-stone-100"
+              aria-label={t.close}
+            >
+              ✕
+            </button>
+          </div>
         </div>
 
         <PlaceHashtags place={place} />
@@ -976,7 +1089,7 @@ function PlacePanel({
           <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">연결된 후기</h3>
           {place.sources.length === 0 ? (
             <div className="mt-2 space-y-2">
-              <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요.</p>
+              <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요. 알고 있는 후기를 연결해 주세요.</p>
               <ReportLinkButton placeId={place.id} />
             </div>
           ) : (
@@ -1003,18 +1116,26 @@ function PlacePanel({
                         {[src.author, src.score != null ? `관련도 ${src.score}` : null].filter(Boolean).join(" · ")}
                       </p>
                       <p className="mt-1 text-[11px] font-semibold text-[#1b4965]">
-                        {src.type === "youtube" ? "영상 보기 →" : "원문 보기 →"}
+                        {src.type === "youtube" ? t.viewVideo : t.viewOriginal}
                       </p>
                     </a>
                     <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                      <SourceRankControls
-                        placeId={place.id}
-                        sourceId={src.id}
-                        boost={src.boost ?? 0}
-                        canUp={i > 0}
-                        canDown={i < place.sources.length - 1}
-                        onRanked={() => onSourcesChanged?.(place.id)}
-                      />
+                      <div className="flex flex-wrap items-center gap-2">
+                        <SourceVoteControls
+                          placeId={place.id}
+                          sourceId={src.id}
+                          communityScore={src.community_score ?? 0}
+                          onVoted={() => onSourcesChanged?.(place.id)}
+                        />
+                        <SourceRankControls
+                          placeId={place.id}
+                          sourceId={src.id}
+                          boost={src.boost ?? 0}
+                          canUp={i > 0}
+                          canDown={i < place.sources.length - 1}
+                          onRanked={() => onSourcesChanged?.(place.id)}
+                        />
+                      </div>
                       <ReportLinkButton placeId={place.id} sourceId={src.id} sourceUrl={src.url} />
                     </div>
                   </li>
@@ -1022,25 +1143,19 @@ function PlacePanel({
               })}
             </ul>
           )}
+          <ContributeLinkForm placeId={place.id} onLinked={() => onSourcesChanged?.(place.id)} />
         </div>
 
-        <div className="mt-4 space-y-2">
-          <Link
-            href={`/trip/place/${place.id}`}
-            className="block rounded-xl bg-[#1b4965] px-3 py-3 text-center text-sm font-semibold text-white shadow-sm hover:bg-[#163a52]"
-          >
-            나홀로 여행 떠나기
-          </Link>
-          <p className="text-center text-[11px] text-stone-500">카카오 로드뷰로 그 자리에 서서 둘러봅니다</p>
-          {place.course_id && (
+        {place.course_id && (
+          <div className="mt-4">
             <Link
               href={`/trip/${place.course_id}`}
               className="block rounded-xl border border-dashed border-stone-300 px-3 py-2 text-center text-xs text-stone-500 hover:border-stone-400 hover:text-stone-700"
             >
               코스 가상여행 열기
             </Link>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ import path from "node:path";
 import { z } from "zod";
 import type { LayerSpec } from "@/lib/sound/engine";
 import { compareSourceSort } from "@/lib/source-rank";
+import { SOURCE_VOTE_HIDE_AT } from "./curation";
 import * as s from "./schema";
 
 /**
@@ -25,6 +26,7 @@ function snapshot() {
     sources: load("sources"),
     placeSources: load("place_sources"),
     placeSourceBoosts: load("place_source_boosts"),
+    placeSourceVoteScores: load("place_source_vote_scores"),
     regionSources: load("region_sources"),
     soundscape: load("soundscape_layers"),
     media: load("place_media"),
@@ -138,6 +140,8 @@ export interface MapPlaceSource {
   view_count: number | null;
   /** Manual editor boost from place_source_boosts (0 = default). */
   boost: number;
+  /** Community net score (up − down). Hidden when ≤ SOURCE_VOTE_HIDE_AT. */
+  community_score: number;
 }
 
 export interface MapPlace {
@@ -150,8 +154,10 @@ export interface MapPlace {
   region_id: string;
   district_id: string | null;
   district_name: string | null;
+  district_name_en: string | null;
   city_id: string | null;
   city_name: string | null;
+  city_name_en: string | null;
   region_name: string | null;
   address: string | null;
   description: string | null;
@@ -166,6 +172,7 @@ export interface MapPlace {
 export interface MapArea {
   id: string;
   name: string;
+  name_en: string | null;
   level: "city" | "district";
   parent_id: string | null;
   lat: number;
@@ -205,11 +212,15 @@ export async function getPlace(id: string) {
   if (!place) return null;
   const boostOf = (sourceId: string) =>
     db.placeSourceBoosts.find((b) => b.place_id === id && b.source_id === sourceId)?.boost ?? 0;
+  const voteOf = (sourceId: string) =>
+    db.placeSourceVoteScores.find((v) => v.place_id === id && v.source_id === sourceId)?.score ?? 0;
   const sources = db.placeSources
     .filter((ps) => ps.place_id === id)
     .flatMap((ps) => {
       const source = db.sources.find((src) => src.id === ps.source_id);
       if (!source) return [];
+      const community_score = voteOf(ps.source_id);
+      if (community_score <= SOURCE_VOTE_HIDE_AT) return [];
       return [
         {
           ...source,
@@ -217,14 +228,25 @@ export async function getPlace(id: string) {
           note: ps.note,
           timestamp_sec: ps.timestamp_sec,
           boost: boostOf(ps.source_id),
+          community_score,
           rank: ps.rank,
         },
       ];
     })
     .sort((a, b) =>
       compareSourceSort(
-        { boost: a.boost, relevance: a.relevance, view_count: a.view_count, rank: a.rank },
-        { boost: b.boost, relevance: b.relevance, view_count: b.view_count, rank: b.rank },
+        {
+          boost: a.boost + a.community_score,
+          relevance: a.relevance,
+          view_count: a.view_count,
+          rank: a.rank,
+        },
+        {
+          boost: b.boost + b.community_score,
+          relevance: b.relevance,
+          view_count: b.view_count,
+          rank: b.rank,
+        },
       ),
     );
   return {
@@ -275,6 +297,7 @@ export async function getPlaceTrip(placeId: string): Promise<CourseView | null> 
       score: src.score,
       view_count: src.view_count,
       boost: src.boost,
+      community_score: src.community_score,
     })),
   };
   return { course, stops: [stop] };

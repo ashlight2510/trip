@@ -3,6 +3,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import type { MapPlace } from "@/db/repo";
 import { fetchPlaces } from "@/lib/map-fetch";
+import { attachOpenFreeMap, type BasemapHandle } from "@/lib/map-basemap";
+import { useLocale } from "@/i18n/locale";
 import {
   haversineM,
   offsetLatLng,
@@ -13,8 +15,6 @@ import {
 
 export type { TravelPose };
 
-const OSM_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
-const OSM_ATTR = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 const ARRIVE_M = 45;
 const NEARBY_RADIUS_KM = 3;
 const NEARBY_LIMIT = 40;
@@ -73,10 +73,12 @@ export function MapTravelStage({
   onArrive,
   onOpenRoadview,
 }: Props) {
+  const { locale } = useLocale();
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<import("leaflet").Map | null>(null);
   const playerRef = useRef<import("leaflet").Marker | null>(null);
   const pinsRef = useRef<import("leaflet").LayerGroup | null>(null);
+  const basemapRef = useRef<BasemapHandle | null>(null);
   const leafletRef = useRef<Leaflet | null>(null);
   const poseRef = useRef({ lat: startLat, lng: startLng, heading: startHeading });
   const keysRef = useRef({ up: false, down: false, left: false, right: false });
@@ -180,9 +182,14 @@ export function MapTravelStage({
         zoomDelta: 0.5,
         wheelPxPerZoomLevel: 90,
       });
-      L.tileLayer(OSM_URL, { attribution: OSM_ATTR, maxZoom: 19 }).addTo(map);
       L.control.zoom({ position: "bottomright" }).addTo(map);
       pinsRef.current = L.layerGroup().addTo(map);
+      const basemap = await attachOpenFreeMap(map, locale);
+      if (cancelled) {
+        basemap.remove();
+        return;
+      }
+      basemapRef.current = basemap;
 
       const player = L.marker([startLat, startLng], {
         icon: playerIcon(L, startHeading, travelMode),
@@ -281,6 +288,8 @@ export function MapTravelStage({
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
       cleanupExtra?.();
+      basemapRef.current?.remove();
+      basemapRef.current = null;
       map?.remove();
       mapRef.current = null;
       playerRef.current = null;
@@ -289,6 +298,10 @@ export function MapTravelStage({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- mount once at start pose
   }, []);
+
+  useEffect(() => {
+    basemapRef.current?.setLocale(locale);
+  }, [locale]);
 
   function hold(key: keyof typeof keysRef.current, down: boolean) {
     keysRef.current[key] = down;

@@ -5,17 +5,20 @@
  *   yarn source:prune
  *   yarn source:prune -- --dry-run
  */
+import fs from "node:fs";
+import path from "node:path";
 import { parseArgs } from "node:util";
 import {
   MAX_BLOG_SOURCES_PER_PLACE,
   MAX_SOURCES_PER_PLACE,
   MAX_YOUTUBE_SOURCES_PER_PLACE,
+  STUB_SOURCE_PROVIDERS,
 } from "../src/db/curation";
 import type { PlaceSource, Region, Source } from "../src/db/schema";
 import { scoreVisitRelevance } from "./lib/source-relevance";
 import { loadEnv, now, read, write } from "./lib/store";
 
-const STUB_PROVIDERS = new Set(["naver_blog_search", "daum_blog_search", "kakao_map"]);
+const STUB_PROVIDERS = new Set<string>(STUB_SOURCE_PROVIDERS);
 const MAX_PER_AUTHOR = 2;
 
 const { values } = parseArgs({
@@ -30,6 +33,30 @@ const places = read("places");
 const regions = read("regions");
 const sources = read("sources");
 const links = read("place_sources");
+const reports = read("source_reports");
+
+type EnrichFlag = {
+  source_id: string;
+  place_id: string;
+  visit_ok: boolean;
+  soft_junk: boolean;
+  geo_mismatch: boolean;
+};
+const enrichFlags: EnrichFlag[] = (() => {
+  try {
+    return JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), "data", "source_enrich_flags.json"), "utf8"),
+    ) as EnrichFlag[];
+  } catch {
+    return [];
+  }
+})();
+const enrichByKey = new Map(enrichFlags.map((f) => [`${f.place_id}::${f.source_id}`, f]));
+const bannedSourceIds = new Set(
+  reports
+    .filter((r) => r.status === "open" && (r.reason === "spam" || r.reason === "deleted"))
+    .flatMap((r) => (r.source_id ? [r.source_id] : [])),
+);
 
 function cityName(regionId: string, regs: Region[]) {
   const seen = new Set<string>();
@@ -95,6 +122,15 @@ for (const [placeId, rows] of grouped) {
     }
     const isYt = src.type === "youtube" || src.provider === "youtube";
     if (STUB_PROVIDERS.has(src.provider)) {
+      dropped++;
+      continue;
+    }
+    if (bannedSourceIds.has(src.id)) {
+      dropped++;
+      continue;
+    }
+    const enrich = enrichByKey.get(`${placeId}::${src.id}`);
+    if (enrich && (enrich.soft_junk || enrich.geo_mismatch || !enrich.visit_ok)) {
       dropped++;
       continue;
     }

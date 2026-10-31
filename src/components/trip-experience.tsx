@@ -6,20 +6,17 @@ import type { CourseView, MapPlace, StopView } from "@/db/repo";
 import { SoundEngine } from "@/lib/sound/engine";
 import { soundLabels } from "@/lib/sound/generators";
 import { TRAVEL_MODES, travelModeMeta, type TravelMode, type TravelPose } from "@/lib/travel-mode";
+import { ContributeLinkForm } from "./contribute-link-form";
 import { COMPANIONS, CompanionHandOverlay, CompanionPreview, type CompanionKind } from "./companion-hand";
 import { Compass } from "./compass";
 import { MapTravelStage } from "./map-travel-stage-client";
 import { PlacePhotoStage, PlaceVideoStage } from "./place-media-stage";
+import { PointsBadge } from "./points-badge";
 import { RoadviewStage, type StageInfo, type StageNotice } from "./roadview-stage";
+import { LangToggle, useLocale, useT } from "@/i18n/locale";
+import { displayName } from "@/i18n/display-name";
 
 type ViewMode = "roadview" | "travel" | "photo" | "video";
-
-const NOTICES: Record<StageNotice, string> = {
-  "key-missing":
-    "로드뷰 키가 없어 대체 화면이에요. .env.local 에 NEXT_PUBLIC_KAKAO_MAP_KEY 를 넣으면 거리뷰가 켜집니다.",
-  "no-pano": "이 좌표 근처에는 카카오 로드뷰가 없어요. 지도 탭에서 다른 곳으로 이동해 보세요.",
-  "load-failed": "로드뷰를 불러오지 못했어요. 잠시 후 다시 시도해 보세요.",
-};
 
 const TIMERS = [0, 15, 30, 60];
 const AUTO_ROTATE_DEG_PER_SEC = 2.5;
@@ -51,11 +48,21 @@ export function TripExperience({
   /** Solo place trip: start in 거리뷰. */
   preferRoadview?: boolean;
 }) {
+  const t = useT();
+  const { locale } = useLocale();
   const { course, stops } = view;
   const solo = preferRoadview || stops.length === 1;
   const [index, setIndex] = useState(0);
   const stop = stops[index]!;
   const { place } = stop;
+  const notices: Record<StageNotice, string> = {
+    "key-missing": t.trip.missingKey,
+    "no-pano":
+      locale === "en"
+        ? "No Kakao roadview near this spot. Try the map tab."
+        : "이 좌표 근처에는 카카오 로드뷰가 없어요. 지도 탭에서 다른 곳으로 이동해 보세요.",
+    "load-failed": t.trip.loadFailed,
+  };
 
   const engineRef = useRef<SoundEngine | null>(null);
   const [started, setStarted] = useState(false);
@@ -85,7 +92,7 @@ export function TripExperience({
   const lastInteraction = useRef(0);
 
   const lookStop = useMemo(() => lookStopFrom(stop, pose, focusPlace), [stop, pose, focusPlace]);
-  const panelName = focusPlace?.name ?? place.name;
+  const panelName = displayName(focusPlace ?? place, locale);
   const panelAddress = focusPlace?.address ?? place.address;
   const holdingHands = companion !== "alone";
 
@@ -198,15 +205,15 @@ export function TripExperience({
   }, [timerMin, playing]);
 
   const chrome = `transition-opacity duration-700 ${healing ? "pointer-events-none opacity-0" : "opacity-100"}`;
-  const attribution = [stage?.provider.attribution, "환경음: Web Audio 실시간 합성"].filter(Boolean).join(" · ");
+  const attribution = [stage?.provider.attribution, t.trip.envSynth].filter(Boolean).join(" · ");
   const meta = travelModeMeta(travelMode);
   const companionMeta = COMPANIONS.find((c) => c.id === companion) ?? COMPANIONS[0]!;
 
   const modes: { id: ViewMode; label: string; enabled: boolean }[] = [
-    { id: "roadview", label: "거리뷰", enabled: true },
-    { id: "travel", label: "지도 여행", enabled: true },
-    { id: "photo", label: "현장 사진", enabled: photos.length > 0 },
-    { id: "video", label: "영상", enabled: Boolean(video) },
+    { id: "roadview", label: t.trip.roadview, enabled: true },
+    { id: "travel", label: t.trip.travel, enabled: true },
+    { id: "photo", label: t.trip.photo, enabled: photos.length > 0 },
+    { id: "video", label: t.trip.video, enabled: Boolean(video) },
   ];
 
   const showHands = started && holdingHands && (mode === "roadview" || (mode === "photo" && photos.length === 0));
@@ -257,7 +264,7 @@ export function TripExperience({
       <header className={`pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5 ${chrome}`}>
         <div className="pointer-events-auto">
           <Link href="/" className="text-sm tracking-[0.3em] text-white/70 hover:text-white">
-            풍경너머
+            {t.brand}
           </Link>
           <h1 className="mt-1 text-lg font-semibold">{course.title}</h1>
           {course.subtitle && <p className="mt-0.5 text-xs text-white/55">{course.subtitle}</p>}
@@ -313,6 +320,10 @@ export function TripExperience({
           )}
         </div>
         <div className="pointer-events-auto flex flex-col items-end gap-2">
+          <div className="flex items-center gap-2">
+            <LangToggle />
+            <PointsBadge />
+          </div>
           {mode === "roadview" && <Compass heading={heading} layers={stop.soundscape} />}
           {mode === "roadview" && attribution && <p className="text-[11px] text-white/60">{attribution}</p>}
           {mode === "travel" && (
@@ -327,7 +338,7 @@ export function TripExperience({
         <div
           className={`pointer-events-none absolute left-1/2 top-28 w-[min(90vw,32rem)] -translate-x-1/2 space-y-2 rounded-xl bg-black/55 px-4 py-3 text-center backdrop-blur ${chrome}`}
         >
-          <p className="text-sm text-white/90">{NOTICES[stage.notice]}</p>
+          <p className="text-sm text-white/90">{notices[stage.notice]}</p>
         </div>
       )}
 
@@ -353,8 +364,8 @@ export function TripExperience({
           {mode === "roadview" && (
             <p className="mt-2 text-xs text-white/65">
               {holdingHands
-                ? "손을 잡은 채 거리뷰를 둘러보세요. 화살표를 눌러 길을 따라 걸을 수 있어요."
-                : "거리뷰를 드래그해 둘러보고, 화살표로 길을 따라 걸어 보세요."}
+                ? t.trip.holdHandsHint
+                : t.trip.exploreHint}
             </p>
           )}
           {mode === "travel" && (
@@ -378,6 +389,8 @@ export function TripExperience({
               ))}
             </ul>
           )}
+
+          {mode === "roadview" && <ContributeLinkForm placeId={place.id} tone="dark" />}
 
           {stop.soundscape.length > 0 && mode === "roadview" && (
             <div className="mt-3 flex flex-wrap gap-1.5">
@@ -455,7 +468,7 @@ export function TripExperience({
               disabled={!started}
               className="rounded-full bg-white px-4 py-1.5 text-sm font-semibold text-black disabled:opacity-40"
             >
-              {playing ? "소리 끄기" : "소리 켜기"}
+              {playing ? t.trip.soundOff : t.trip.soundOn}
             </button>
             <input
               type="range"
@@ -486,7 +499,7 @@ export function TripExperience({
             >
               {TIMERS.map((m) => (
                 <option key={m} value={m} className="text-black">
-                  {m ? `${m}분 후 끄기` : "타이머 없음"}
+                  {m ? t.trip.minutesLater(m) : t.trip.noTimer}
                 </option>
               ))}
             </select>
@@ -506,7 +519,7 @@ export function TripExperience({
 
       {!started && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-5 bg-black/60 p-6 text-center backdrop-blur-sm">
-          <p className="text-sm tracking-[0.3em] text-white/60">풍경너머</p>
+          <p className="text-sm tracking-[0.3em] text-white/60">{t.brand}</p>
           <h2 className="text-3xl font-bold md:text-4xl">{solo ? place.name : course.title}</h2>
           <p className="max-w-md text-white/75">
             거리뷰 속에서 길을 따라 걸어 보세요. 원하면 손을 잡고, 같이 걷는 기분으로 둘러볼 수 있어요.
@@ -539,7 +552,7 @@ export function TripExperience({
             onClick={start}
             className="rounded-full bg-amber-300 px-8 py-3 font-semibold text-black hover:bg-amber-200"
           >
-            {holdingHands ? `${companionMeta.label} · 손잡고 떠나기` : "거리뷰로 떠나기"}
+            {holdingHands ? t.trip.startWithCompanion(companionMeta.label) : t.trip.startRoadview}
           </button>
         </div>
       )}

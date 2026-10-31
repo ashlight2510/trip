@@ -22,14 +22,17 @@ import { loadEnv, now, read, write } from "./lib/store";
 import { searchYoutubeVideos } from "./lib/youtube-search";
 
 const USAGE = `사용법:
-  npm run youtube:link -- <place_id>
-  npm run youtube:link -- --limit 50`;
+  yarn youtube:link -- <place_id>
+  yarn youtube:link -- --limit 50
+  yarn youtube:link -- --budget 80`;
 
 const { positionals, values } = parseArgs({
   allowPositionals: true,
   options: {
     limit: { type: "string" },
     force: { type: "boolean", default: false },
+    budget: { type: "string" },
+    "empty-only": { type: "boolean", default: false },
   },
 });
 
@@ -208,6 +211,8 @@ async function linkPlace(place: Place): Promise<number> {
   return ytSources.length;
 }
 
+const apiBudget = values.budget ? Math.max(1, Number(values.budget)) : Infinity;
+
 let targets = places;
 if (positionals[0]) {
   const one = places.find((p) => p.id === positionals[0]);
@@ -216,8 +221,11 @@ if (positionals[0]) {
     process.exit(1);
   }
   targets = [one];
-} else if (values.limit) {
-  targets = places.slice(0, Number(values.limit));
+} else {
+  if (values["empty-only"]) {
+    targets = targets.filter((p) => youtubeCount(p.id) === 0);
+  }
+  if (values.limit) targets = targets.slice(0, Number(values.limit));
 }
 
 if (!targets.length) {
@@ -229,6 +237,7 @@ let linked = 0;
 let placesTouched = 0;
 let skipped = 0;
 let errors = 0;
+let apiCalls = 0;
 
 for (let i = 0; i < targets.length; i++) {
   const place = targets[i]!;
@@ -236,8 +245,13 @@ for (let i = 0; i < targets.length; i++) {
     skipped++;
     continue;
   }
+  if (apiCalls >= apiBudget) {
+    console.log(`YouTube API budget ${apiBudget} 소진 — 중단`);
+    break;
+  }
   try {
     const n = await linkPlace(place);
+    apiCalls += 1;
     if (n) {
       linked += n;
       placesTouched++;

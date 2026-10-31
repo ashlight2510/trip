@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_SOURCES_PER_PLACE, MAX_SOURCES_PER_REGION, STUB_SOURCE_PROVIDERS } from "../src/db/curation";
 import { relations } from "../src/db/relations";
 import { tables, type TableName } from "../src/db/schema";
 import { readRaw } from "./lib/store";
@@ -56,9 +57,9 @@ for (const [table, group] of [
   }
 }
 
-for (const [table, group] of [
-  ["place_sources", "place_id"],
-  ["region_sources", "region_id"],
+for (const [table, group, maxLinks] of [
+  ["place_sources", "place_id", MAX_SOURCES_PER_PLACE],
+  ["region_sources", "region_id", MAX_SOURCES_PER_REGION],
 ] as const) {
   const ranks = new Map<string, number[]>();
   for (const row of rows[table]) {
@@ -66,9 +67,30 @@ for (const [table, group] of [
     ranks.set(k, [...(ranks.get(k) ?? []), Number(row.rank)]);
   }
   for (const [k, list] of ranks) {
-    if (list.length > 3) errors.push(`${table}: ${k} has ${list.length} links (max 3)`);
+    if (list.length > maxLinks) errors.push(`${table}: ${k} has ${list.length} links (max ${maxLinks})`);
     const sorted = [...list].sort((a, b) => a - b);
     if (sorted.some((r, i) => r !== i + 1)) errors.push(`${table}: ranks for ${k} must be 1..n, got ${sorted.join(",")}`);
+  }
+}
+
+{
+  const stub = new Set<string>(STUB_SOURCE_PROVIDERS);
+  const sourceById = new Map(rows.sources.map((s) => [String(s.id), s]));
+  const linked = new Set(rows.place_sources.map((l) => String(l.source_id)));
+  for (const l of rows.region_sources) linked.add(String(l.source_id));
+  const orphans = rows.sources.filter((s) => !linked.has(String(s.id))).length;
+  const stubs = rows.sources.filter((s) => stub.has(String(s.provider))).length;
+  const stubLinks = rows.place_sources.filter((l) => {
+    const s = sourceById.get(String(l.source_id));
+    return s && stub.has(String(s.provider));
+  }).length;
+  if (orphans > 20_000) {
+    console.warn(`경고: orphan sources=${orphans} (yarn source:gc -- --apply 권장)`);
+  } else {
+    console.log(`orphan sources=${orphans}`);
+  }
+  if (stubs > 0 || stubLinks > 0) {
+    console.warn(`경고: stub sources=${stubs}, stub place_sources=${stubLinks} (yarn source:gc -- --apply)`);
   }
 }
 

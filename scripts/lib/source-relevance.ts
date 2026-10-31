@@ -2,14 +2,14 @@
  * Visit-intent scoring for blog/video metadata (title + snippet only).
  * Naver has no view count — we gate on place-name match + travel/food signals.
  */
-import { categorySearchHints } from "../../src/db/curation";
+import { categorySearchHints, visitScoreThreshold } from "../../src/db/curation";
 import type { Place } from "../../src/db/schema";
 
-/** Drop below this (0–100) rather than filling with junk. */
+/** Default drop below this (0–100); food categories use a higher bar via visitScoreThreshold. */
 export const VISIT_SCORE_THRESHOLD = 45;
 
 const JUNK =
-  /체험단|원고료|광고|협찬|쿠팡파트너스|클릭하면|제휴마케팅|수익인증|도배|sitemap|버스\s*노선|버스시간표|시내버스\s*\d|나라장터|입찰|채용|구인|원룸|오피스텔|분양|대출|보험|주식|코인|세무|변호사|피부과|치과|성형|인테리어견적|살인|사건\s*사고|용의자|검거|유족|공무원연금|학암집|번역을?\s*읽고|를\s*읽고|오타쿠\s*투어|굿즈샵|가챠샵|특전\s*뭐\s*받|CGV|메가박스|롯데시네마/i;
+  /체험단|원고료|광고|협찬|쿠팡파트너스|클릭하면|제휴마케팅|수익인증|도배|sitemap|버스\s*노선|버스시간표|시내버스\s*\d|나라장터|입찰|채용|구인|원룸|오피스텔|분양|대출|보험|주식|코인|세무|변호사|피부과|치과|성형|인테리어견적|살인|사건\s*사고|용의자|검거|유족|공무원연금|학암집|번역을?\s*읽고|를\s*읽고|오타쿠\s*투어|굿즈샵|가챠샵|특전\s*뭐\s*받|CGV|메가박스|롯데시네마|대리\s*운전|출장\s*안마|성인\s*용품|토토|스포츠토토|카지노|바카라|식권\s*대장|쿠폰\s*모음|최저가\s*비교\s*사이트/i;
 
 /** Soft announcements without a real visit story — reject unless visit/practical signals also fire. */
 const WEAK_ANNOUNCE =
@@ -212,7 +212,13 @@ export function scoreVisitRelevance(input: VisitScoreInput): VisitScoreResult {
   score += viewBoost(input.viewCount);
 
   score = Math.max(0, Math.min(100, score));
-  if (score < VISIT_SCORE_THRESHOLD) {
+  // Stronger city weight for short / ambiguous names
+  if (!hasCityMention(text, input.cityName) && input.placeName.replace(/\s+/g, "").length <= 4) {
+    score -= 8;
+  }
+  score = Math.max(0, Math.min(100, score));
+  const threshold = visitScoreThreshold(input.category);
+  if (score < threshold) {
     return { ok: false, score, reason: "below_threshold" };
   }
   return { ok: true, score };

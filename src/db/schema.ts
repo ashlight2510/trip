@@ -201,6 +201,53 @@ export const placeSourceBoost = z.object({
   updated_at: isoDate,
 });
 
+/** Anonymous browser id for community link contributions (cookie `pn_cid`). */
+const contributorId = z.string().regex(/^c-[a-z0-9]+$/, "contributor cookie id");
+
+/**
+ * User-submitted outbound link for a place.
+ * We store only URL metadata + link row — never blog/video bodies.
+ */
+export const userContribution = z.object({
+  id,
+  place_id: id,
+  source_id: id.nullable(),
+  contributor_id: contributorId,
+  url: z.url(),
+  title: z.string().min(1).max(200).nullable(),
+  status: z.enum(["linked", "duplicate", "pending", "rejected"]),
+  points_awarded: z.number().int().nonnegative(),
+  created_at: isoDate,
+});
+
+/** Running points balance per anonymous contributor. Hint: usable later in-product. */
+export const contributorWallet = z.object({
+  contributor_id: contributorId,
+  points: z.number().int().nonnegative(),
+  linked_count: z.number().int().nonnegative(),
+  updated_at: isoDate,
+});
+
+/** Aggregated community +/- for a place↔source link. */
+export const placeSourceVoteScore = z.object({
+  place_id: id,
+  source_id: id,
+  /** Net score (up − down). Hidden in UI when ≤ SOURCE_VOTE_HIDE_AT. */
+  score: z.number().int(),
+  up: z.number().int().nonnegative(),
+  down: z.number().int().nonnegative(),
+  updated_at: isoDate,
+});
+
+/** One vote per anonymous contributor per link (flip allowed). */
+export const placeSourceVote = z.object({
+  contributor_id: contributorId,
+  place_id: id,
+  source_id: id,
+  value: z.union([z.literal(1), z.literal(-1)]),
+  updated_at: isoDate,
+});
+
 export const tables = {
   regions: region,
   places: place,
@@ -214,6 +261,10 @@ export const tables = {
   course_stops: courseStop,
   source_reports: sourceReport,
   place_source_boosts: placeSourceBoost,
+  user_contributions: userContribution,
+  contributor_wallets: contributorWallet,
+  place_source_vote_scores: placeSourceVoteScore,
+  place_source_votes: placeSourceVote,
 } as const;
 
 export type TableName = keyof typeof tables;
@@ -231,3 +282,7 @@ export type Course = Row<"courses">;
 export type CourseStop = Row<"course_stops">;
 export type SourceReport = Row<"source_reports">;
 export type PlaceSourceBoost = Row<"place_source_boosts">;
+export type UserContribution = Row<"user_contributions">;
+export type ContributorWallet = Row<"contributor_wallets">;
+export type PlaceSourceVoteScore = Row<"place_source_vote_scores">;
+export type PlaceSourceVote = Row<"place_source_votes">;
