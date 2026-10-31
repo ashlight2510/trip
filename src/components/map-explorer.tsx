@@ -128,6 +128,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const fetchSeq = useRef(0);
+  /** Last search query we auto-fit the map for — avoid re-fitting on every zoom (trackpad bounce). */
+  const fittedSearchQ = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapZoom, setMapZoom] = useState(7);
   const [places, setPlaces] = useState<MapPlace[]>([]);
@@ -251,16 +253,13 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const host = hostRef.current;
     if (!host || mapRef.current) return;
 
-    // Mac trackpad two-finger scroll maps to wheel zoom — soften sensitivity & allow fractional levels.
+    // Custom wheel zoom: no trackpad inertia, ~3× stronger than previous (30px / zoom level).
     const map = L.map(host, {
       zoomControl: false,
       attributionControl: true,
-      scrollWheelZoom: true,
-      wheelPxPerZoomLevel: 180, // default 60 — higher = gentler trackpad zoom
-      wheelDebounceTime: 20,
-      zoomSnap: 0.25,
-      zoomDelta: 0.5,
-      // Keep the point under the cursor stable while zooming (feels less jumpy).
+      scrollWheelZoom: false,
+      zoomSnap: 0,
+      zoomDelta: 1,
     });
     L.tileLayer(OSM_URL, { attribution: OSM_ATTR, maxZoom: 19 }).addTo(map);
     L.control.zoom({ position: "topright" }).addTo(map);
@@ -269,6 +268,30 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     fitLatLngs(map, cities, 7);
     setMapZoom(map.getZoom());
     setMapReady(true);
+
+    // Proportional zoom: small finger move → small zoom; no snap, no inertia drip.
+    const WHEEL_PX_PER_ZOOM = 60;
+    let lastWheelTs = 0;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      let dy = e.deltaY;
+      if (e.deltaMode === 1) dy *= 16;
+      if (e.deltaMode === 2) dy *= map.getSize().y;
+      const abs = Math.abs(dy);
+      if (abs < 0.05) return;
+
+      const now = performance.now();
+      // Only drop true inertia tails (long gap + tiny drip), keep intentional fine nudges.
+      if (now - lastWheelTs > 140 && abs < 1.5) return;
+      lastWheelTs = now;
+
+      const next = Math.max(
+        map.getMinZoom(),
+        Math.min(map.getMaxZoom(), map.getZoom() - dy / WHEEL_PX_PER_ZOOM),
+      );
+      map.setZoomAround(map.mouseEventToContainerPoint(e), next, { animate: false });
+    };
+    host.addEventListener("wheel", onWheel, { passive: false });
 
     let moveTimer: ReturnType<typeof setTimeout> | null = null;
     const onZoomEnd = () => setMapZoom(map.getZoom());
@@ -288,6 +311,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
     return () => {
       if (moveTimer) clearTimeout(moveTimer);
+      host.removeEventListener("wheel", onWheel);
       map.off("zoomend", onZoomEnd);
       map.off("moveend", onMoveEnd);
       window.removeEventListener("resize", onResize);
@@ -346,6 +370,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const q = query.trim();
     if (!q) {
       setSearchHits(null);
+      fittedSearchQ.current = null;
       return;
     }
     const seq = ++fetchSeq.current;
@@ -380,7 +405,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         marker.on("click", () => openPlace(place));
         marker.addTo(layer);
       });
-      if (visiblePlaces.length) fitLatLngs(map, visiblePlaces, 12);
+      // Fit once per search query — refitting on zoomend caused trackpad zoom rebound.
+      if (visiblePlaces.length && fittedSearchQ.current !== searchQ) {
+        fittedSearchQ.current = searchQ;
+        fitLatLngs(map, visiblePlaces, 12);
+      }
       return;
     }
 
