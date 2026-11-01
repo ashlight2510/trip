@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
+import { readTable } from "@/db/json-table";
 import { placeSource, placeSourceBoost, type PlaceSource, type PlaceSourceBoost } from "@/db/schema";
 import { compareSourceSort } from "@/lib/source-rank";
 
@@ -14,7 +15,6 @@ const inputSchema = z.object({
 
 const BOOSTS = path.join(process.cwd(), "data", "place_source_boosts.json");
 const LINKS = path.join(process.cwd(), "data", "place_sources.json");
-const SOURCES = path.join(process.cwd(), "data", "sources.json");
 
 function readJson<T>(file: string, fallback: T): T {
   try {
@@ -49,7 +49,7 @@ export async function rankSource(raw: z.infer<typeof inputSchema>) {
     throw new Error("이 장소에 연결되지 않은 후기입니다.");
   }
 
-  const sources = readJson<{ id: string; view_count: number | null }[]>(SOURCES, []);
+  const sources = readTable("sources");
   const viewById = new Map(sources.map((s) => [s.id, s.view_count ?? null]));
 
   let boosts = z.array(placeSourceBoost).parse(readJson<PlaceSourceBoost[]>(BOOSTS, []));

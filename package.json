@@ -10,6 +10,7 @@
     "lint": "eslint",
     "data:check": "tsx scripts/data-check.ts",
     "data:quality": "tsx scripts/data-quality-report.mts",
+    "data:split": "tsx scripts/data-split.mts",
     "data:sql": "tsx scripts/export-sql.ts",
     "cafe:tour": "tsx scripts/export-cafe-tour.mts",
     "place:add": "tsx scripts/place-add.mts",

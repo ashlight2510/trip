@@ -9,6 +9,7 @@ import {
   MAX_CONTRIB_PER_DAY,
   MAX_SOURCES_PER_PLACE,
 } from "@/db/curation";
+import { readTable, writeTable } from "@/db/json-table";
 import {
   contributorWallet,
   placeSource,
@@ -16,7 +17,6 @@ import {
   userContribution,
   type ContributorWallet,
   type PlaceSource,
-  type Source,
   type UserContribution,
 } from "@/db/schema";
 import { parseContribUrl, sourceIdFromUrl } from "@/lib/contrib-url";
@@ -29,7 +29,6 @@ const inputSchema = z.object({
 
 const DATA = path.join(process.cwd(), "data");
 const PLACES = path.join(DATA, "places.json");
-const SOURCES = path.join(DATA, "sources.json");
 const LINKS = path.join(DATA, "place_sources.json");
 const CONTRIBS = path.join(DATA, "user_contributions.json");
 const WALLETS = path.join(DATA, "contributor_wallets.json");
@@ -112,7 +111,7 @@ export async function contributeSource(raw: z.infer<typeof inputSchema>): Promis
     return { ok: false, error: "오늘은 연결 한도에 도달했어요. 내일 다시 도와주세요." };
   }
 
-  let sources = z.array(source).parse(readJson<Source[]>(SOURCES, []));
+  let sources = readTable("sources");
   let links = z.array(placeSource).parse(readJson<PlaceSource[]>(LINKS, []));
   let wallets = z.array(contributorWallet).parse(readJson<ContributorWallet[]>(WALLETS, []));
 
@@ -226,7 +225,7 @@ export async function contributeSource(raw: z.infer<typeof inputSchema>): Promis
   if (wi >= 0) wallets[wi] = wallet;
   else wallets.push(wallet);
 
-  writeJson(SOURCES, sources);
+  writeTable("sources", sources);
   writeJson(LINKS, links);
   writeJson(CONTRIBS, contribs);
   writeJson(WALLETS, wallets);

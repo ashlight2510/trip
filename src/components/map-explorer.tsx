@@ -16,12 +16,20 @@ import { sampleByCategory } from "@/lib/sample-by-category";
 import { displayName } from "@/i18n/display-name";
 import { LangToggle, useLocale, useT } from "@/i18n/locale";
 import { ContributeLinkForm } from "@/components/contribute-link-form";
+import { NearSuggestPanel } from "@/components/near-suggest-panel";
 import { PointsBadge } from "@/components/points-badge";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
 import { PlaceLikeControls } from "@/components/place-like-controls";
 import { PlaceListControls } from "@/components/place-list-controls";
 import { SourceVoteControls } from "@/components/source-vote-controls";
+import {
+  shufflePick,
+  WANDER_FIT_ZOOM,
+  WANDER_PICK_COUNT,
+  WANDER_RADIUS_KM,
+  type WanderMode,
+} from "@/lib/near-suggest";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -30,6 +38,16 @@ const NEAR_LIMIT = 220;
 /** Show place pins on the map once the user has zoomed in this far (no city click required). */
 const PLACE_PIN_ZOOM = 9;
 const PLACE_PIN_CAP = 150;
+/** Mercator-safe world extent — zoom-out floor so one world map just fills the view. */
+const WORLD_BOUNDS = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
+
+function syncWorldMinZoom(map: L.Map) {
+  // Max zoom at which the whole world still fits → use as minZoom so zoom-out stops there.
+  const fitted = map.getBoundsZoom(WORLD_BOUNDS, false);
+  const minZoom = Number.isFinite(fitted) ? Math.max(1, fitted) : 2;
+  map.setMinZoom(minZoom);
+  if (map.getZoom() < minZoom) map.setZoom(minZoom, { animate: false });
+}
 
 type Level = "city" | "district" | "place";
 
@@ -262,8 +280,10 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
+  const wanderCircleRef = useRef<L.Circle | null>(null);
   const basemapRef = useRef<BasemapHandle | null>(null);
   const fetchSeq = useRef(0);
+  const wanderSeq = useRef(0);
   /** Last search query we auto-fit the map for — avoid re-fitting on every zoom (trackpad bounce). */
   const fittedSearchQ = useRef<string | null>(null);
   const [mapReady, setMapReady] = useState(false);
@@ -279,10 +299,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [query, setQuery] = useState("");
   const [searchNearMe, setSearchNearMe] = useState(false);
   const [userLoc, setUserLoc] = useState(DEFAULT_CENTER);
+  const [hasUserGps, setHasUserGps] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | "all">("all");
   /** Default on: map feels curated while blog coverage is still filling. */
   const [reviewsOnly, setReviewsOnly] = useState(true);
+  const [wanderMode, setWanderMode] = useState<WanderMode | null>(null);
+  const [wanderCats, setWanderCats] = useState<Place["category"][]>([]);
+  const [wanderPool, setWanderPool] = useState<MapPlace[]>([]);
+  const [wanderPicks, setWanderPicks] = useState<MapPlace[]>([]);
+  const [wanderLoading, setWanderLoading] = useState(false);
   const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
+  const wanderActive = wanderMode != null;
 
   const cities = useMemo(() => areas.filter((a) => a.level === "city"), [areas]);
   const districts = useMemo(
@@ -306,6 +333,105 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     } finally {
       if (seq === fetchSeq.current) setPlacesLoading(false);
     }
+  });
+
+  const paintUserMarker = useEffectEvent((lat: number, lng: number, fly: boolean, zoom = 11) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (userMarkerRef.current) userMarkerRef.current.remove();
+    userMarkerRef.current = L.circleMarker([lat, lng], {
+      radius: 7,
+      color: "#fff",
+      weight: 2,
+      fillColor: "#1b4965",
+      fillOpacity: 1,
+    }).addTo(map);
+    if (fly) map.flyTo([lat, lng], zoom, { duration: 0.7 });
+  });
+
+  const paintWanderCircle = useEffectEvent((lat: number, lng: number, radiusKm: number) => {
+    const map = mapRef.current;
+    if (!map) return;
+    if (wanderCircleRef.current) {
+      wanderCircleRef.current.remove();
+      wanderCircleRef.current = null;
+    }
+    wanderCircleRef.current = L.circle([lat, lng], {
+      radius: radiusKm * 1000,
+      color: "#1b4965",
+      weight: 1.5,
+      opacity: 0.55,
+      fillColor: "#1b4965",
+      fillOpacity: 0.06,
+      interactive: false,
+    }).addTo(map);
+  });
+
+  const clearWanderCircle = useEffectEvent(() => {
+    wanderCircleRef.current?.remove();
+    wanderCircleRef.current = null;
+  });
+
+  const applyWanderPicks = useEffectEvent((pool: MapPlace[], cats: Place["category"][]) => {
+    let filtered = reviewsOnly ? pool.filter((p) => p.source_count > 0) : pool;
+    if (cats.length > 0) filtered = filtered.filter((p) => cats.includes(p.category));
+    const picks = shufflePick(filtered, WANDER_PICK_COUNT);
+    setWanderPicks(picks);
+    ingestPlaces(picks);
+    return picks;
+  });
+
+  const runWander = useEffectEvent(async (mode: WanderMode, cats: Place["category"][], origin: { lat: number; lng: number }) => {
+    const radiusKm = WANDER_RADIUS_KM[mode];
+    const seq = ++wanderSeq.current;
+    setWanderLoading(true);
+    setQuery("");
+    setSearchHits(null);
+    setSearchNearMe(true);
+    setLevel("city");
+    setCityId(null);
+    setDistrictId(null);
+    paintUserMarker(origin.lat, origin.lng, true, WANDER_FIT_ZOOM[mode]);
+    paintWanderCircle(origin.lat, origin.lng, radiusKm);
+    try {
+      const next = await fetchPlaces({
+        lat: origin.lat,
+        lng: origin.lng,
+        radiusKm,
+        limit: 250,
+      });
+      if (seq !== wanderSeq.current) return;
+      ingestPlaces(next);
+      setWanderPool(next);
+      applyWanderPicks(next, cats);
+    } catch (e) {
+      console.error(e);
+      if (seq === wanderSeq.current) {
+        setWanderPool([]);
+        setWanderPicks([]);
+      }
+    } finally {
+      if (seq === wanderSeq.current) setWanderLoading(false);
+    }
+  });
+
+  const requestUserGps = useEffectEvent((): Promise<{ lat: number; lng: number } | null> => {
+    return new Promise((resolve) => {
+      if (!navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLoc(loc);
+          setHasUserGps(true);
+          resolve(loc);
+        },
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 12_000, maximumAge: 30_000 },
+      );
+    });
   });
 
   const loadBounds = useEffectEvent(async () => {
@@ -415,10 +541,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       scrollWheelZoom: false,
       zoomSnap: 0,
       zoomDelta: 1,
+      minZoom: 2,
+      maxBounds: WORLD_BOUNDS,
+      maxBoundsViscosity: 1,
+      worldCopyJump: false,
     });
     L.control.zoom({ position: "topright" }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
+    syncWorldMinZoom(map);
     fitLatLngs(map, cities, 7);
     setMapZoom(map.getZoom());
     setMapReady(true);
@@ -472,9 +603,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     map.on("zoomend", onZoomEnd);
     map.on("moveend", onMoveEnd);
 
-    const onResize = () => map.invalidateSize();
+    const onResize = () => {
+      map.invalidateSize();
+      syncWorldMinZoom(map);
+    };
     window.addEventListener("resize", onResize);
-    requestAnimationFrame(() => map.invalidateSize());
+    requestAnimationFrame(() => {
+      map.invalidateSize();
+      syncWorldMinZoom(map);
+    });
 
     return () => {
       cancelled = true;
@@ -485,6 +622,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       window.removeEventListener("resize", onResize);
       basemapRef.current?.remove();
       basemapRef.current = null;
+      wanderCircleRef.current?.remove();
+      wanderCircleRef.current = null;
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -504,27 +643,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     if (!mapReady) return;
     let cancelled = false;
 
-    const apply = async (lat: number, lng: number, fly: boolean) => {
+    const apply = async (lat: number, lng: number, fly: boolean, gps: boolean) => {
       if (cancelled) return;
-      const map = mapRef.current;
-      if (map) {
-        if (userMarkerRef.current) userMarkerRef.current.remove();
-        userMarkerRef.current = L.circleMarker([lat, lng], {
-          radius: 7,
-          color: "#fff",
-          weight: 2,
-          fillColor: "#1b4965",
-          fillOpacity: 1,
-        }).addTo(map);
-        if (fly) map.flyTo([lat, lng], 11, { duration: 0.7 });
-      }
+      paintUserMarker(lat, lng, fly);
+      if (gps) setHasUserGps(true);
       await loadNearby(lat, lng);
     };
 
     const remember = (lat: number, lng: number) => setUserLoc({ lat, lng });
     const useFallback = () => {
       remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
-      void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
+      setHasUserGps(false);
+      void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false, false);
     };
 
     const readGrantedLocation = () => {
@@ -535,7 +665,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           remember(pos.coords.latitude, pos.coords.longitude);
-          void apply(pos.coords.latitude, pos.coords.longitude, true);
+          void apply(pos.coords.latitude, pos.coords.longitude, true, true);
         },
         () => useFallback(),
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
@@ -568,6 +698,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       cancelled = true;
     };
   }, [mapReady]);
+
+  // Re-roll near picks when the reviews filter flips while wander is open.
+  useEffect(() => {
+    if (!wanderActive || wanderPool.length === 0) return;
+    applyWanderPicks(wanderPool, wanderCats);
+  }, [reviewsOnly]);
 
   // Server search when typing — don't require the whole catalog in memory.
   useEffect(() => {
@@ -606,6 +742,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const layer = layerRef.current;
     if (!map || !layer || !mapReady) return;
     layer.clearLayers();
+
+    if (wanderActive && !isSearching) {
+      wanderPicks.forEach((place) => {
+        const marker = L.marker([place.lat, place.lng], {
+          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+        });
+        marker.on("click", () => openPlace(place));
+        marker.addTo(layer);
+      });
+      return;
+    }
 
     if (isSearching) {
       visiblePlaces.forEach((place) => {
@@ -708,6 +856,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     places,
     locale,
     t.category,
+    wanderActive,
+    wanderPicks,
   ]);
 
   async function openPlace(place: MapPlace) {
@@ -756,7 +906,41 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     setDistrictId(null);
     setSelectedPlaceId(null);
     setQuery("");
+    setWanderMode(null);
+    setWanderPicks([]);
+    setWanderPool([]);
+    clearWanderCircle();
     mapRef.current && fitLatLngs(mapRef.current, cities, 7);
+  }
+
+  function closeWander() {
+    setWanderMode(null);
+    setWanderPicks([]);
+    setWanderPool([]);
+    clearWanderCircle();
+  }
+
+  async function startWander(mode: WanderMode) {
+    setWanderMode(mode);
+    let origin = userLoc;
+    if (!hasUserGps) {
+      const gps = await requestUserGps();
+      if (!gps) return;
+      origin = gps;
+    }
+    await runWander(mode, wanderCats, origin);
+  }
+
+  function toggleWanderCat(cat: Place["category"]) {
+    setWanderCats((prev) => {
+      const next = prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat];
+      if (wanderPool.length) applyWanderPicks(wanderPool, next);
+      return next;
+    });
+  }
+
+  function shuffleWander() {
+    applyWanderPicks(wanderPool, wanderCats);
   }
 
   function goDistricts() {
@@ -889,7 +1073,36 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             </div>
           </div>
 
-          {showCategoryFilter && (
+          <NearSuggestPanel
+            active={wanderActive}
+            mode={wanderMode}
+            cats={wanderCats}
+            picks={wanderPicks}
+            poolSize={
+              wanderPool.filter((p) => {
+                if (reviewsOnly && p.source_count <= 0) return false;
+                if (wanderCats.length > 0 && !wanderCats.includes(p.category)) return false;
+                return true;
+              }).length
+            }
+            loading={wanderLoading}
+            hasGps={hasUserGps}
+            origin={userLoc}
+            selectedPlaceId={selectedPlaceId}
+            onMode={(m) => void startWander(m)}
+            onToggleCat={toggleWanderCat}
+            onShuffle={shuffleWander}
+            onClose={closeWander}
+            onEnableLoc={() => {
+              void (async () => {
+                const gps = await requestUserGps();
+                if (gps && wanderMode) await runWander(wanderMode, wanderCats, gps);
+              })();
+            }}
+            onSelect={(place) => void openPlace(place)}
+          />
+
+          {showCategoryFilter && !wanderActive && (
             <CategoryFilterBar
               options={categoryOptions}
               value={categoryFilter}
@@ -1044,7 +1257,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             </div>
           </div>
         )}
-        {selectedPlace && (level === "place" || isSearching) && (
+        {selectedPlace && (level === "place" || isSearching || wanderActive) && (
           <PlacePanel
             place={selectedPlace}
             onClose={() => setSelectedPlaceId(null)}

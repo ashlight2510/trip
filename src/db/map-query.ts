@@ -1,15 +1,11 @@
 import "server-only";
-import fs from "node:fs";
-import path from "node:path";
-import { z } from "zod";
 import { compareSourceSort } from "@/lib/source-rank";
 import { scorePlaceSearch } from "@/lib/place-search";
 import { sampleByCategory } from "@/lib/sample-by-category";
 import { isFranchiseChainName, SOURCE_VOTE_HIDE_AT } from "./curation";
+import { readTable, tableStamp } from "./json-table";
 import * as s from "./schema";
 import type { MapArea, MapPlace, MapPlaceSource } from "./repo";
-
-const DATA = path.join(process.cwd(), "data");
 
 type Db = {
   regions: s.Region[];
@@ -49,17 +45,8 @@ type Cache = {
 
 let cache: Cache | null = null;
 
-function tableStamp(name: string) {
-  try {
-    return `${name}:${fs.statSync(path.join(DATA, `${name}.json`)).mtimeMs}`;
-  } catch {
-    return `${name}:0`;
-  }
-}
-
 function loadTable<T extends s.TableName>(name: T): s.Row<T>[] {
-  const raw = JSON.parse(fs.readFileSync(path.join(DATA, `${name}.json`), "utf8"));
-  return z.array(s.tables[name]).parse(raw) as s.Row<T>[];
+  return readTable(name);
 }
 
 function ancestors(regionById: Map<string, s.Region>, regionId: string | null | undefined): s.Region[] {

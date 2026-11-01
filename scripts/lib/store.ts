@@ -1,27 +1,19 @@
-import fs from "node:fs";
 import path from "node:path";
-import { z } from "zod";
-import { tables, type Row, type TableName } from "../../src/db/schema";
+import { DATA_DIR, readTable, readTableRaw, writeTable } from "../../src/db/json-table";
+import type { Row, TableName } from "../../src/db/schema";
 
-export const DATA_DIR = path.join(process.cwd(), "data");
-
-const file = (name: TableName) => path.join(DATA_DIR, `${name}.json`);
+export { DATA_DIR };
 
 export function readRaw(name: TableName): unknown {
-  return JSON.parse(fs.readFileSync(file(name), "utf8"));
+  return readTableRaw(name);
 }
 
 export function read<T extends TableName>(name: T): Row<T>[] {
-  return z.array(tables[name]).parse(readRaw(name)) as Row<T>[];
+  return readTable(name);
 }
 
 export function write<T extends TableName>(name: T, rows: Row<T>[]) {
-  const valid = z.array(tables[name]).parse(rows);
-  const target = file(name);
-  const tmp = `${target}.tmp`;
-  // Compact JSON — pretty-print doubles disk use during large batch jobs.
-  fs.writeFileSync(tmp, `${JSON.stringify(valid)}\n`);
-  fs.renameSync(tmp, target);
+  return writeTable(name, rows);
 }
 
 export function loadEnv() {
