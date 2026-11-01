@@ -11,6 +11,7 @@
     "data:check": "tsx scripts/data-check.ts",
     "data:quality": "tsx scripts/data-quality-report.mts",
     "data:sql": "tsx scripts/export-sql.ts",
+    "cafe:tour": "tsx scripts/export-cafe-tour.mts",
     "place:add": "tsx scripts/place-add.mts",
     "place:tags": "tsx scripts/place-tags.mts",
     "place:purge": "tsx scripts/place-purge.mts",
@@ -47,6 +48,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
+    "exceljs": "^4.4.0",
+    "png-to-ico": "^3.0.2",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5"

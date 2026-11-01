@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 import L from "leaflet";
@@ -498,7 +499,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     basemapRef.current?.setLocale(locale);
   }, [locale]);
 
-  // Boot: nearby places from geolocation (or Seoul fallback).
+  // Boot nearby places. Never prompt for location — only reuse an already-granted permission.
   useEffect(() => {
     if (!mapReady) return;
     let cancelled = false;
@@ -521,24 +522,47 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     };
 
     const remember = (lat: number, lng: number) => setUserLoc({ lat, lng });
-
-    if (!navigator.geolocation) {
+    const useFallback = () => {
       remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
       void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
-      return;
-    }
+    };
 
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        remember(pos.coords.latitude, pos.coords.longitude);
-        void apply(pos.coords.latitude, pos.coords.longitude, true);
-      },
-      () => {
-        remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
-        void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false);
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
-    );
+    const readGrantedLocation = () => {
+      if (!navigator.geolocation) {
+        useFallback();
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          remember(pos.coords.latitude, pos.coords.longitude);
+          void apply(pos.coords.latitude, pos.coords.longitude, true);
+        },
+        () => useFallback(),
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
+      );
+    };
+
+    const boot = async () => {
+      // Avoid the browser permission popup on every visit / remount.
+      try {
+        const permissions = navigator.permissions;
+        if (permissions?.query) {
+          const status = await permissions.query({ name: "geolocation" });
+          if (cancelled) return;
+          if (status.state === "granted") {
+            readGrantedLocation();
+            return;
+          }
+          useFallback();
+          return;
+        }
+      } catch {
+        // Permissions API unavailable — fall through without prompting.
+      }
+      if (!cancelled) useFallback();
+    };
+
+    void boot();
 
     return () => {
       cancelled = true;
@@ -764,28 +788,33 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
   return (
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
-      <aside className="z-10 flex max-h-[46vh] w-full flex-col border-b border-stone-200 bg-[#f7f5f1] md:max-h-none md:w-[380px] md:border-b-0 md:border-r">
+      <aside className="z-10 flex max-h-[46vh] w-full flex-col border-b border-[var(--border-soft)] bg-[var(--background-panel)] md:max-h-none md:w-[380px] md:border-b-0 md:border-r">
         <header className="shrink-0 px-5 pb-3 pt-5">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-xs tracking-[0.28em] text-stone-500">{t.brand}</p>
-            <div className="flex items-center gap-2">
-              <Link
-                href="/my-list"
-                className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
-              >
-                {t.myListNav}
-              </Link>
-              <Link
-                href="/picks"
-                className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
-              >
-                {t.picksNav}
-              </Link>
-              <LangToggle />
-              <PointsBadge />
-            </div>
+          <Image
+            src="/logo-brand.png"
+            alt={t.brand}
+            width={190}
+            height={52}
+            priority
+            className="h-11 w-auto object-contain object-left"
+          />
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <Link
+              href="/my-list"
+              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+            >
+              {t.myListNav}
+            </Link>
+            <Link
+              href="/picks"
+              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+            >
+              {t.picksNav}
+            </Link>
+            <LangToggle />
+            <PointsBadge />
           </div>
-          <h1 className="mt-1 text-2xl font-bold text-stone-900">{t.mapTitle}</h1>
+          <h1 className="font-display mt-1 text-2xl text-stone-900">{t.mapTitle}</h1>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.mapBlurb}</p>
 
           <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
@@ -1005,7 +1034,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         </div>
         {showCategoryFilter && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start md:pr-28">
-            <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[#f7f5f1]/95 p-2 shadow-md ring-1 ring-stone-200/80 backdrop-blur">
+            <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[color-mix(in_srgb,var(--background-panel)_92%,white)] p-2 shadow-md ring-1 ring-[var(--border-soft)] backdrop-blur">
               <CategoryFilterBar
                 options={categoryOptions}
                 value={categoryFilter}
@@ -1124,7 +1153,7 @@ function PlacePanel({
                 {cityLabel ? ` · ${cityLabel}` : ""}
                 {districtLabel ? ` ${districtLabel}` : ""}
               </p>
-              <h2 className="mt-0.5 text-xl font-bold text-stone-900">{displayName(place, locale)}</h2>
+              <h2 className="font-display mt-0.5 text-xl text-stone-900">{displayName(place, locale)}</h2>
               {place.address && <p className="mt-1 text-xs text-stone-500">{place.address}</p>}
               <div className="mt-2 flex flex-wrap items-center gap-2">
                 <PlaceLikeControls

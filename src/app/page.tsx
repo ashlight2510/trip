@@ -13,7 +13,7 @@ async function MapHome() {
 export default function Home() {
   return (
     <Suspense
-      fallback={<div className="grid h-dvh place-items-center bg-[#f7f5f1] text-sm text-stone-500">Loading map…</div>}
+      fallback={<div className="grid h-dvh place-items-center bg-[var(--background)] text-sm text-stone-500">Loading map…</div>}
     >
       <MapHome />
     </Suspense>

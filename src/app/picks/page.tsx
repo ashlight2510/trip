@@ -27,12 +27,12 @@ export default async function PicksPage() {
   const all = listPlacePicks();
 
   return (
-    <main className="min-h-dvh bg-[#f3efe6] text-stone-900">
+    <main className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
       <div
-        className="pointer-events-none fixed inset-0 opacity-70"
+        className="pointer-events-none fixed inset-0 opacity-80"
         style={{
           background:
-            "radial-gradient(ellipse 80% 50% at 10% 0%, #d9e6df 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 90% 10%, #e8dcc8 0%, transparent 50%)",
+            "radial-gradient(ellipse 80% 50% at 10% 0%, #b9e0f7 0%, transparent 55%), radial-gradient(ellipse 60% 40% at 90% 10%, #e8f6fd 0%, transparent 50%)",
         }}
       />
       <div className="relative mx-auto max-w-3xl px-5 pb-16 pt-10">

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LocaleProvider } from "@/i18n/locale";
+import { fontDisplay, fontSans } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,8 +10,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className="h-full antialiased">
-      <body className="flex min-h-full flex-col">
+    <html lang="ko" className={`h-full antialiased ${fontSans.variable} ${fontDisplay.variable}`}>
+      <body className={`${fontSans.className} flex min-h-full flex-col`}>
         <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>

@@ -77,21 +77,21 @@ export function LangToggle({ className = "" }: { className?: string }) {
   const { locale, setLocale, t } = useLocale();
   return (
     <div
-      className={`inline-flex rounded-full bg-white/90 p-0.5 text-[11px] font-semibold shadow-sm ring-1 ring-stone-200 ${className}`}
+      className={`inline-flex rounded-full bg-white/90 p-0.5 text-[13px] font-semibold shadow-sm ring-1 ring-stone-200 ${className}`}
       role="group"
       aria-label="Language"
     >
       <button
         type="button"
         onClick={() => setLocale("ko")}
-        className={`rounded-full px-2 py-1 ${locale === "ko" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+        className={`rounded-full px-2.5 py-1.5 ${locale === "ko" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
       >
         {t.langKo}
       </button>
       <button
         type="button"
         onClick={() => setLocale("en")}
-        className={`rounded-full px-2 py-1 ${locale === "en" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+        className={`rounded-full px-2.5 py-1.5 ${locale === "en" ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
       >
         {t.langEn}
       </button>

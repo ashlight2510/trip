@@ -1,13 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f5f1;
-  --foreground: #1c1916;
+  /* Clearer sky blue pastels — matches 풍경너머 logo clouds. */
+  --background: #d9eefb;
+  --background-panel: #e7f5fc;
+  --background-soft: #c8e7f8;
+  --border-soft: #a9d4ec;
+  --foreground: #1a3350;
+  --brand-navy: #1b4965;
 }
 
 .leaflet-container {
   font: inherit;
-  background: #dce3e0;
+  background: #c5e0f2;
 }
 
 .leaflet-control-attribution {
@@ -20,21 +25,36 @@
 }
 
 .pn-place-pin button:focus-visible {
-  outline: 2px solid #1b4965;
+  outline: 2px solid var(--brand-navy);
   outline-offset: 2px;
   border-radius: 999px;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-background-panel: var(--background-panel);
+  --color-background-soft: var(--background-soft);
+  --color-border-soft: var(--border-soft);
   --color-foreground: var(--foreground);
-  --font-sans: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --color-brand-navy: var(--brand-navy);
+  --font-sans: var(--font-ibm-plex), "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-display: var(--font-gowun), "Apple SD Gothic Neo", serif;
+  --font-serif: var(--font-gowun), "Apple SD Gothic Neo", serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.font-display,
+.font-serif {
+  font-family: var(--font-display);
+  letter-spacing: -0.02em;
+  font-weight: 400;
 }
 
 @keyframes kenburns {

@@ -58,7 +58,7 @@ export function PointsBadge({ className = "" }: { className?: string }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80 ${className}`}
+        className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1.5 text-[13px] font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80 ${className}`}
         aria-label={`내 포인트 ${points}점. 상세 보기`}
       >
         <span aria-hidden>✦</span>
@@ -73,11 +73,11 @@ export function PointsBadge({ className = "" }: { className?: string }) {
             aria-label="닫기"
             onClick={() => setOpen(false)}
           />
-          <div className="relative z-10 m-3 w-[min(100%,22rem)] rounded-2xl bg-[#f7f5f1] p-5 shadow-2xl ring-1 ring-stone-200">
+          <div className="relative z-10 m-3 w-[min(100%,22rem)] rounded-2xl bg-[var(--background-panel)] p-5 shadow-2xl ring-1 ring-[var(--border-soft)]">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-[11px] tracking-[0.2em] text-stone-500">풍경너머</p>
-                <h2 className="mt-1 text-lg font-bold text-stone-900">내 포인트</h2>
+                <h2 className="font-display mt-1 text-lg text-stone-900">내 포인트</h2>
               </div>
               <button
                 type="button"
