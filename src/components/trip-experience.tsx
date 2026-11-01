@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CourseView, MapPlace, StopView } from "@/db/repo";
 import { SoundEngine } from "@/lib/sound/engine";
@@ -50,6 +51,7 @@ export function TripExperience({
 }) {
   const t = useT();
   const { locale } = useLocale();
+  const router = useRouter();
   const { course, stops } = view;
   const solo = preferRoadview || stops.length === 1;
   const [index, setIndex] = useState(0);
@@ -65,6 +67,10 @@ export function TripExperience({
   };
 
   const engineRef = useRef<SoundEngine | null>(null);
+  const exitTrip = useCallback(() => {
+    void engineRef.current?.setMuted(true, 0.4);
+    router.push("/");
+  }, [router]);
   const [started, setStarted] = useState(false);
   const [playing, setPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
@@ -182,13 +188,23 @@ export function TripExperience({
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setHealing(false);
-    window.addEventListener("keydown", onKey);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener("keydown", onKey);
     };
   }, [healing, stage]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      if (healing) {
+        setHealing(false);
+        return;
+      }
+      exitTrip();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [healing, exitTrip]);
 
   useEffect(() => {
     if (!timerMin || !playing) return;
@@ -261,7 +277,17 @@ export function TripExperience({
 
       {showHands && <CompanionHandOverlay kind={companion} heading={heading} />}
 
-      <header className={`pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5 ${chrome}`}>
+      <button
+        type="button"
+        onClick={exitTrip}
+        className="pointer-events-auto absolute right-5 top-5 z-20 inline-flex size-9 items-center justify-center rounded-full bg-black/50 text-xl leading-none text-white/95 ring-1 ring-white/30 backdrop-blur hover:bg-black/70"
+        aria-label={t.close}
+        title={`${t.close} (Esc)`}
+      >
+        ×
+      </button>
+
+      <header className={`pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-4 p-5 pr-16 ${chrome}`}>
         <div className="pointer-events-auto">
           <Link href="/" className="text-sm tracking-[0.3em] text-white/70 hover:text-white">
             {t.brand}

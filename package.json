@@ -22,8 +22,10 @@
     "source:gc": "tsx scripts/source-gc.mts",
     "region:link": "tsx scripts/region-link.mts",
     "collect:kr": "tsx scripts/collect-kr-kakao.mts",
+    "collect:theme": "tsx scripts/collect-kakao-theme.mts",
     "collect:kr:osm": "tsx scripts/collect-kr-cities.mts",
     "collect:osm": "tsx scripts/collect-osm-places.mts",
+    "source:thumbs": "tsx scripts/source-thumbs.mts",
     "env:check": "tsx scripts/env-check.mts"
   },
   "dependencies": {

@@ -180,6 +180,7 @@ function PlaceListItem({
   const districtLabel = place.district_name
     ? displayName({ name: place.district_name, name_en: place.district_name_en }, locale)
     : null;
+  const hasReviews = place.source_count > 0;
   return (
     <li>
       <button
@@ -190,7 +191,17 @@ function PlaceListItem({
         }`}
       >
         <div className="flex items-start gap-3">
-          <CategoryBadge category={place.category} active={active} />
+          {place.cover_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={place.cover_url}
+              alt=""
+              className="size-12 shrink-0 rounded-xl object-cover bg-stone-200"
+              draggable={false}
+            />
+          ) : (
+            <CategoryBadge category={place.category} active={active} />
+          )}
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2">
               <h2 className="truncate font-semibold text-stone-900">{displayName(place, locale)}</h2>
@@ -199,7 +210,27 @@ function PlaceListItem({
             <p className="mt-0.5 truncate text-xs text-stone-500">
               {[cityLabel, districtLabel].filter(Boolean).join(" · ") || place.address}
             </p>
-            <p className="mt-1 text-[11px] text-stone-500">{t.linkedReviews(place.source_count)}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1">
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                  hasReviews
+                    ? "bg-emerald-50 text-emerald-800 ring-1 ring-emerald-200"
+                    : "bg-stone-100 text-stone-500 ring-1 ring-stone-200"
+                }`}
+              >
+                {t.reviewBadge(place.source_count)}
+              </span>
+              {(place.like_count ?? 0) > 0 && (
+                <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-rose-700 ring-1 ring-rose-200">
+                  ♥ {place.like_count}
+                </span>
+              )}
+              {place.is_pick && (
+                <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200">
+                  {t.editorPick}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </button>

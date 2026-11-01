@@ -49,6 +49,10 @@ const { positionals, values } = parseArgs({
     /** ISO country code, e.g. KR — skips overseas Naver (low relevance). */
     country: { type: "string" },
     budget: { type: "string" },
+    /** Regex of place names to skip (e.g. 스터디|사주). */
+    "skip-name": { type: "string" },
+    /** Prefer recently created places first (good for same-day theme seeds). */
+    "prefer-new": { type: "boolean", default: false },
   },
 });
 
@@ -286,6 +290,10 @@ const countryFilter = values.country?.trim().toUpperCase() || null;
 const apiBudget = values.budget ? Math.max(1, Number(values.budget)) : Infinity;
 const onlyThin = Boolean(values["only-thin"]);
 const emptyOnly = Boolean(values["empty-only"]);
+const preferNew = Boolean(values["prefer-new"]);
+const skipName = values["skip-name"]?.trim()
+  ? new RegExp(values["skip-name"]!.trim(), "i")
+  : null;
 
 const regionById = new Map(regions.map((r) => [r.id, r]));
 function placeCountryCode(place: Place) {
@@ -311,6 +319,9 @@ if (positionals[0]) {
   if (categoryFilter?.size) {
     targets = targets.filter((p) => categoryFilter.has(p.category));
   }
+  if (skipName) {
+    targets = targets.filter((p) => !skipName.test(p.name));
+  }
   if (onlyThin) {
     targets = targets.filter((p) => {
       const n = realBlogCount(p.id);
@@ -318,6 +329,11 @@ if (positionals[0]) {
     });
   } else if (emptyOnly) {
     targets = targets.filter((p) => !hasRealNaverBlog(p.id));
+  }
+  if (preferNew) {
+    targets = [...targets].sort(
+      (a, b) => Date.parse(b.created_at) - Date.parse(a.created_at) || a.id.localeCompare(b.id),
+    );
   }
   if (values.limit) {
     targets = targets.slice(0, Number(values.limit));

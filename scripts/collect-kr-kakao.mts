@@ -15,6 +15,7 @@ import { parseArgs } from "node:util";
 import { MAX_PLACES_PER_CITY, categorySearchHints } from "../src/db/curation";
 import type { Place, PlaceExternalRef, Region } from "../src/db/schema";
 import { categorySeedTags } from "../src/lib/place-tags";
+import { guessKakaoCategory } from "./lib/kakao-category";
 import { isHardDropPlace } from "./lib/place-quality";
 import { loadEnv, now, read, requireEnv, write } from "./lib/store";
 
@@ -64,6 +65,9 @@ const QUERY_PACK = [
   "해변",
   "카페거리",
   "카페",
+  "숲카페",
+  "정원카페",
+  "뷰카페",
   "맛집",
   "시장",
   "공원",
@@ -78,19 +82,7 @@ const QUERY_PACK = [
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function guessCategory(p: KakaoDoc): Place["category"] {
-  const text = `${p.place_name} ${p.category_name}`;
-  if (/해수욕장|해변/.test(text)) return "beach";
-  if (/시장/.test(text)) return "market";
-  if (/공원/.test(text)) return "park";
-  if (/숲|수목원|휴양림/.test(text)) return "forest";
-  if (/전망대/.test(text)) return "viewpoint";
-  if (/문화재|유적|고택|사찰|궁|한옥/.test(text)) return "heritage";
-  if (p.category_group_code === "CE7" || /카페|커피/.test(text)) return "cafe";
-  if (p.category_group_code === "FD6" || /맛집|음식/.test(text)) return "restaurant";
-  if (/거리|골목/.test(text)) return "street";
-  return "landmark";
-}
+const guessCategory = guessKakaoCategory;
 
 function districtFromAddress(address: string, cityName: string) {
   const m = address.match(/([가-힣0-9]+(?:구|군|읍|면|동|리))/g);

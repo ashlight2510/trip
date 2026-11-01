@@ -34,6 +34,8 @@ type Indexes = {
   likesByPlace: Map<string, number>;
   pickCollectionsByPlace: Map<string, s.PlacePickCollection[]>;
   mediaByPlace: Map<string, s.PlaceMedia[]>;
+  /** First linked source thumbnail (usually YouTube) for list/cover fallback. */
+  thumbByPlace: Map<string, string>;
   courseByPlace: Map<string, string>;
   cityByRegion: Map<string, s.Region | undefined>;
   districtByRegion: Map<string, s.Region | null>;
@@ -108,6 +110,18 @@ function buildIndexes(db: Db): Indexes {
     else mediaByPlace.set(m.place_id, [m]);
   }
 
+  const thumbByPlace = new Map<string, string>();
+  for (const [placeId, links] of placeSourcesByPlace) {
+    for (const ps of links) {
+      const src = sourceById.get(ps.source_id);
+      const thumb = src?.thumbnail_url;
+      if (thumb) {
+        thumbByPlace.set(placeId, thumb);
+        break;
+      }
+    }
+  }
+
   const publicCourses = new Set(db.courses.filter((c) => c.visibility === "public").map((c) => c.id));
   const courseByPlace = new Map<string, string>();
   for (const st of db.courseStops) {
@@ -137,6 +151,7 @@ function buildIndexes(db: Db): Indexes {
     likesByPlace,
     pickCollectionsByPlace,
     mediaByPlace,
+    thumbByPlace,
     courseByPlace,
     cityByRegion,
     districtByRegion,
@@ -294,7 +309,7 @@ export function toMapPlace(place: s.Place, ix: Indexes, opts: { includeSources: 
     like_count: ix.likesByPlace.get(place.id) ?? 0,
     is_pick: (ix.pickCollectionsByPlace.get(place.id)?.length ?? 0) > 0,
     pin_score: computePinScore(place, ix),
-    cover_url: cover?.url ?? null,
+    cover_url: cover?.url ?? ix.thumbByPlace.get(place.id) ?? null,
     sources,
     course_id: ix.courseByPlace.get(place.id) ?? null,
   };

@@ -1,5 +1,6 @@
 import { parseArgs } from "node:util";
 import { placeCategory, type Place } from "../src/db/schema";
+import { guessKakaoCategory } from "./lib/kakao-category";
 import { loadEnv, now, read, requireEnv, write } from "./lib/store";
 
 interface KakaoPlace {
@@ -67,25 +68,9 @@ if (!values.id || !values.region) {
   process.exit(1);
 }
 
-function guessCategory(p: KakaoPlace): Place["category"] | null {
-  const text = `${p.place_name} ${p.category_name}`;
-  if (/해수욕장|해변/.test(text)) return "beach";
-  if (/시장/.test(text)) return "market";
-  if (/공원/.test(text)) return "park";
-  if (/숲|수목원|휴양림/.test(text)) return "forest";
-  if (/전망대/.test(text)) return "viewpoint";
-  if (/문화재|유적|고택|사찰|궁/.test(text)) return "heritage";
-  if (p.category_group_code === "CE7") return "cafe";
-  if (p.category_group_code === "FD6") return "restaurant";
-  if (p.category_group_code === "AT4") return "landmark";
-  return null;
-}
-
-const category = values.category ? placeCategory.parse(values.category) : guessCategory(picked);
-if (!category) {
-  console.error(`분류를 추정하지 못했습니다. --category 로 지정하세요: ${placeCategory.options.join(", ")}`);
-  process.exit(1);
-}
+const category = values.category
+  ? placeCategory.parse(values.category)
+  : guessKakaoCategory(picked);
 
 const places = read("places");
 const refs = read("place_external_refs");

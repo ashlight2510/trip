@@ -39,7 +39,7 @@ export const SOURCE_VOTE_HIDE_AT = -3;
 /** Kakao/Naver query packs per place category — used by collectors. */
 export const categorySearchHints: Record<string, string[]> = {
   beach: ["해수욕장", "해변", "가볼만한곳"],
-  cafe: ["카페", "베이커리", "뷰맛집"],
+  cafe: ["카페", "베이커리", "뷰맛집", "숲카페", "정원카페", "감성카페"],
   forest: ["숲", "수목원", "휴양림", "산책"],
   market: ["시장", "먹거리골목", "가볼만한곳"],
   heritage: ["문화재", "한옥", "사찰", "궁", "관람"],
