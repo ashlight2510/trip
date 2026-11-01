@@ -1,10 +1,23 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { peekMyList } from "@/app/actions/place-list";
 import { getListPlacesForOwner } from "@/db/place-lists";
 import { MyListClient } from "@/components/my-list-client";
 
-export default async function MyListPage() {
+function MyListFallback() {
+  return (
+    <main className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+      <div className="mx-auto max-w-2xl px-5 pb-16 pt-10">
+        <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머</p>
+        <h1 className="font-serif mt-2 text-4xl font-semibold tracking-tight md:text-5xl">내 리스트</h1>
+        <p className="mt-6 text-sm text-stone-500">불러오는 중…</p>
+      </div>
+    </main>
+  );
+}
+
+async function MyListBody() {
   await connection();
   const snap = await peekMyList();
   const places = snap
@@ -55,5 +68,13 @@ export default async function MyListPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function MyListPage() {
+  return (
+    <Suspense fallback={<MyListFallback />}>
+      <MyListBody />
+    </Suspense>
   );
 }

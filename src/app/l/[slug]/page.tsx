@@ -1,15 +1,23 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getSharedListBySlug } from "@/db/place-lists";
 import { displayName } from "@/i18n/display-name";
 import { categoryColor } from "@/lib/categories";
 
-export default async function SharedListPage({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+function SharedListFallback() {
+  return (
+    <main className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+      <div className="mx-auto max-w-2xl px-5 pb-16 pt-10">
+        <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머 · 공유 리스트</p>
+        <p className="mt-6 text-sm text-stone-500">불러오는 중…</p>
+      </div>
+    </main>
+  );
+}
+
+async function SharedListBody({ params }: { params: Promise<{ slug: string }> }) {
   await connection();
   const { slug } = await params;
   const view = getSharedListBySlug(slug);
@@ -75,5 +83,13 @@ export default async function SharedListPage({
         )}
       </div>
     </main>
+  );
+}
+
+export default function SharedListPage({ params }: { params: Promise<{ slug: string }> }) {
+  return (
+    <Suspense fallback={<SharedListFallback />}>
+      <SharedListBody params={params} />
+    </Suspense>
   );
 }

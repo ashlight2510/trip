@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { connection } from "next/server";
 import { listPlacePicks } from "@/db/map-query";
 import type { PlacePickCollection } from "@/db/schema";
@@ -22,7 +23,19 @@ const COLLECTIONS: {
   },
 ];
 
-export default async function PicksPage() {
+function PicksFallback() {
+  return (
+    <main className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
+      <div className="mx-auto max-w-3xl px-5 pb-16 pt-10">
+        <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머</p>
+        <h1 className="font-serif mt-2 text-4xl font-semibold tracking-tight text-stone-900 md:text-5xl">픽</h1>
+        <p className="mt-6 text-sm text-stone-500">불러오는 중…</p>
+      </div>
+    </main>
+  );
+}
+
+async function PicksBody() {
   await connection();
   const all = listPlacePicks();
 
@@ -111,5 +124,13 @@ export default async function PicksPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function PicksPage() {
+  return (
+    <Suspense fallback={<PicksFallback />}>
+      <PicksBody />
+    </Suspense>
   );
 }
