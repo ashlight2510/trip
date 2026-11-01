@@ -13,6 +13,7 @@
     "data:split": "tsx scripts/data-split.mts",
     "data:sql": "tsx scripts/export-sql.ts",
     "cafe:tour": "tsx scripts/export-cafe-tour.mts",
+    "cafe:picks": "tsx scripts/import-cafe-picks.mts",
     "place:add": "tsx scripts/place-add.mts",
     "place:tags": "tsx scripts/place-tags.mts",
     "place:purge": "tsx scripts/place-purge.mts",

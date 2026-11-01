@@ -18,7 +18,7 @@ const COLLECTIONS: {
   {
     id: "pn-cafe",
     title: "좋은 카페",
-    blurb: "분위기·커피·자리가 괜찮은 카페를 모았습니다.",
+    blurb: "전국 SNS 추정 순위로 고른 카페. 이름 아래 특징 키워드로 빠르게 훑어보세요.",
   },
 ];
 
@@ -96,7 +96,7 @@ export default async function PicksPage() {
                                 {item.place.city_name ?? ""}
                                 {item.place.city_name && item.place.district_name ? " · " : ""}
                                 {item.place.district_name ?? ""}
-                                {` · 후기 ${item.place.source_count}`}
+                                {item.place.source_count > 0 ? ` · 후기 ${item.place.source_count}` : ""}
                               </p>
                             </div>
                           </Link>
