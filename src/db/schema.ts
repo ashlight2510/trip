@@ -248,6 +248,53 @@ export const placeSourceVote = z.object({
   updated_at: isoDate,
 });
 
+/** Place-level like (one per anonymous contributor; toggle). */
+export const placeLike = z.object({
+  contributor_id: contributorId,
+  place_id: id,
+  created_at: isoDate,
+});
+
+/** Aggregated like count for a place. */
+export const placeLikeScore = z.object({
+  place_id: id,
+  likes: z.number().int().nonnegative(),
+  updated_at: isoDate,
+});
+
+/**
+ * Editorial “풍경너머 픽” membership.
+ * Collections are curated lists (good cafes, standout places) shown on /picks.
+ */
+export const placePickCollection = z.enum(["pn-picks", "pn-cafe"]);
+
+export const placePick = z.object({
+  place_id: id,
+  collection: placePickCollection,
+  note: z.string().max(240).nullable(),
+  rank: z.number().int().nonnegative(),
+  featured_at: isoDate,
+});
+
+/** User-saved place list (anonymous contributor). Share via /l/[slug] when public. */
+export const placeList = z.object({
+  id,
+  slug: z.string().regex(/^[a-z0-9]{6,16}$/, "share slug"),
+  contributor_id: contributorId,
+  title: z.string().min(1).max(80),
+  is_public: z.boolean(),
+  created_at: isoDate,
+  updated_at: isoDate,
+});
+
+export const placeListItem = z.object({
+  list_id: id,
+  place_id: id,
+  note: z.string().max(240).nullable(),
+  rank: z.number().int().nonnegative(),
+  added_at: isoDate,
+});
+
 export const tables = {
   regions: region,
   places: place,
@@ -265,6 +312,11 @@ export const tables = {
   contributor_wallets: contributorWallet,
   place_source_vote_scores: placeSourceVoteScore,
   place_source_votes: placeSourceVote,
+  place_likes: placeLike,
+  place_like_scores: placeLikeScore,
+  place_picks: placePick,
+  place_lists: placeList,
+  place_list_items: placeListItem,
 } as const;
 
 export type TableName = keyof typeof tables;
@@ -286,3 +338,9 @@ export type UserContribution = Row<"user_contributions">;
 export type ContributorWallet = Row<"contributor_wallets">;
 export type PlaceSourceVoteScore = Row<"place_source_vote_scores">;
 export type PlaceSourceVote = Row<"place_source_votes">;
+export type PlaceLike = Row<"place_likes">;
+export type PlaceLikeScore = Row<"place_like_scores">;
+export type PlacePick = Row<"place_picks">;
+export type PlacePickCollection = z.infer<typeof placePickCollection>;
+export type PlaceList = Row<"place_lists">;
+export type PlaceListItem = Row<"place_list_items">;

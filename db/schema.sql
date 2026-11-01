@@ -162,6 +162,52 @@ create table place_source_boosts (
   primary key (place_id, source_id)
 );
 
+-- JSON: anonymous place likes (cookie pn_cid)
+create table place_likes (
+  contributor_id  text not null,
+  place_id        text not null references places(id) on delete cascade,
+  created_at      timestamptz not null,
+  primary key (contributor_id, place_id)
+);
+
+-- JSON: aggregated like counts
+create table place_like_scores (
+  place_id    text primary key references places(id) on delete cascade,
+  likes       integer not null check (likes >= 0),
+  updated_at  timestamptz not null
+);
+
+-- JSON: editorial 풍경너머 픽 collections
+create table place_picks (
+  place_id     text not null references places(id) on delete cascade,
+  collection   text not null check (collection in ('pn-picks', 'pn-cafe')),
+  note         text,
+  rank         integer not null check (rank >= 0),
+  featured_at  timestamptz not null,
+  primary key (place_id, collection)
+);
+
+-- JSON: anonymous user-saved lists (share via /l/[slug] when public)
+create table place_lists (
+  id               text primary key,
+  slug             text not null unique,
+  contributor_id   text not null,
+  title            text not null,
+  is_public        boolean not null default false,
+  created_at       timestamptz not null,
+  updated_at       timestamptz not null
+);
+create index place_lists_contributor_idx on place_lists (contributor_id);
+
+create table place_list_items (
+  list_id    text not null references place_lists(id) on delete cascade,
+  place_id   text not null references places(id) on delete cascade,
+  note       text,
+  rank       integer not null check (rank >= 0),
+  added_at   timestamptz not null,
+  primary key (list_id, place_id)
+);
+
 -- later: one row per auth user (Supabase auth.users)
 create table profiles (
   id          uuid primary key,

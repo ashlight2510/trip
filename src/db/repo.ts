@@ -164,6 +164,12 @@ export interface MapPlace {
   tags: string[];
   search_query: string;
   source_count: number;
+  /** Community place likes (toggle heart). Feeds pin_score moderately. */
+  like_count: number;
+  /** Editorial 풍경너머 픽 membership (any collection). */
+  is_pick: boolean;
+  /** Browse-pin ranking: reviews / likes / picks / demote chains. Higher = better pin. */
+  pin_score: number;
   cover_url: string | null;
   sources: MapPlaceSource[];
   course_id: string | null;

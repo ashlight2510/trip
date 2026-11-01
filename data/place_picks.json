@@ -1,0 +1,72 @@
+[
+  {
+    "place_id": "kr-gangneung-anmok-coffee-street",
+    "collection": "pn-cafe",
+    "note": "바다 앞 카페가 이어지는 강릉의 대표 커피 거리",
+    "rank": 1,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-gangneung-k574197681",
+    "collection": "pn-cafe",
+    "note": "강릉 커피 문화의 상징, 박이추 커피",
+    "rank": 2,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-seoul-k555496667",
+    "collection": "pn-cafe",
+    "note": "한남동의 분위기 있는 카페 골목",
+    "rank": 3,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-seoul-k7940056",
+    "collection": "pn-cafe",
+    "note": "한옥에서 마시는 차, 성북동 수연산방",
+    "rank": 4,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-seoul-k24529429",
+    "collection": "pn-cafe",
+    "note": "서울 스페셜티의 대표 로스터리",
+    "rank": 5,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-gangneung-gyeongpo-beach",
+    "collection": "pn-picks",
+    "note": "동해의 대표 해변, 산책과 일몰",
+    "rank": 1,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-andong-k12753280",
+    "collection": "pn-picks",
+    "note": "한국 최고(最古) 목조 건축, 봉정사 극락전",
+    "rank": 2,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-busan-k24481224",
+    "collection": "pn-picks",
+    "note": "온천천을 따라 이어지는 부산의 카페 산책",
+    "rank": 3,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-gangneung-anmok-coffee-street",
+    "collection": "pn-picks",
+    "note": "바다와 커피가 만나는 강릉 명소",
+    "rank": 4,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  },
+  {
+    "place_id": "kr-seoul-k555496667",
+    "collection": "pn-picks",
+    "note": "한남동에서 느끼는 도시 카페 풍경",
+    "rank": 5,
+    "featured_at": "2026-11-01T00:00:00+09:00"
+  }
+]

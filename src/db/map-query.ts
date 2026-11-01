@@ -4,7 +4,8 @@ import path from "node:path";
 import { z } from "zod";
 import { compareSourceSort } from "@/lib/source-rank";
 import { scorePlaceSearch } from "@/lib/place-search";
-import { SOURCE_VOTE_HIDE_AT } from "./curation";
+import { sampleByCategory } from "@/lib/sample-by-category";
+import { isFranchiseChainName, SOURCE_VOTE_HIDE_AT } from "./curation";
 import * as s from "./schema";
 import type { MapArea, MapPlace, MapPlaceSource } from "./repo";
 
@@ -17,6 +18,8 @@ type Db = {
   placeSources: s.PlaceSource[];
   placeSourceBoosts: s.PlaceSourceBoost[];
   placeSourceVoteScores: s.PlaceSourceVoteScore[];
+  placeLikeScores: s.PlaceLikeScore[];
+  placePicks: s.PlacePick[];
   media: s.PlaceMedia[];
   courses: s.Course[];
   courseStops: s.CourseStop[];
@@ -28,6 +31,8 @@ type Indexes = {
   placeSourcesByPlace: Map<string, s.PlaceSource[]>;
   boostByPlaceSource: Map<string, number>;
   voteScoreByPlaceSource: Map<string, number>;
+  likesByPlace: Map<string, number>;
+  pickCollectionsByPlace: Map<string, s.PlacePickCollection[]>;
   mediaByPlace: Map<string, s.PlaceMedia[]>;
   courseByPlace: Map<string, string>;
   cityByRegion: Map<string, s.Region | undefined>;
@@ -78,6 +83,16 @@ function buildIndexes(db: Db): Indexes {
   const voteScoreByPlaceSource = new Map(
     db.placeSourceVoteScores.map((v) => [`${v.place_id}::${v.source_id}`, v.score]),
   );
+  const likesByPlace = new Map(db.placeLikeScores.map((r) => [r.place_id, r.likes]));
+  const pickCollectionsByPlace = new Map<string, s.PlacePickCollection[]>();
+  for (const pick of db.placePicks) {
+    const list = pickCollectionsByPlace.get(pick.place_id);
+    if (list) {
+      if (!list.includes(pick.collection)) list.push(pick.collection);
+    } else {
+      pickCollectionsByPlace.set(pick.place_id, [pick.collection]);
+    }
+  }
   const placeSourcesByPlace = new Map<string, s.PlaceSource[]>();
   for (const ps of db.placeSources) {
     const list = placeSourcesByPlace.get(ps.place_id);
@@ -119,6 +134,8 @@ function buildIndexes(db: Db): Indexes {
     placeSourcesByPlace,
     boostByPlaceSource,
     voteScoreByPlaceSource,
+    likesByPlace,
+    pickCollectionsByPlace,
     mediaByPlace,
     courseByPlace,
     cityByRegion,
@@ -134,6 +151,8 @@ export function getMapDb(): Cache {
     "place_sources",
     "place_source_boosts",
     "place_source_vote_scores",
+    "place_like_scores",
+    "place_picks",
     "place_media",
     "courses",
     "course_stops",
@@ -149,6 +168,8 @@ export function getMapDb(): Cache {
     placeSources: loadTable("place_sources"),
     placeSourceBoosts: loadTable("place_source_boosts"),
     placeSourceVoteScores: loadTable("place_source_vote_scores"),
+    placeLikeScores: loadTable("place_like_scores"),
+    placePicks: loadTable("place_picks"),
     media: loadTable("place_media"),
     courses: loadTable("courses"),
     courseStops: loadTable("course_stops"),
@@ -159,6 +180,37 @@ export function getMapDb(): Cache {
 
 function searchQueryFor(place: s.Place, city: s.Region | undefined) {
   return [city?.name.replace(/(시|군|구)$/, ""), place.name].filter(Boolean).join(" ");
+}
+
+function isLikelyChainPlace(name: string) {
+  return isFranchiseChainName(name) || /점$/u.test(name.trim()) || /\d+호점/u.test(name);
+}
+
+/** Prefer reviewed / liked / picked places for browse pins; demote chains. */
+function computePinScore(place: s.Place, ix: Indexes): number {
+  const links = ix.placeSourcesByPlace.get(place.id) ?? [];
+  let score = links.length * 10;
+  let maxView = 0;
+  let sumSrcScore = 0;
+  let hasYt = false;
+  for (const ps of links) {
+    const src = ix.sourceById.get(ps.source_id);
+    if (!src) continue;
+    if (src.type === "youtube") hasYt = true;
+    if (src.view_count != null && src.view_count > maxView) maxView = src.view_count;
+    sumSrcScore += src.score ?? 0;
+  }
+  if (hasYt) score += 25;
+  if (maxView > 0) score += Math.log10(maxView + 1) * 15;
+  score += sumSrcScore * 0.01;
+  // Community likes: meaningful but won't dominate a well-reviewed place.
+  const likes = ix.likesByPlace.get(place.id) ?? 0;
+  if (likes > 0) score += Math.log10(likes + 1) * 28;
+  // Editorial 풍경너머 픽 — soft boost onto the map.
+  const picks = ix.pickCollectionsByPlace.get(place.id);
+  if (picks?.length) score += 40 + (picks.length - 1) * 8;
+  if (isLikelyChainPlace(place.name)) score *= 0.4;
+  return score;
 }
 
 function sourcesFor(ix: Indexes, placeId: string): MapPlaceSource[] {
@@ -239,6 +291,9 @@ export function toMapPlace(place: s.Place, ix: Indexes, opts: { includeSources: 
     tags: place.tags,
     search_query: searchQueryFor(place, city),
     source_count: sourceCount,
+    like_count: ix.likesByPlace.get(place.id) ?? 0,
+    is_pick: (ix.pickCollectionsByPlace.get(place.id)?.length ?? 0) > 0,
+    pin_score: computePinScore(place, ix),
     cover_url: cover?.url ?? null,
     sources,
     course_id: ix.courseByPlace.get(place.id) ?? null,
@@ -459,7 +514,18 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
     return b.score - a.score;
   });
 
-  return cands.slice(0, limit).map((c) => toMapPlace(c.place, ix, { includeSources }));
+  // Bbox browse: diversify categories, prefer high pin_score within each.
+  const ranked =
+    !q && query.lat == null
+      ? sampleByCategory(
+          cands,
+          limit,
+          (c) => c.place.category,
+          (c) => computePinScore(c.place, ix),
+        )
+      : cands.slice(0, limit);
+
+  return ranked.map((c) => toMapPlace(c.place, ix, { includeSources }));
 }
 
 export function getMapPlace(id: string): MapPlace | null {
@@ -467,6 +533,37 @@ export function getMapPlace(id: string): MapPlace | null {
   const place = db.places.find((p) => p.id === id);
   if (!place) return null;
   return toMapPlace(place, ix, { includeSources: true });
+}
+
+export type PlacePickCard = {
+  collection: s.PlacePickCollection;
+  note: string | null;
+  rank: number;
+  place: MapPlace;
+};
+
+/** Curated 풍경너머 픽 lists for /picks. */
+export function listPlacePicks(collection?: s.PlacePickCollection): PlacePickCard[] {
+  const { db, ix } = getMapDb();
+  const rows = collection ? db.placePicks.filter((p) => p.collection === collection) : db.placePicks;
+  const cards: PlacePickCard[] = [];
+  for (const pick of rows) {
+    const place = db.places.find((p) => p.id === pick.place_id);
+    if (!place) continue;
+    cards.push({
+      collection: pick.collection,
+      note: pick.note,
+      rank: pick.rank,
+      place: toMapPlace(place, ix, { includeSources: false }),
+    });
+  }
+  cards.sort(
+    (a, b) =>
+      a.collection.localeCompare(b.collection) ||
+      a.rank - b.rank ||
+      a.place.name.localeCompare(b.place.name, "ko"),
+  );
+  return cards;
 }
 
 export function listMapAreasFast(): MapArea[] {

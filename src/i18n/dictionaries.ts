@@ -34,6 +34,11 @@ const categoriesEn: Record<Place["category"], string> = {
 export const dictionaries = {
   ko: {
     brand: "풍경너머",
+    picksNav: "픽",
+    myListNav: "내 리스트",
+    likePlace: "좋아요",
+    likeCount: (n: number) => `좋아요 ${n}`,
+    editorPick: "풍경너머 픽",
     mapTitle: "여행지 지도",
     mapBlurb:
       "시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다. 직접 연결하면 포인트가 쌓여요.",
@@ -89,6 +94,11 @@ export const dictionaries = {
   },
   en: {
     brand: "Pungyeong Neomeo",
+    picksNav: "Picks",
+    myListNav: "My list",
+    likePlace: "Like",
+    likeCount: (n: number) => `${n} likes`,
+    editorPick: "Editor pick",
     mapTitle: "Travel map",
     mapBlurb:
       "City → district → place. Reviews link out to the original (up to 10 per place). Connect your own links to earn points.",

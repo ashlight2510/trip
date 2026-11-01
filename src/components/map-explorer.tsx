@@ -11,12 +11,15 @@ import { fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
 import { attachOpenFreeMap, type BasemapHandle } from "@/lib/map-basemap";
 import { scorePlaceSearch } from "@/lib/place-search";
 import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
+import { sampleByCategory } from "@/lib/sample-by-category";
 import { displayName } from "@/i18n/display-name";
 import { LangToggle, useLocale, useT } from "@/i18n/locale";
 import { ContributeLinkForm } from "@/components/contribute-link-form";
 import { PointsBadge } from "@/components/points-badge";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
+import { PlaceLikeControls } from "@/components/place-like-controls";
+import { PlaceListControls } from "@/components/place-list-controls";
 import { SourceVoteControls } from "@/components/source-vote-controls";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
@@ -344,7 +347,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       list = [...list].sort((a, b) => placeMatchScore(b, searchQ) - placeMatchScore(a, searchQ));
     }
     if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-    return withReviews(list).slice(0, 200);
+    // Search shows the full match set (including thin/empty); reviewsOnly is browse-only.
+    return list.slice(0, 200);
   }, [places, searchHits, cityId, districtId, searchQ, isSearching, categoryFilter, reviewsOnly]);
 
   const listCities = useMemo(() => {
@@ -581,17 +585,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       }
       if (showPlacePins) {
         const bounds = map.getBounds();
-        visiblePlaces
-          .filter((p) => bounds.contains([p.lat, p.lng]))
-          .slice(0, PLACE_PIN_CAP)
-          .forEach((place) => {
+        const inView = visiblePlaces.filter((p) => bounds.contains([p.lat, p.lng]));
+        sampleByCategory(inView, PLACE_PIN_CAP, (p) => p.category, (p) => p.pin_score ?? 0).forEach(
+          (place) => {
             const marker = L.marker([place.lat, place.lng], {
               icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
               title: `${displayName(place, locale)} · ${t.category[place.category]}`,
             });
             marker.on("click", () => openPlace(place));
             marker.addTo(layer);
-          });
+          },
+        );
       }
       return;
     }
@@ -610,17 +614,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       }
       // Place pins respect the active category filter.
       const bounds = map.getBounds();
-      visiblePlaces
-        .filter((p) => !showPlacePins || bounds.contains([p.lat, p.lng]))
-        .slice(0, PLACE_PIN_CAP)
-        .forEach((place) => {
+      const inView = visiblePlaces.filter((p) => !showPlacePins || bounds.contains([p.lat, p.lng]));
+      sampleByCategory(inView, PLACE_PIN_CAP, (p) => p.category, (p) => p.pin_score ?? 0).forEach(
+        (place) => {
           const marker = L.marker([place.lat, place.lng], {
             icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
             title: `${displayName(place, locale)} · ${t.category[place.category]}`,
           });
           marker.on("click", () => openPlace(place));
           marker.addTo(layer);
-        });
+        },
+      );
       return;
     }
 
@@ -734,6 +738,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           <div className="flex items-start justify-between gap-2">
             <p className="text-xs tracking-[0.28em] text-stone-500">{t.brand}</p>
             <div className="flex items-center gap-2">
+              <Link
+                href="/my-list"
+                className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+              >
+                {t.myListNav}
+              </Link>
+              <Link
+                href="/picks"
+                className="rounded-full px-2.5 py-1 text-[11px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+              >
+                {t.picksNav}
+              </Link>
               <LangToggle />
               <PointsBadge />
             </div>
@@ -1079,6 +1095,22 @@ function PlacePanel({
               </p>
               <h2 className="mt-0.5 text-xl font-bold text-stone-900">{displayName(place, locale)}</h2>
               {place.address && <p className="mt-1 text-xs text-stone-500">{place.address}</p>}
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <PlaceLikeControls
+                  placeId={place.id}
+                  likeCount={place.like_count ?? 0}
+                  onLiked={() => onSourcesChanged?.(place.id)}
+                />
+                <PlaceListControls placeId={place.id} />
+                {place.is_pick && (
+                  <Link
+                    href="/picks"
+                    className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200"
+                  >
+                    {t.editorPick}
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">

@@ -2,9 +2,9 @@
 
 import fs from "node:fs";
 import path from "node:path";
-import { cookies } from "next/headers";
 import { z } from "zod";
 import { SOURCE_VOTE_HIDE_AT } from "@/db/curation";
+import { ensureContributorId } from "@/lib/contributor";
 import {
   placeSource,
   placeSourceVote,
@@ -37,24 +37,6 @@ function writeJson(file: string, data: unknown) {
   const tmp = `${file}.tmp`;
   fs.writeFileSync(tmp, `${JSON.stringify(data, null, 2)}\n`);
   fs.renameSync(tmp, file);
-}
-
-function newContributorId() {
-  return `c-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-}
-
-async function ensureContributorId() {
-  const jar = await cookies();
-  const existing = jar.get("pn_cid")?.value;
-  if (existing && /^c-[a-z0-9]+$/.test(existing)) return existing;
-  const id = newContributorId();
-  jar.set("pn_cid", id, {
-    httpOnly: true,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 400,
-  });
-  return id;
 }
 
 export type VoteSourceResult = {

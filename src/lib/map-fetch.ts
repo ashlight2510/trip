@@ -5,7 +5,14 @@ export function mergePlaces(prev: MapPlace[], next: MapPlace[]): MapPlace[] {
   for (const p of next) {
     const old = map.get(p.id);
     if (old?.sources?.length && !p.sources?.length) {
-      map.set(p.id, { ...p, sources: old.sources, source_count: Math.max(old.source_count, p.source_count) });
+      map.set(p.id, {
+        ...p,
+        sources: old.sources,
+        source_count: Math.max(old.source_count, p.source_count),
+        like_count: Math.max(old.like_count ?? 0, p.like_count ?? 0),
+        is_pick: Boolean(old.is_pick || p.is_pick),
+        pin_score: Math.max(old.pin_score ?? 0, p.pin_score ?? 0),
+      });
     } else {
       map.set(p.id, p);
     }
