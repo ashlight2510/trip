@@ -14,10 +14,9 @@ import { scorePlaceSearch } from "@/lib/place-search";
 import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
 import { sampleByCategory } from "@/lib/sample-by-category";
 import { displayName } from "@/i18n/display-name";
-import { LangToggle, useLocale, useT } from "@/i18n/locale";
+import { SettingsMenu, useLocale, useT } from "@/i18n/locale";
 import { ContributeLinkForm } from "@/components/contribute-link-form";
 import { NearSuggestPanel } from "@/components/near-suggest-panel";
-import { PointsBadge } from "@/components/points-badge";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
 import { PlaceLikeControls } from "@/components/place-like-controls";
@@ -974,14 +973,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
       <aside className="z-10 flex max-h-[46vh] w-full flex-col border-b border-[var(--border-soft)] bg-[var(--background-panel)] md:max-h-none md:w-[380px] md:border-b-0 md:border-r">
         <header className="shrink-0 px-5 pb-3 pt-5">
-          <Image
-            src="/logo-brand.png"
-            alt={t.brand}
-            width={190}
-            height={52}
-            priority
-            className="h-11 w-auto object-contain object-left"
-          />
+          <div className="flex items-start justify-between gap-3">
+            <Image
+              src="/logo-brand.png"
+              alt={t.brand}
+              width={190}
+              height={52}
+              priority
+              className="h-11 w-auto object-contain object-left"
+            />
+            <SettingsMenu className="shrink-0" />
+          </div>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <Link
               href="/my-list"
@@ -995,8 +997,6 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             >
               {t.picksNav}
             </Link>
-            <LangToggle />
-            <PointsBadge />
           </div>
           <h1 className="font-display mt-1 text-2xl text-stone-900">{t.mapTitle}</h1>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.mapBlurb}</p>
@@ -1240,13 +1240,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0 z-0" />
-        <div className="pointer-events-none absolute right-3 top-3 z-[520] md:right-4">
-          <div className="pointer-events-auto drop-shadow-md">
-            <PointsBadge />
-          </div>
-        </div>
         {showCategoryFilter && (
-          <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start md:pr-28">
+          <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start md:pl-3 md:pr-14">
             <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[color-mix(in_srgb,var(--background-panel)_92%,white)] p-2 shadow-md ring-1 ring-[var(--border-soft)] backdrop-blur">
               <CategoryFilterBar
                 options={categoryOptions}

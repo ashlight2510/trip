@@ -12,9 +12,8 @@ import { COMPANIONS, CompanionHandOverlay, CompanionPreview, type CompanionKind 
 import { Compass } from "./compass";
 import { MapTravelStage } from "./map-travel-stage-client";
 import { PlacePhotoStage, PlaceVideoStage } from "./place-media-stage";
-import { PointsBadge } from "./points-badge";
 import { RoadviewStage, type StageInfo, type StageNotice } from "./roadview-stage";
-import { LangToggle, useLocale, useT } from "@/i18n/locale";
+import { SettingsMenu, useLocale, useT } from "@/i18n/locale";
 import { displayName } from "@/i18n/display-name";
 
 type ViewMode = "roadview" | "travel" | "photo" | "video";
@@ -346,10 +345,7 @@ export function TripExperience({
           )}
         </div>
         <div className="pointer-events-auto flex flex-col items-end gap-2">
-          <div className="flex items-center gap-2">
-            <LangToggle />
-            <PointsBadge />
-          </div>
+          <SettingsMenu tone="dark" />
           {mode === "roadview" && <Compass heading={heading} layers={stop.soundscape} />}
           {mode === "roadview" && attribution && <p className="text-[11px] text-white/60">{attribution}</p>}
           {mode === "travel" && (

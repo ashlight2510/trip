@@ -12,7 +12,14 @@ export function notifyPointsUpdated(points?: number) {
   );
 }
 
-export function PointsBadge({ className = "" }: { className?: string }) {
+export function PointsBadge({
+  className = "",
+  variant = "chip",
+}: {
+  className?: string;
+  /** `menu` = settings-panel row; `chip` = standalone pill. */
+  variant?: "chip" | "menu";
+}) {
   const [points, setPoints] = useState(0);
   const [linked, setLinked] = useState(0);
   const [ready, setReady] = useState(false);
@@ -53,17 +60,35 @@ export function PointsBadge({ className = "" }: { className?: string }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [open]);
 
+  const label = `내 포인트 ${points}점. 상세 보기`;
+  const value = ready ? points.toLocaleString("ko-KR") : "—";
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1.5 text-[13px] font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80 ${className}`}
-        aria-label={`내 포인트 ${points}점. 상세 보기`}
-      >
-        <span aria-hidden>✦</span>
-        <span className="tabular-nums">{ready ? points.toLocaleString("ko-KR") : "—"}P</span>
-      </button>
+      {variant === "menu" ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`flex w-full items-center justify-between gap-2 rounded-xl px-2.5 py-2 text-left text-[13px] font-semibold transition hover:bg-amber-50 ${className}`}
+          aria-label={label}
+        >
+          <span className="inline-flex items-center gap-1.5 text-amber-900">
+            <span aria-hidden>✦</span>
+            포인트
+          </span>
+          <span className="tabular-nums text-amber-800">{value}P</span>
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className={`inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1.5 text-[13px] font-semibold text-amber-900 ring-1 ring-amber-200/80 transition hover:bg-amber-200/80 ${className}`}
+          aria-label={label}
+        >
+          <span aria-hidden>✦</span>
+          <span className="tabular-nums">{value}P</span>
+        </button>
+      )}
 
       {open && (
         <div className="fixed inset-0 z-[2000] flex items-end justify-center sm:items-center" role="dialog" aria-modal="true">

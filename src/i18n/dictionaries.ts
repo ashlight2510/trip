@@ -84,6 +84,9 @@ export const dictionaries = {
     viewVideo: "영상 보기 →",
     langKo: "한",
     langEn: "EN",
+    settings: "설정",
+    settingsLanguage: "언어",
+    settingsPoints: "내 포인트",
     category: categoriesKo,
     trip: {
       roadview: "거리뷰",
@@ -156,6 +159,9 @@ export const dictionaries = {
     viewVideo: "Watch video →",
     langKo: "한",
     langEn: "EN",
+    settings: "Settings",
+    settingsLanguage: "Language",
+    settingsPoints: "My points",
     category: categoriesEn,
     trip: {
       roadview: "Street view",
