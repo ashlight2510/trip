@@ -40,6 +40,8 @@ const OVERPASS_ENDPOINTS = [
   "https://maps.mail.ru/osm/tools/overpass/api/interpreter",
 ];
 const PER_CITY = 30;
+/** Paju was missing from seeds — pull a denser mix (cafes + sights). */
+const PER_CITY_DENSE = 90;
 /** Overpass free servers rate-limit; keep a short pause between cities. */
 const SLEEP_MS = 800;
 const UA = "pungyeong-neomeo/0.1 (travel map seed; local collector)";
@@ -109,8 +111,22 @@ function districtId(cityId: string, label: string) {
 }
 
 async function fetchCity(city: CitySeed): Promise<OsmEl[]> {
+  const dense = city.id === "kr-paju";
   // Keep the query small — large metros time out on free Overpass servers.
-  const q = `
+  // Dense cities also pull cafes/parks for map coverage.
+  const q = dense
+    ? `
+[out:json][timeout:55];
+(
+  nwr["tourism"~"^(attraction|museum|viewpoint|theme_park|zoo|aquarium|gallery)$"](around:${city.radius_m},${city.lat},${city.lng});
+  node["historic"~"^(monument|memorial|castle|ruins|tomb)$"](around:${city.radius_m},${city.lat},${city.lng});
+  nwr["leisure"~"^(park|garden|nature_reserve)$"](around:${city.radius_m},${city.lat},${city.lng});
+  nwr["amenity"="cafe"](around:${city.radius_m},${city.lat},${city.lng});
+  nwr["amenity"="marketplace"](around:${city.radius_m},${city.lat},${city.lng});
+);
+out center 120;
+`.trim()
+    : `
 [out:json][timeout:45];
 (
   nwr["tourism"~"^(attraction|museum|viewpoint|theme_park|zoo|aquarium|gallery)$"](around:${city.radius_m},${city.lat},${city.lng});
@@ -214,6 +230,7 @@ for (let i = 0; i < cities.length; i++) {
     lng: city.lng,
   });
 
+  const target = city.id === "kr-paju" ? PER_CITY_DENSE : PER_CITY;
   const already = places.filter((p) => {
     const reg = regions.find((r) => r.id === p.region_id);
     if (!reg) return false;
@@ -221,7 +238,7 @@ for (let i = 0; i < cities.length; i++) {
     if (reg.parent_id === city.id) return true;
     return false;
   }).length;
-  if (already >= PER_CITY) {
+  if (already >= target) {
     console.log(`  이미 ${already}곳 — skip`);
     continue;
   }
@@ -237,7 +254,15 @@ for (let i = 0; i < cities.length; i++) {
 
   const picked = elements
     .map((el) => ({ el, c: coords(el), name: placeName(el.tags ?? {}), sc: score(el) }))
-    .filter((x) => x.c && x.name.length >= 2)
+    .filter((x) => {
+      if (!x.c || x.name.length < 2) return false;
+      // When seeding Paju, drop obvious out-of-city neighbors from the radius blob.
+      if (city.id === "kr-paju") {
+        const addr = `${x.el.tags?.["addr:city"] ?? ""} ${x.el.tags?.["addr:county"] ?? ""} ${x.name}`;
+        if (/고양|김포|일산|운정(?!)/.test(addr) && !/파주/.test(addr)) return false;
+      }
+      return true;
+    })
     .sort((a, b) => b.sc - a.sc);
 
   const seenName = new Set<string>();
@@ -253,10 +278,10 @@ for (let i = 0; i < cities.length; i++) {
     }
     seenName.add(key);
     chosen.push(row);
-    if (chosen.length >= PER_CITY) break;
+    if (chosen.length >= target) break;
   }
 
-  // fill existing city places toward 30 by not deleting old ones — only add until city has 30 total from this city_id
+  // fill existing city places toward target by not deleting old ones — only add until city has enough
   const existingInCity = places.filter((p) => {
     // district under city or direct (legacy)
     const reg = regions.find((r) => r.id === p.region_id);
@@ -266,7 +291,7 @@ for (let i = 0; i < cities.length; i++) {
     return false;
   }).length;
 
-  const need = Math.max(0, PER_CITY - existingInCity);
+  const need = Math.max(0, target - existingInCity);
   const toAdd = chosen.slice(0, need);
 
   for (const row of toAdd) {
@@ -319,7 +344,7 @@ for (let i = 0; i < cities.length; i++) {
     addedPlaces++;
   }
 
-  console.log(`  OSM ${elements.length}건 → 추가 ${toAdd.length}곳 (시 기존 ${existingInCity} / 목표 ${PER_CITY})`);
+  console.log(`  OSM ${elements.length}건 → 추가 ${toAdd.length}곳 (시 기존 ${existingInCity} / 목표 ${target})`);
 
   // Persist after each city so an interrupt doesn't lose progress.
   if (!values.dry) {

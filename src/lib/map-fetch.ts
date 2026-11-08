@@ -11,10 +11,15 @@ export function mergePlaces(prev: MapPlace[], next: MapPlace[]): MapPlace[] {
         source_count: Math.max(old.source_count, p.source_count),
         like_count: Math.max(old.like_count ?? 0, p.like_count ?? 0),
         is_pick: Boolean(old.is_pick || p.is_pick),
+        is_cafe_pick: Boolean(old.is_cafe_pick || p.is_cafe_pick),
         pin_score: Math.max(old.pin_score ?? 0, p.pin_score ?? 0),
       });
     } else {
-      map.set(p.id, p);
+      map.set(p.id, {
+        ...p,
+        is_cafe_pick: Boolean(old?.is_cafe_pick || p.is_cafe_pick),
+        is_pick: Boolean(old?.is_pick || p.is_pick),
+      });
     }
   }
   return [...map.values()];

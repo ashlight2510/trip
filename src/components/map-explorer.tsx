@@ -91,14 +91,50 @@ function areaIcon(label: string, count: number, kind: "city" | "district", activ
   });
 }
 
-/** Teardrop map pin with category glyph — sized for glanceability on the map. */
-function pinIcon(category: Place["category"], active: boolean, ariaLabel: string) {
+/** Map pin: teardrop for normal places, rounded-square + star for 좋은 카페 picks. */
+function pinIcon(
+  category: Place["category"],
+  active: boolean,
+  ariaLabel: string,
+  opts?: { cafePick?: boolean },
+) {
   const color = categoryColor[category];
-  const w = active ? 48 : 42;
-  const h = active ? 60 : 52;
-  const glyphSize = active ? 22 : 20;
+  const cafePick = Boolean(opts?.cafePick);
+  const w = active ? (cafePick ? 46 : 48) : cafePick ? 40 : 42;
+  const h = active ? (cafePick ? 52 : 60) : cafePick ? 46 : 52;
+  const glyphSize = active ? 20 : 18;
   const glyph = categoryIconSvg(category, glyphSize);
   const ring = active ? "0 0 0 5px rgba(27,73,101,.3)" : "none";
+
+  if (cafePick) {
+    // Soft rounded square with tip — clearly different silhouette from teardrop pins.
+    const glyphTop = active ? 11 : 10;
+    return L.divIcon({
+      className: "pn-place-pin pn-cafe-pick-pin",
+      iconSize: [w, h],
+      iconAnchor: [w / 2, h - 2],
+      popupAnchor: [0, -(h - 8)],
+      html: `<button type="button" aria-label="${ariaLabel} · 좋은 카페" style="
+        width:${w}px;height:${h}px;padding:0;border:0;background:transparent;cursor:pointer;
+        filter:drop-shadow(0 3px 8px rgba(0,0,0,.42));
+      ">
+        <span style="position:relative;display:block;width:${w}px;height:${h}px;">
+          <svg width="${w}" height="${h}" viewBox="0 0 40 52" aria-hidden="true" style="display:block">
+            <path d="M8 3h24a6 6 0 0 1 6 6v18a6 6 0 0 1-6 6H24l-4 12-4-12H8a6 6 0 0 1-6-6V9a6 6 0 0 1 6-6z"
+              fill="${color}" stroke="#fff" stroke-width="2.4"/>
+            <path d="M29.2 9.2l1.35 2.75 3.05.44-2.2 2.15.52 3.03L29.2 16.1l-2.72 1.43.52-3.03-2.2-2.15 3.05-.44z"
+              fill="#ffe8a3" stroke="#fff" stroke-width="0.8"/>
+          </svg>
+          <span style="
+            position:absolute;left:50%;top:${glyphTop}px;transform:translateX(-50%);
+            width:${glyphSize + 4}px;height:${glyphSize + 4}px;display:grid;place-items:center;color:#fff;
+            ${active ? `box-shadow:${ring};border-radius:50%;` : ""}
+          ">${glyph}</span>
+        </span>
+      </button>`,
+    });
+  }
+
   const glyphTop = active ? 15 : 13;
   return L.divIcon({
     className: "pn-place-pin",
@@ -123,6 +159,12 @@ function pinIcon(category: Place["category"], active: boolean, ariaLabel: string
         ">${glyph}</span>
       </span>
     </button>`,
+  });
+}
+
+function placeMarkerIcon(place: MapPlace, selectedPlaceId: string | null, ariaLabel: string) {
+  return pinIcon(place.category, place.id === selectedPlaceId, ariaLabel, {
+    cafePick: place.is_cafe_pick,
   });
 }
 
@@ -758,8 +800,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     if (wanderActive && !isSearching) {
       wanderPicks.forEach((place) => {
         const marker = L.marker([place.lat, place.lng], {
-          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+          icon: placeMarkerIcon(place, selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}${place.is_cafe_pick ? " · 좋은 카페" : ""}`,
+          zIndexOffset: place.is_cafe_pick ? 400 : 0,
         });
         marker.on("click", () => openPlace(place));
         marker.addTo(layer);
@@ -770,8 +813,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     if (isSearching) {
       visiblePlaces.forEach((place) => {
         const marker = L.marker([place.lat, place.lng], {
-          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+          icon: placeMarkerIcon(place, selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}${place.is_cafe_pick ? " · 좋은 카페" : ""}`,
+          zIndexOffset: place.is_cafe_pick ? 400 : 0,
         });
         marker.on("click", () => openPlace(place));
         marker.addTo(layer);
@@ -793,10 +837,16 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         inView.length > 0
           ? inView
           : places.filter((p) => bounds.contains([p.lat, p.lng]));
-      sampleByCategory(pool, cap, (p) => p.category, (p) => p.pin_score ?? 0).forEach((place) => {
+      sampleByCategory(
+        pool,
+        cap,
+        (p) => p.category,
+        (p) => (p.pin_score ?? 0) + (p.is_cafe_pick ? 200 : 0),
+      ).forEach((place) => {
         const marker = L.marker([place.lat, place.lng], {
-          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+          icon: placeMarkerIcon(place, selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}${place.is_cafe_pick ? " · 좋은 카페" : ""}`,
+          zIndexOffset: place.is_cafe_pick ? 400 : 0,
         });
         marker.on("click", () => openPlace(place));
         marker.addTo(layer);

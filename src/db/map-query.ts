@@ -295,6 +295,7 @@ export function toMapPlace(place: s.Place, ix: Indexes, opts: { includeSources: 
     source_count: sourceCount,
     like_count: ix.likesByPlace.get(place.id) ?? 0,
     is_pick: (ix.pickCollectionsByPlace.get(place.id)?.length ?? 0) > 0,
+    is_cafe_pick: (ix.pickCollectionsByPlace.get(place.id) ?? []).includes("pn-cafe"),
     pin_score: computePinScore(place, ix),
     cover_url: cover?.url ?? ix.thumbByPlace.get(place.id) ?? null,
     sources,

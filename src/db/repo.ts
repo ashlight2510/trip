@@ -163,6 +163,8 @@ export interface MapPlace {
   like_count: number;
   /** Editorial 풍경너머 픽 membership (any collection). */
   is_pick: boolean;
+  /** In the “좋은 카페” (pn-cafe) pick list — distinct map pin shape. */
+  is_cafe_pick: boolean;
   /** Browse-pin ranking: reviews / likes / picks / demote chains. Higher = better pin. */
   pin_score: number;
   cover_url: string | null;
