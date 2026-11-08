@@ -21,6 +21,11 @@ const COLLECTIONS: {
     title: "좋은 카페",
     blurb: "전국 SNS 추정 순위로 고른 카페. 이름 아래 특징 키워드로 빠르게 훑어보세요.",
   },
+  {
+    id: "pn-guam",
+    title: "괌 여행 픽",
+    blurb: "투몬 산책부터 남부 드라이브까지, 여행자 기준으로 골라 둔 괌 명소예요.",
+  },
 ];
 
 function PicksFallback() {

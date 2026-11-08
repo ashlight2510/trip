@@ -266,7 +266,7 @@ export const placeLikeScore = z.object({
  * Editorial “풍경너머 픽” membership.
  * Collections are curated lists (good cafes, standout places) shown on /picks.
  */
-export const placePickCollection = z.enum(["pn-picks", "pn-cafe"]);
+export const placePickCollection = z.enum(["pn-picks", "pn-cafe", "pn-guam"]);
 
 export const placePick = z.object({
   place_id: id,

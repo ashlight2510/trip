@@ -23,7 +23,8 @@ import { PlaceLikeControls } from "@/components/place-like-controls";
 import { PlaceListControls } from "@/components/place-list-controls";
 import { SourceVoteControls } from "@/components/source-vote-controls";
 import {
-  shufflePick,
+  wanderPlaceWeight,
+  weightedShufflePick,
   WANDER_FIT_ZOOM,
   WANDER_PICK_COUNT,
   WANDER_RADIUS_KM,
@@ -374,7 +375,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const applyWanderPicks = useEffectEvent((pool: MapPlace[], cats: Place["category"][]) => {
     let filtered = reviewsOnly ? pool.filter((p) => p.source_count > 0) : pool;
     if (cats.length > 0) filtered = filtered.filter((p) => cats.includes(p.category));
-    const picks = shufflePick(filtered, WANDER_PICK_COUNT);
+    // Guam / new spots often lack review links yet — still allow described & editorial picks.
+    if (reviewsOnly && filtered.length === 0) {
+      filtered = pool.filter((p) => Boolean(p.description) || p.is_pick);
+      if (cats.length > 0) filtered = filtered.filter((p) => cats.includes(p.category));
+    }
+    const picks = weightedShufflePick(filtered, WANDER_PICK_COUNT, wanderPlaceWeight);
     setWanderPicks(picks);
     ingestPlaces(picks);
     return picks;

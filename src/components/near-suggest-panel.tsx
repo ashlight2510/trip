@@ -30,12 +30,13 @@ type Props = {
   onSelect: (place: MapPlace) => void;
 };
 
-const MODES: WanderMode[] = ["walk", "drive5", "drive10"];
+const MODES: WanderMode[] = ["walk", "drive5", "drive10", "drive20"];
 
 function modeLabel(t: ReturnType<typeof useT>, mode: WanderMode) {
   if (mode === "walk") return t.nearSuggestWalk;
   if (mode === "drive5") return t.nearSuggestDrive5;
-  return t.nearSuggestDrive10;
+  if (mode === "drive10") return t.nearSuggestDrive10;
+  return t.nearSuggestDrive20;
 }
 
 export function NearSuggestPanel({

@@ -11,6 +11,7 @@
     "data:check": "tsx scripts/data-check.ts",
     "data:quality": "tsx scripts/data-quality-report.mts",
     "data:split": "tsx scripts/data-split.mts",
+    "seed:guam": "tsx scripts/seed-guam-curated.mts",
     "data:sql": "tsx scripts/export-sql.ts",
     "cafe:tour": "tsx scripts/export-cafe-tour.mts",
     "cafe:picks": "tsx scripts/import-cafe-picks.mts",
