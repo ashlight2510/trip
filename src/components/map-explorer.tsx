@@ -35,9 +35,19 @@ const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
 const SEARCH_NEAR_RADIUS_KM = 25;
 const NEAR_LIMIT = 220;
-/** Show place pins on the map once the user has zoomed in this far (no city click required). */
-const PLACE_PIN_ZOOM = 9;
+/** Show place pins once zoomed in this far (no search / city click required). */
+const PLACE_PIN_ZOOM = 7;
 const PLACE_PIN_CAP = 150;
+
+function browseVisible(list: MapPlace[], reviewsOnly: boolean): MapPlace[] {
+  if (!reviewsOnly) return list;
+  // Keep editorial / described places even when "reviews only" is on —
+  // otherwise curated spots (e.g. Guam) vanish next to reviewed Korea pins.
+  const filtered = list.filter(
+    (p) => p.source_count > 0 || Boolean(p.description) || Boolean(p.is_pick),
+  );
+  return filtered.length > 0 ? filtered : list;
+}
 /** Mercator-safe world extent — zoom-out floor so one world map just fills the view. */
 const WORLD_BOUNDS = L.latLngBounds(L.latLng(-85, -180), L.latLng(85, 180));
 
@@ -491,15 +501,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const isSearching = searchQ.length > 0;
 
   const visiblePlaces = useMemo(() => {
-    const withReviews = (list: MapPlace[]) =>
-      reviewsOnly ? list.filter((p) => p.source_count > 0) : list;
-
     if (!isSearching) {
       let list = places;
       if (cityId) list = list.filter((p) => p.city_id === cityId);
       if (districtId) list = list.filter((p) => p.district_id === districtId);
       if (categoryFilter !== "all") list = list.filter((p) => p.category === categoryFilter);
-      return withReviews(list);
+      return browseVisible(list, reviewsOnly);
     }
 
     // Prefer server search hits (already includes matched 동/시 + nearby).
@@ -778,9 +785,27 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       return;
     }
 
+    const paintPlacePins = (candidates: MapPlace[], cap = PLACE_PIN_CAP) => {
+      const bounds = map.getBounds();
+      const inView = candidates.filter((p) => bounds.contains([p.lat, p.lng]));
+      // If filter left the viewport empty, still show whatever we loaded in-bounds.
+      const pool =
+        inView.length > 0
+          ? inView
+          : places.filter((p) => bounds.contains([p.lat, p.lng]));
+      sampleByCategory(pool, cap, (p) => p.category, (p) => p.pin_score ?? 0).forEach((place) => {
+        const marker = L.marker([place.lat, place.lng], {
+          icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+        });
+        marker.on("click", () => openPlace(place));
+        marker.addTo(layer);
+      });
+    };
+
     if (level === "city") {
       // Keep city chips while overview-ish; fade them out once pins take over.
-      if (!showPlacePins || mapZoom < 12) {
+      if (!showPlacePins || mapZoom < 10) {
         listCities.forEach((area) => {
           const label = displayName(area, locale);
           const marker = L.marker([area.lat, area.lng], {
@@ -791,25 +816,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           marker.addTo(layer);
         });
       }
-      if (showPlacePins) {
-        const bounds = map.getBounds();
-        const inView = visiblePlaces.filter((p) => bounds.contains([p.lat, p.lng]));
-        sampleByCategory(inView, PLACE_PIN_CAP, (p) => p.category, (p) => p.pin_score ?? 0).forEach(
-          (place) => {
-            const marker = L.marker([place.lat, place.lng], {
-              icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-              title: `${displayName(place, locale)} · ${t.category[place.category]}`,
-            });
-            marker.on("click", () => openPlace(place));
-            marker.addTo(layer);
-          },
-        );
-      }
+      if (showPlacePins) paintPlacePins(visiblePlaces);
       return;
     }
 
     if (level === "district") {
-      if (!showPlacePins || mapZoom < 13) {
+      if (!showPlacePins || mapZoom < 11) {
         listDistricts.forEach((area) => {
           const label = displayName(area, locale);
           const marker = L.marker([area.lat, area.lng], {
@@ -820,30 +832,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           marker.addTo(layer);
         });
       }
-      // Place pins respect the active category filter.
-      const bounds = map.getBounds();
-      const inView = visiblePlaces.filter((p) => !showPlacePins || bounds.contains([p.lat, p.lng]));
-      sampleByCategory(inView, PLACE_PIN_CAP, (p) => p.category, (p) => p.pin_score ?? 0).forEach(
-        (place) => {
-          const marker = L.marker([place.lat, place.lng], {
-            icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-            title: `${displayName(place, locale)} · ${t.category[place.category]}`,
-          });
-          marker.on("click", () => openPlace(place));
-          marker.addTo(layer);
-        },
-      );
+      paintPlacePins(visiblePlaces);
       return;
     }
 
-    visiblePlaces.forEach((place) => {
-      const marker = L.marker([place.lat, place.lng], {
-        icon: pinIcon(place.category, place.id === selectedPlaceId, t.category[place.category]),
-        title: `${displayName(place, locale)} · ${t.category[place.category]}`,
-      });
-      marker.on("click", () => openPlace(place));
-      marker.addTo(layer);
-    });
+    paintPlacePins(visiblePlaces);
   }, [
     level,
     listCities,
