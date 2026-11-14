@@ -378,24 +378,31 @@ export function DhigaliExperience() {
         </span>
       </div>
 
-      <header className="absolute left-4 top-4 z-10 max-w-sm">
-        <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI · {sky.label}</p>
-        <h1 className="font-serif text-2xl">디갈리 섬</h1>
-        <p className="mt-1 text-[12px] text-white/80">
-          {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}
-          {destName ? ` · ${destName}으로` : ""}
-        </p>
-        <div className="mt-2 flex flex-wrap gap-1">
-          <button type="button" onClick={() => setRide("walk")} className={`rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/30"}`}>도보</button>
-          <button type="button" onClick={() => setRide("buggy")} className={`rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/30"}`}>버기</button>
-          <button type="button" onClick={() => setMinutes(7 * 60 + 30)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">아침</button>
-          <button type="button" onClick={() => setMinutes(16 * 60 + 40)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">노을</button>
-          <button type="button" onClick={() => setMinutes(20 * 60 + 10)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">밤</button>
+      <header
+        className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-3 pb-3 pt-3"
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI · {sky.label}</p>
+            <h1 className="font-serif text-2xl">디갈리 섬</h1>
+            <p className="mt-0.5 truncate text-[12px] text-white/80">
+              {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}
+              {destName ? ` · ${destName}으로` : ""}
+            </p>
+          </div>
+          <Link href="/" className="shrink-0 rounded-full bg-black/40 px-3 py-1.5 text-xs">
+            나가기
+          </Link>
+        </div>
+        <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+          <button type="button" onClick={() => setRide("walk")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/40"}`}>도보</button>
+          <button type="button" onClick={() => setRide("buggy")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/40"}`}>버기</button>
+          <button type="button" onClick={() => setMinutes(7 * 60 + 30)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">아침</button>
+          <button type="button" onClick={() => setMinutes(16 * 60 + 40)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">노을</button>
+          <button type="button" onClick={() => setMinutes(20 * 60 + 10)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">밤</button>
         </div>
       </header>
-      <Link href="/" className="absolute right-4 top-4 z-10 rounded-full bg-black/30 px-3 py-1.5 text-xs">
-        나가기
-      </Link>
 
       <aside
         className="absolute z-10 grid max-h-[46vh] w-[min(20rem,calc(100vw-2rem))] gap-2 overflow-y-auto"
@@ -412,11 +419,11 @@ export function DhigaliExperience() {
         >
           안내 바 옮기기
         </button>
-        <div className="flex flex-wrap gap-1">
+        <div className="flex gap-1 overflow-x-auto pb-1">
           {DHIGALI_ITINERARY.map((item) => (
             <span
               key={item.id}
-              className={`rounded-full px-2 py-0.5 text-[10px] ${done.includes(item.id) ? "bg-white text-[#073044]" : "bg-black/35"}`}
+              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] ${done.includes(item.id) ? "bg-white text-[#073044]" : "bg-black/35"}`}
             >
               {done.includes(item.id) ? "✓ " : ""}
               {item.label}
