@@ -41,10 +41,10 @@ export const dhigaliAmbience = {
     air.frequency.setTargetAtTime(under ? 420 : 18000, ctx.currentTime, 0.15);
   },
 
-  step() {
+  step(gap = 380) {
     if (!ctx || !master || ctx.state !== "running") return;
     const now = performance.now();
-    if (now - lastStep < 380) return;
+    if (now - lastStep < gap) return;
     lastStep = now;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();

@@ -216,9 +216,9 @@ export function DhigaliWorld({
         g.add(torso, head);
         return { g, armL, armR, legL, legR, phase: 0 };
       }
-      const swing = (walker: ReturnType<typeof makeWalker>, moving: boolean) => {
-        if (moving) walker.phase += 0.22;
-        const s = moving ? Math.sin(walker.phase) * 0.75 : 0;
+      const swing = (walker: ReturnType<typeof makeWalker>, stride: number) => {
+        if (stride > 0.015) walker.phase += Math.min(0.55, stride * 1.6);
+        const s = stride > 0.015 ? Math.sin(walker.phase) * 0.85 : 0;
         walker.legL.rotation.x = s;
         walker.legR.rotation.x = -s;
         walker.armL.rotation.x = -s * 0.55;
@@ -290,7 +290,7 @@ export function DhigaliWorld({
         you.g.visible = !now.underwater;
         you.g.position.set(here.x, 0, -here.z);
         you.g.rotation.y = -((now.heading * Math.PI) / 180);
-        swing(you, stood.distanceTo(you.g.position) > 0.015);
+        swing(you, stood.distanceTo(you.g.position));
         const hour = (now.minutes / 60) % 24;
         const arc = ((hour - 6) / 12) * Math.PI;
         const elev = Math.sin(arc);
@@ -329,12 +329,13 @@ export function DhigaliWorld({
           const at = toLocal(person.lat, person.lng);
           const next = new THREE.Vector3(at.x, 0, -at.z);
           const prev = lastNpc.get(person.id);
-          const moving = prev ? prev.distanceTo(next) > 0.01 : false;
+          const stride = prev ? prev.distanceTo(next) : 0;
+          const moving = stride > 0.01;
           if (moving && prev) {
             walker.g.rotation.y = -Math.atan2(next.x - prev.x, -(next.z - prev.z));
           }
           walker.g.position.copy(next);
-          swing(walker, moving);
+          swing(walker, stride);
           lastNpc.set(person.id, next);
         }
         const ang = (now.heading * Math.PI) / 180 + orbit;

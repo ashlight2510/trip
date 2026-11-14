@@ -69,7 +69,7 @@ export function DhigaliExperience() {
   const [done, setDone] = useState<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [npcT, setNpcT] = useState(0);
-  const [ride, setRide] = useState<"walk" | "buggy">("walk");
+  const [ride, setRide] = useState<"walk" | "run" | "buggy">("walk");
   const [minutes, setMinutes] = useState(7 * 60 + 40);
   const [destName, setDestName] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(true);
@@ -150,7 +150,7 @@ export function DhigaliExperience() {
       if (manual) destRef.current = null;
       let heading = posRef.current.heading;
       let speed = 0;
-      const cruise = rideRef.current === "buggy" ? 12 : 3.4;
+      const cruise = rideRef.current === "buggy" ? 12 : rideRef.current === "run" ? 7.4 : 3.4;
       if (k.left) heading = (heading - 140 * dt + 360) % 360;
       if (k.right) heading = (heading + 140 * dt) % 360;
       if (k.up) speed = cruise;
@@ -168,7 +168,9 @@ export function DhigaliExperience() {
         }
       }
       movingRef.current = speed !== 0;
-      if (speed > 0 && rideRef.current === "walk" && !underwaterRef.current) dhigaliAmbience.step();
+      if (speed > 0 && rideRef.current !== "buggy" && !underwaterRef.current) {
+        dhigaliAmbience.step(rideRef.current === "run" ? 210 : 420);
+      }
       if (speed !== 0) {
         const step = offsetLatLng(here.lat, here.lng, heading, speed * dt);
         if (canWalk(step.lat, step.lng)) {
@@ -469,7 +471,7 @@ export function DhigaliExperience() {
             <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · 수집한 길·잔교 · {sky.label}</p>
             <h1 className="font-serif text-2xl">디갈리 섬</h1>
             <p className="mt-0.5 truncate text-[12px] text-white/80">
-              {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}
+              {clockLabel(minutes)} · {ride === "buggy" ? "버기" : ride === "run" ? "달리기" : "도보"}
               {destName ? ` · ${destName}으로` : ""}
             </p>
           </div>
@@ -479,6 +481,7 @@ export function DhigaliExperience() {
         </div>
         <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
           <button type="button" onClick={() => setRide("walk")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/40"}`}>도보</button>
+          <button type="button" onClick={() => setRide("run")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "run" ? "bg-white text-[#073044]" : "bg-black/40"}`}>달리기</button>
           <button type="button" onClick={() => setRide("buggy")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/40"}`}>버기</button>
           <button
             type="button"
