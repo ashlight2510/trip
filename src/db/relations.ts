@@ -97,6 +97,29 @@ export const relations: Record<
       { column: "source_id", table: "sources" },
     ],
   },
+  place_likes: {
+    primaryKey: ["contributor_id", "place_id"],
+    references: [{ column: "place_id", table: "places" }],
+  },
+  place_like_scores: {
+    primaryKey: ["place_id"],
+    references: [{ column: "place_id", table: "places" }],
+  },
+  place_picks: {
+    primaryKey: ["place_id", "collection"],
+    references: [{ column: "place_id", table: "places" }],
+  },
+  place_lists: {
+    primaryKey: ["id"],
+    unique: [["slug"]],
+  },
+  place_list_items: {
+    primaryKey: ["list_id", "place_id"],
+    references: [
+      { column: "list_id", table: "place_lists" },
+      { column: "place_id", table: "places" },
+    ],
+  },
 };
 
 /** Parents before children, so inserts never violate a foreign key. */
@@ -117,4 +140,9 @@ export const insertOrder: TableName[] = [
   "contributor_wallets",
   "place_source_vote_scores",
   "place_source_votes",
+  "place_likes",
+  "place_like_scores",
+  "place_picks",
+  "place_lists",
+  "place_list_items",
 ];

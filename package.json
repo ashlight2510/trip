@@ -22,6 +22,7 @@
     "blog:link:kakao": "tsx scripts/blog-link-kakao.mts",
     "youtube:link": "tsx scripts/youtube-link.mts",
     "source:prune": "tsx scripts/source-prune.mts",
+    "source:relink": "tsx scripts/source-relink.mts",
     "source:enrich": "tsx scripts/source-enrich.mts",
     "source:gc": "tsx scripts/source-gc.mts",
     "region:link": "tsx scripts/region-link.mts",
