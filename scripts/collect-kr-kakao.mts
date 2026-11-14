@@ -46,11 +46,13 @@ const { values } = parseArgs({
   options: {
     limit: { type: "string" },
     city: { type: "string" },
+    "max-pages": { type: "string" },
   },
 });
 
 loadEnv();
 const key = requireEnv("KAKAO_REST_API_KEY");
+const maxPages = Math.max(1, Math.min(10, Number(values["max-pages"] ?? 10)));
 
 let cities = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "kr-cities.json"), "utf8")) as CitySeed[];
 if (values.city) cities = cities.filter((c) => c.id === values.city);
@@ -192,7 +194,7 @@ for (let i = 0; i < cities.length; i++) {
 
   for (const tip of QUERY_PACK) {
     try {
-      const docs = await search(`${short} ${tip}`, city.lng, city.lat, city.radius_m);
+      const docs = await search(`${short} ${tip}`, city.lng, city.lat, city.radius_m, maxPages);
       for (const d of docs) {
         if (!found.has(d.id)) found.set(d.id, d);
       }
