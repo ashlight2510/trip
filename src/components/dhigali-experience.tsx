@@ -18,6 +18,7 @@ import {
 } from "@/lib/dhigali-geo";
 import { haversineM, offsetLatLng } from "@/lib/travel-mode";
 import { DhigaliWorld } from "@/components/dhigali-world";
+import { dhigaliAmbience } from "@/lib/sound/dhigali-ambience";
 
 type Phase = "gate" | "fly" | "island";
 
@@ -71,6 +72,8 @@ export function DhigaliExperience() {
   const [ride, setRide] = useState<"walk" | "buggy">("walk");
   const [minutes, setMinutes] = useState(7 * 60 + 40);
   const [destName, setDestName] = useState<string | null>(null);
+  const [soundOn, setSoundOn] = useState(true);
+  const [fireworks, setFireworks] = useState(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [bar, setBar] = useState({ x: 16, y: 16 });
   const keys = useRef({ up: false, down: false, left: false, right: false });
@@ -190,6 +193,30 @@ export function DhigaliExperience() {
 
   useEffect(() => {
     if (phase !== "island") return;
+    void dhigaliAmbience.start();
+    return () => dhigaliAmbience.stop();
+  }, [phase]);
+
+  const nightShown = useRef(false);
+  useEffect(() => {
+    if (phase !== "island") return;
+    const hour = (minutes / 60) % 24;
+    const night = hour >= 19 || hour < 5;
+    if (night && !nightShown.current) {
+      nightShown.current = true;
+      setFireworks(true);
+    }
+    if (!night) nightShown.current = false;
+  }, [phase, minutes]);
+
+  useEffect(() => {
+    if (phase !== "island" || !fireworks || !soundOn) return;
+    const id = window.setInterval(() => dhigaliAmbience.boom(), 1200);
+    return () => window.clearInterval(id);
+  }, [phase, fireworks, soundOn]);
+
+  useEffect(() => {
+    if (phase !== "island") return;
     const host = hostRef.current;
     if (!host) return;
     let cancelled = false;
@@ -276,6 +303,7 @@ export function DhigaliExperience() {
       setCodeError("코드가 맞지 않아요.");
       return;
     }
+    void dhigaliAmbience.start();
     setPhase("island");
   }
 
@@ -309,6 +337,7 @@ export function DhigaliExperience() {
           <button
             type="button"
             onClick={() => {
+              void dhigaliAmbience.start();
               setFlyStep(0);
               setPhase("fly");
             }}
@@ -406,6 +435,7 @@ export function DhigaliExperience() {
         heading={pos.heading}
         minutes={minutes}
         nearId={near?.id ?? null}
+        fireworks={fireworks}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
       <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
@@ -434,6 +464,24 @@ export function DhigaliExperience() {
           <button type="button" onClick={() => setMinutes(7 * 60 + 30)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">아침</button>
           <button type="button" onClick={() => setMinutes(16 * 60 + 40)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">노을</button>
           <button type="button" onClick={() => setMinutes(20 * 60 + 10)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">밤</button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = !soundOn;
+              setSoundOn(next);
+              void dhigaliAmbience.start().then(() => dhigaliAmbience.setOn(next));
+            }}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${soundOn ? "bg-white text-[#073044]" : "bg-black/40"}`}
+          >
+            {soundOn ? "소리 켜짐" : "소리 꺼짐"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setFireworks((on) => !on)}
+            className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${fireworks ? "bg-white text-[#073044]" : "bg-black/40"}`}
+          >
+            불꽃놀이
+          </button>
         </div>
       </header>
 

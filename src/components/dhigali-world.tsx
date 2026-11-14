@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Mesh, MeshStandardMaterial, Vector3 } from "three";
+import type { Mesh, MeshStandardMaterial, Points, PointsMaterial, Vector3 } from "three";
 import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_CENTER, GEO_SPOTS, toLocal } from "@/lib/dhigali-geo";
@@ -15,6 +15,7 @@ export function DhigaliWorld({
   minutes,
   nearId,
   people,
+  fireworks,
 }: {
   lat: number;
   lng: number;
@@ -22,10 +23,11 @@ export function DhigaliWorld({
   minutes: number;
   nearId: string | null;
   people: Person[];
+  fireworks: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const live = useRef({ lat, lng, heading, minutes, nearId, people });
-  live.current = { lat, lng, heading, minutes, nearId, people };
+  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks });
+  live.current = { lat, lng, heading, minutes, nearId, people, fireworks };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -163,6 +165,32 @@ export function DhigaliWorld({
       const you = makeWalker(0xf4f7fb);
       scene.add(you.g);
 
+      type Spark = { points: Points; life: number; vel: Vector3[] };
+      const sparks: Spark[] = [];
+      let nextBurst = 0;
+      const launch = (origin: Vector3) => {
+        const count = 28;
+        const positions = new Float32Array(count * 3);
+        const vel: Vector3[] = [];
+        for (let i = 0; i < count; i++) {
+          const dir = new THREE.Vector3(Math.random() - 0.5, Math.random() * 0.6 + 0.4, Math.random() - 0.5).normalize();
+          const speed = 8 + Math.random() * 10;
+          vel.push(dir.multiplyScalar(speed));
+          positions[i * 3] = origin.x;
+          positions[i * 3 + 1] = origin.y;
+          positions[i * 3 + 2] = origin.z;
+        }
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+        const hue = Math.random();
+        const points = new THREE.Points(
+          geo,
+          new THREE.PointsMaterial({ color: new THREE.Color().setHSL(hue, 0.85, 0.62), size: 0.55, transparent: true }),
+        );
+        scene.add(points);
+        sparks.push({ points, life: 1.6, vel });
+      };
+
       const npcs = new Map<string, ReturnType<typeof makeWalker>>();
       const lastNpc = new Map<string, Vector3>();
       let orbit = 0.35;
@@ -224,6 +252,34 @@ export function DhigaliWorld({
         if (camera.position.lengthSq() < 1) camera.position.copy(desired);
         else camera.position.lerp(desired, 0.18);
         camera.lookAt(here.x, 1.35, -here.z);
+        if (now.fireworks) {
+          nextBurst -= 0.016;
+          if (nextBurst <= 0) {
+            nextBurst = 0.7 + Math.random() * 0.8;
+            const spot = GEO_SPOTS[Math.floor(Math.random() * GEO_SPOTS.length)]!;
+            const at = toLocal(spot.lat, spot.lng);
+            launch(new THREE.Vector3(at.x + (Math.random() - 0.5) * 30, 18 + Math.random() * 10, -at.z));
+          }
+        }
+        for (let i = sparks.length - 1; i >= 0; i--) {
+          const spark = sparks[i]!;
+          spark.life -= 0.016;
+          const attr = spark.points.geometry.getAttribute("position");
+          for (let p = 0; p < spark.vel.length; p++) {
+            const v = spark.vel[p]!;
+            v.y -= 6 * 0.016;
+            attr.setX(p, attr.getX(p) + v.x * 0.016);
+            attr.setY(p, attr.getY(p) + v.y * 0.016);
+            attr.setZ(p, attr.getZ(p) + v.z * 0.016);
+          }
+          attr.needsUpdate = true;
+          (spark.points.material as PointsMaterial).opacity = Math.max(0, spark.life / 1.6);
+          if (spark.life <= 0) {
+            scene.remove(spark.points);
+            spark.points.geometry.dispose();
+            sparks.splice(i, 1);
+          }
+        }
         renderer.render(scene, camera);
         frame = requestAnimationFrame(tick);
       };
