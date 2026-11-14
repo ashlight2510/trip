@@ -105,13 +105,26 @@ export function DhigaliWorld({
         if (i === 0) shape.moveTo(p.x, p.z);
         else shape.lineTo(p.x, p.z);
       });
-      const island = new THREE.Mesh(
-        new THREE.ShapeGeometry(shape),
-        new THREE.MeshStandardMaterial({ color: 0xe7d3a1, roughness: 0.9 }),
-      );
+      const sand = new THREE.MeshStandardMaterial({ color: 0xf0d7a8, roughness: 0.95 });
+      const island = new THREE.Mesh(new THREE.ShapeGeometry(shape), sand);
       island.rotation.x = -Math.PI / 2;
       island.position.y = 0.35;
       scene.add(island);
+
+      const greens = [0x1f6b3a, 0x2f8f4e, 0x3d6b45, 0x145c32, 0x4caf6a];
+      const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.85 });
+      const plantPalm = (x: number, z: number, scale: number) => {
+        const h = 3.2 * scale;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * scale, 0.22 * scale, h, 7), trunkMat);
+        trunk.position.set(x, h / 2 + 0.4, -z);
+        const crownMat = new THREE.MeshStandardMaterial({
+          color: greens[Math.floor(Math.random() * greens.length)]!,
+          roughness: 0.8,
+        });
+        const crown = new THREE.Mesh(new THREE.ConeGeometry(1.15 * scale, 2.4 * scale, 8), crownMat);
+        crown.position.set(x, h + 0.7, -z);
+        scene.add(trunk, crown);
+      };
 
       for (const feature of DHIGALI_FEATURES) {
         const pts = feature.points.map(([la, ln]) => {
@@ -120,22 +133,59 @@ export function DhigaliWorld({
         });
         if (pts.length < 2) continue;
         if (feature.kind === "wood") {
+          const ring = feature.points.map(([la, ln]) => toLocal(la, ln));
           const wood = new THREE.Shape();
-          feature.points.forEach(([la, ln], i) => {
-            const p = toLocal(la, ln);
-            if (i === 0) wood.moveTo(p.x, p.z);
-            else wood.lineTo(p.x, p.z);
-          });
+          ring.forEach((p, i) => (i === 0 ? wood.moveTo(p.x, p.z) : wood.lineTo(p.x, p.z)));
           const mesh = new THREE.Mesh(
             new THREE.ShapeGeometry(wood),
-            new THREE.MeshStandardMaterial({ color: 0x3f7d49, roughness: 1 }),
+            new THREE.MeshStandardMaterial({ color: 0x214d30, roughness: 1 }),
           );
           mesh.rotation.x = -Math.PI / 2;
-          mesh.position.y = 0.5;
+          mesh.position.y = 0.42;
           scene.add(mesh);
+          let minX = Infinity;
+          let maxX = -Infinity;
+          let minZ = Infinity;
+          let maxZ = -Infinity;
+          for (const p of ring) {
+            minX = Math.min(minX, p.x);
+            maxX = Math.max(maxX, p.x);
+            minZ = Math.min(minZ, p.z);
+            maxZ = Math.max(maxZ, p.z);
+          }
+          const inside = (x: number, z: number) => {
+            let hit = false;
+            for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+              const a = ring[i]!;
+              const b = ring[j]!;
+              const cross = a.z > z !== b.z > z && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x;
+              if (cross) hit = !hit;
+            }
+            return hit;
+          };
+          let planted = 0;
+          for (let n = 0; n < 700 && planted < 90; n++) {
+            const x = minX + Math.random() * (maxX - minX);
+            const z = minZ + Math.random() * (maxZ - minZ);
+            if (!inside(x, z)) continue;
+            plantPalm(x, z, 0.75 + Math.random() * 0.7);
+            planted++;
+          }
         } else {
-          const color = feature.kind === "pier" ? 0xf7f1e4 : feature.kind === "service" ? 0xe6c98a : 0xffffff;
-          scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color })));
+          const deckColor = feature.kind === "pier" ? 0xd8c7a2 : feature.kind === "service" ? 0xc4a574 : 0xe7e1d6;
+          for (let i = 0; i < pts.length - 1; i++) {
+            const a = pts[i]!;
+            const b = pts[i + 1]!;
+            const len = a.distanceTo(b);
+            if (len < 0.4) continue;
+            const ribbon = new THREE.Mesh(
+              new THREE.BoxGeometry(len, 0.08, feature.kind === "pier" ? 1.6 : 1.15),
+              new THREE.MeshStandardMaterial({ color: deckColor, roughness: 0.8 }),
+            );
+            ribbon.position.set((a.x + b.x) / 2, a.y, (a.z + b.z) / 2);
+            ribbon.rotation.y = Math.atan2(-(b.z - a.z), b.x - a.x);
+            scene.add(ribbon);
+          }
           if (feature.kind === "pier" && feature.points.length >= 8) {
             let walked = 0;
             let prev = toLocal(feature.points[0]![0], feature.points[0]![1]);
@@ -150,11 +200,16 @@ export function DhigaliWorld({
                 );
                 pole.position.set(cur.x, 1.1, -cur.z);
                 const deck = new THREE.Mesh(
-                  new THREE.BoxGeometry(6.5, 2.2, 4.8),
-                  new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.7 }),
+                  new THREE.CylinderGeometry(2.6, 2.8, 0.35, 10),
+                  new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.65 }),
                 );
-                deck.position.set(cur.x, 2.4, -cur.z);
-                scene.add(pole, deck);
+                deck.position.set(cur.x, 2.3, -cur.z);
+                const roof = new THREE.Mesh(
+                  new THREE.ConeGeometry(3.1, 1.5, 10),
+                  new THREE.MeshStandardMaterial({ color: 0xc4784a, roughness: 0.7 }),
+                );
+                roof.position.set(cur.x, 3.3, -cur.z);
+                scene.add(pole, deck, roof);
               }
               prev = cur;
             }
@@ -162,36 +217,48 @@ export function DhigaliWorld({
         }
       }
 
+      const spotLook: Record<string, { wall: number; roof: number; r: number; h: number }> = {
+        arrival: { wall: 0xf7f1e4, roof: 0xc4784a, r: 5, h: 3.2 },
+        lobby: { wall: 0xfffaf3, roof: 0x8d6b4a, r: 6, h: 4 },
+        jade: { wall: 0xd7efe4, roof: 0x2f6b4f, r: 6.5, h: 3.6 },
+        capers: { wall: 0xf3e2c8, roof: 0xb85c38, r: 7, h: 4.2 },
+        cafe: { wall: 0xf6d7b0, roof: 0xd4a017, r: 4.2, h: 3 },
+        haali: { wall: 0xe7c2a0, roof: 0x6b3a2a, r: 5.5, h: 3.4 },
+        east: { wall: 0xf0d0c0, roof: 0x9a4e3a, r: 4.5, h: 3.2 },
+        spa: { wall: 0xd5ebe0, roof: 0x3d6b4f, r: 5, h: 3 },
+        dive: { wall: 0xd5e4ef, roof: 0x1b4965, r: 4.4, h: 3 },
+        mosque: { wall: 0xf7f7f2, roof: 0x1f7a6b, r: 3.6, h: 4.5 },
+        play: { wall: 0xf8d0cf, roof: 0xc45c6a, r: 4, h: 2.8 },
+        battuta: { wall: 0xf4efe6, roof: 0x8a5a3a, r: 6, h: 3.8 },
+        faru: { wall: 0xf0e0cc, roof: 0xa85c38, r: 5, h: 3.2 },
+      };
       const buildings = new Map<string, Mesh>();
       for (const spot of GEO_SPOTS) {
+        const look = spotLook[spot.id];
+        if (!look) continue;
         const p = toLocal(spot.lat, spot.lng);
-        const h = spot.id === "villas" ? 3.2 : 6.5;
-        const mesh = new THREE.Mesh(
-          new THREE.BoxGeometry(spot.id === "villas" ? 7 : 11, h, 8),
-          new THREE.MeshStandardMaterial({ color: spot.roof }),
+        const wall = new THREE.Mesh(
+          new THREE.CylinderGeometry(look.r * 0.85, look.r, look.h, 14),
+          new THREE.MeshStandardMaterial({ color: look.wall, roughness: 0.75 }),
         );
-        mesh.position.set(p.x, h / 2 + 0.4, -p.z);
-        scene.add(mesh);
-        buildings.set(spot.id, mesh);
+        wall.position.y = look.h / 2 + 0.4;
+        const roof = new THREE.Mesh(
+          new THREE.ConeGeometry(look.r * 1.15, 1.8, 14),
+          new THREE.MeshStandardMaterial({ color: look.roof, roughness: 0.65 }),
+        );
+        roof.position.y = look.h + 1.3;
+        const group = new THREE.Group();
+        group.add(wall, roof);
+        group.position.set(p.x, 0, -p.z);
+        scene.add(group);
+        buildings.set(spot.id, wall);
       }
 
       DHIGALI_COAST.forEach(([la, ln], i) => {
-        if (i % 6 !== 0) return;
+        if (i % 5 !== 0) return;
         const p = toLocal(la, ln);
         const toward = toLocal(DHIGALI_CENTER.lat, DHIGALI_CENTER.lng);
-        const x = p.x + (toward.x - p.x) * 0.08;
-        const z = p.z + (toward.z - p.z) * 0.08;
-        const trunk = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.25, 0.4, 4, 6),
-          new THREE.MeshStandardMaterial({ color: 0x6b4a2b }),
-        );
-        trunk.position.set(x, 2.4, -z);
-        const crown = new THREE.Mesh(
-          new THREE.SphereGeometry(1.6, 8, 6),
-          new THREE.MeshStandardMaterial({ color: 0x2f6b3a }),
-        );
-        crown.position.set(x, 4.6, -z);
-        scene.add(trunk, crown);
+        plantPalm(p.x + (toward.x - p.x) * 0.06, p.z + (toward.z - p.z) * 0.06, 0.85 + (i % 3) * 0.15);
       });
 
       function makeWalker(color: number) {
@@ -199,17 +266,17 @@ export function DhigaliWorld({
         const cloth = new THREE.MeshStandardMaterial({ color });
         const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c7a5 });
         const suitMat = new THREE.MeshStandardMaterial({ color: 0x1b6f8a });
-        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.58, 0.26), cloth);
-        torso.position.y = 1.18;
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), skinMat);
+        const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.36, 4, 8), cloth);
+        torso.position.y = 1.2;
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 12), skinMat);
         head.position.y = 1.64;
-        const shorts = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.28), suitMat);
+        const shorts = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.08, 4, 8), suitMat);
         shorts.position.y = 0.96;
         shorts.visible = false;
         const limb = (x: number, y: number, tall: number) => {
           const pivot = new THREE.Group();
           pivot.position.set(x, y, 0);
-          const part = new THREE.Mesh(new THREE.BoxGeometry(0.1, tall, 0.1), cloth);
+          const part = new THREE.Mesh(new THREE.CapsuleGeometry(0.055, tall * 0.62, 3, 6), cloth);
           part.position.y = -tall / 2;
           pivot.add(part);
           g.add(pivot);
