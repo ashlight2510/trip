@@ -676,7 +676,7 @@ export function DhigaliExperience() {
             </form>
             {codeError && <p className="mt-2 text-xs text-rose-200">{codeError}</p>}
             <div className="mt-4 flex gap-4">
-              <Link href="/vlog" className="text-xs text-amber-100/80 hover:text-white">
+              <Link href="/vlog/maldives" className="text-xs text-amber-100/80 hover:text-white">
                 오는 길 브이로그
               </Link>
               <Link href="/" className="text-xs text-white/50 hover:text-white">
