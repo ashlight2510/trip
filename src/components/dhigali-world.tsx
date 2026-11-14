@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Mesh, MeshStandardMaterial } from "three";
+import type { Mesh, MeshStandardMaterial, Vector3 } from "three";
 import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_CENTER, GEO_SPOTS, toLocal } from "@/lib/dhigali-geo";
@@ -127,16 +127,44 @@ export function DhigaliWorld({
         scene.add(trunk, crown);
       });
 
-      const body = new THREE.Mesh(
-        new THREE.CapsuleGeometry(0.45, 1.1, 4, 8),
-        new THREE.MeshStandardMaterial({ color: 0xffffff }),
-      );
-      body.position.y = 1.2;
-      const you = new THREE.Group();
-      you.add(body);
-      scene.add(you);
+      function makeWalker(color: number) {
+        const g = new THREE.Group();
+        const cloth = new THREE.MeshStandardMaterial({ color });
+        const skin = new THREE.MeshStandardMaterial({ color: 0xf1c7a5 });
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.58, 0.26), cloth);
+        torso.position.y = 1.18;
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), skin);
+        head.position.y = 1.64;
+        const limb = (x: number, y: number, tall: number) => {
+          const pivot = new THREE.Group();
+          pivot.position.set(x, y, 0);
+          const part = new THREE.Mesh(new THREE.BoxGeometry(0.1, tall, 0.1), cloth);
+          part.position.y = -tall / 2;
+          pivot.add(part);
+          g.add(pivot);
+          return pivot;
+        };
+        const armL = limb(-0.32, 1.38, 0.52);
+        const armR = limb(0.32, 1.38, 0.52);
+        const legL = limb(-0.12, 0.88, 0.72);
+        const legR = limb(0.12, 0.88, 0.72);
+        g.add(torso, head);
+        return { g, armL, armR, legL, legR, phase: 0 };
+      }
+      const swing = (walker: ReturnType<typeof makeWalker>, moving: boolean) => {
+        if (moving) walker.phase += 0.22;
+        const s = moving ? Math.sin(walker.phase) * 0.75 : 0;
+        walker.legL.rotation.x = s;
+        walker.legR.rotation.x = -s;
+        walker.armL.rotation.x = -s * 0.55;
+        walker.armR.rotation.x = s * 0.55;
+      };
 
-      const npcs = new Map<string, Mesh>();
+      const you = makeWalker(0xf4f7fb);
+      scene.add(you.g);
+
+      const npcs = new Map<string, ReturnType<typeof makeWalker>>();
+      const lastNpc = new Map<string, Vector3>();
       let orbit = 0.35;
       const onDown = (e: PointerEvent) => {
         const startX = e.clientX;
@@ -156,8 +184,10 @@ export function DhigaliWorld({
       const tick = () => {
         const now = live.current;
         const here = toLocal(now.lat, now.lng);
-        you.position.set(here.x, 0, -here.z);
-        you.rotation.y = -((now.heading * Math.PI) / 180);
+        const stood = you.g.position.clone();
+        you.g.position.set(here.x, 0, -here.z);
+        you.g.rotation.y = -((now.heading * Math.PI) / 180);
+        swing(you, stood.distanceTo(you.g.position) > 0.015);
         const hour = (now.minutes / 60) % 24;
         const dusk = hour >= 16 && hour < 19;
         const night = hour >= 19 || hour < 5;
@@ -172,21 +202,28 @@ export function DhigaliWorld({
           mat.emissiveIntensity = id === now.nearId ? 0.45 : 0;
         }
         for (const person of now.people) {
-          let mesh = npcs.get(person.id);
-          if (!mesh) {
-            mesh = new THREE.Mesh(
-              new THREE.SphereGeometry(0.55, 10, 8),
-              new THREE.MeshStandardMaterial({ color: person.color }),
-            );
-            scene.add(mesh);
-            npcs.set(person.id, mesh);
+          let walker = npcs.get(person.id);
+          if (!walker) {
+            walker = makeWalker(new THREE.Color(person.color).getHex());
+            scene.add(walker.g);
+            npcs.set(person.id, walker);
           }
           const at = toLocal(person.lat, person.lng);
-          mesh.position.set(at.x, 1.1, -at.z);
+          const next = new THREE.Vector3(at.x, 0, -at.z);
+          const prev = lastNpc.get(person.id);
+          const moving = prev ? prev.distanceTo(next) > 0.01 : false;
+          if (moving && prev) {
+            walker.g.rotation.y = -Math.atan2(next.x - prev.x, -(next.z - prev.z));
+          }
+          walker.g.position.copy(next);
+          swing(walker, moving);
+          lastNpc.set(person.id, next);
         }
-        const ang = ((now.heading * Math.PI) / 180) + orbit;
-        camera.position.set(here.x - Math.sin(ang) * 16, 8, -here.z + Math.cos(ang) * 16);
-        camera.lookAt(here.x, 1.5, -here.z);
+        const ang = (now.heading * Math.PI) / 180 + orbit;
+        const desired = new THREE.Vector3(here.x - Math.sin(ang) * 5.2, 2.5, -here.z + Math.cos(ang) * 5.2);
+        if (camera.position.lengthSq() < 1) camera.position.copy(desired);
+        else camera.position.lerp(desired, 0.18);
+        camera.lookAt(here.x, 1.35, -here.z);
         renderer.render(scene, camera);
         frame = requestAnimationFrame(tick);
       };
