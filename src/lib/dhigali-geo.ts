@@ -16,6 +16,15 @@ export const DHIGALI_CENTER = {
   lng: lngSum / DHIGALI_COAST.length,
 };
 
+/** East meters, north meters from the cay center. */
+export function toLocal(lat: number, lng: number) {
+  const cos = Math.cos((DHIGALI_CENTER.lat * Math.PI) / 180);
+  return {
+    x: (lng - DHIGALI_CENTER.lng) * 111320 * cos,
+    z: (lat - DHIGALI_CENTER.lat) * 110540,
+  };
+}
+
 export function onDhigaliLand(lat: number, lng: number) {
   const ring = DHIGALI_COAST;
   let inside = false;

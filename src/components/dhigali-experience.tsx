@@ -17,6 +17,7 @@ import {
   type GeoSpot,
 } from "@/lib/dhigali-geo";
 import { haversineM, offsetLatLng } from "@/lib/travel-mode";
+import { DhigaliWorld } from "@/components/dhigali-world";
 
 type Phase = "gate" | "fly" | "island";
 
@@ -231,7 +232,7 @@ export function DhigaliExperience() {
           fillColor: "#1b4965",
           fillOpacity: 1,
         });
-        marker.bindTooltip(spot.name, { permanent: true, direction: "top", offset: [0, -6] });
+        marker.bindTooltip(spot.name, { direction: "top", offset: [0, -6] });
         marker.on("click", () => goTo(spot));
         marker.addTo(map!);
       }
@@ -399,8 +400,16 @@ export function DhigaliExperience() {
       className="relative h-dvh cursor-grab overflow-hidden text-white active:cursor-grabbing"
       style={{ background: sky.sea }}
     >
-      <div ref={hostRef} className="dhigali-map absolute inset-0 z-0" />
-      <style>{`.dhigali-map .leaflet-pane{z-index:1}.dhigali-map .leaflet-top,.dhigali-map .leaflet-bottom{z-index:2}`}</style>
+      <DhigaliWorld
+        lat={pos.lat}
+        lng={pos.lng}
+        heading={pos.heading}
+        minutes={minutes}
+        nearId={near?.id ?? null}
+        people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
+      />
+      <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
+      <p className="pointer-events-none absolute bottom-[9.6rem] right-4 z-30 text-[10px] text-white/80">미니맵</p>
 
       <header
         className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-3 pb-3 pt-3"
@@ -473,7 +482,7 @@ export function DhigaliExperience() {
             </button>
           </div>
         ) : (
-          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">지도의 점을 누르면 버기가 그쪽으로 간다. 빈 바다는 끌어서 둘러본다.</p>
+          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">3D 화면을 끌면 시선이 돌아갑니다. 미니맵의 점을 누르면 버기가 그쪽으로 갑니다.</p>
         )}
         {log.length > 0 && (
           <ul className="rounded-2xl bg-black/35 px-3 py-2 text-[12px] leading-relaxed">
@@ -483,7 +492,7 @@ export function DhigaliExperience() {
           </ul>
         )}
       </aside>
-      <div className="absolute bottom-4 right-4 z-10 grid grid-cols-3 gap-1" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="absolute bottom-44 right-4 z-30 grid grid-cols-3 gap-1" onPointerDown={(e) => e.stopPropagation()}>
         <span />
         <Pad label="앞" onDown={() => { keys.current.up = true; }} onUp={() => { keys.current.up = false; }} />
         <span />
