@@ -44,7 +44,10 @@ export function DhigaliExperience() {
   const [near, setNear] = useState<DhigaliSpot | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [npcT, setNpcT] = useState(0);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [bar, setBar] = useState({ x: 16, y: 16 });
   const keys = useRef({ up: false, down: false, left: false, right: false });
+  const drag = useRef<{ kind: "map" | "bar"; x: number; y: number; ox: number; oy: number } | null>(null);
   const posRef = useRef(pos);
   posRef.current = pos;
 
@@ -199,11 +202,35 @@ export function DhigaliExperience() {
   const camX = pos.x * SCALE;
   const camY = pos.y * SCALE;
 
+  function pointerDown(kind: "map" | "bar", e: React.PointerEvent) {
+    if (kind === "map" && (e.target as HTMLElement).closest("button, a, aside")) return;
+    const origin = kind === "map" ? pan : bar;
+    drag.current = { kind, x: e.clientX, y: e.clientY, ox: origin.x, oy: origin.y };
+    const move = (ev: PointerEvent) => {
+      const d = drag.current;
+      if (!d) return;
+      const dx = ev.clientX - d.x;
+      const dy = ev.clientY - d.y;
+      if (d.kind === "map") setPan({ x: d.ox + dx, y: d.oy + dy });
+      else setBar({ x: Math.max(8, d.ox + dx), y: Math.max(8, d.oy - dy) });
+    };
+    const up = () => {
+      drag.current = null;
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+  }
+
   return (
-    <main className="relative h-dvh overflow-hidden bg-[#0b6e8a] text-white">
+    <main
+      className="relative h-dvh cursor-grab overflow-hidden bg-[#0b6e8a] text-white active:cursor-grabbing"
+      onPointerDown={(e) => pointerDown("map", e)}
+    >
       <div
         className="absolute left-1/2 top-1/2"
-        style={{ transform: `translate(${-camX}px, ${-camY}px)` }}
+        style={{ transform: `translate(${pan.x - camX}px, ${pan.y - camY}px)` }}
       >
         <svg
           width={1100}
@@ -282,13 +309,27 @@ export function DhigaliExperience() {
       <header className="absolute left-4 top-4 z-10 max-w-xs">
         <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI</p>
         <h1 className="font-serif text-2xl">디갈리 섬</h1>
-        <p className="mt-1 text-[12px] text-white/80">WASD로 걷는다. 사람 점은 스태프와 손님이다.</p>
+        <p className="mt-1 text-[12px] text-white/80">드래그로 섬을 밀고, WASD로 걷는다.</p>
       </header>
       <Link href="/" className="absolute right-4 top-4 z-10 rounded-full bg-black/30 px-3 py-1.5 text-xs">
         나가기
       </Link>
 
-      <aside className="absolute bottom-4 left-4 right-4 z-10 grid gap-2 md:right-auto md:w-80">
+      <aside
+        className="absolute z-10 grid max-h-[46vh] w-[min(20rem,calc(100vw-2rem))] gap-2 overflow-y-auto"
+        style={{ left: bar.x, bottom: bar.y }}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="cursor-grab rounded-full bg-black/35 px-3 py-1 text-[11px] active:cursor-grabbing"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            pointerDown("bar", e);
+          }}
+        >
+          안내 바 옮기기
+        </button>
         {near ? (
           <div className="rounded-2xl bg-white/95 p-3 text-stone-900">
             <p className="text-[11px] text-stone-500">가까이</p>
