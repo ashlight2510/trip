@@ -5,9 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { checkDhigaliAdmin } from "@/app/actions/dhigali-admin";
 import {
   DHIGALI,
+  DHIGALI_ITINERARY,
   DHIGALI_NPCS,
+  DHIGALI_PIERS,
   DHIGALI_SPOTS,
   dhigaliInside,
+  nearestPerson,
   nearestSpot,
   type DhigaliSpot,
 } from "@/lib/dhigali";
@@ -23,6 +26,21 @@ const FLY_STEPS = [
 ];
 
 const SCALE = 2.15;
+
+function skyFor(minutes: number) {
+  const h = (minutes / 60) % 24;
+  if (h >= 5 && h < 7) return { sea: "#c9846a", sandGlow: 0.2, label: "새벽" };
+  if (h >= 7 && h < 16) return { sea: "#0b6e8a", sandGlow: 0, label: "한낮" };
+  if (h >= 16 && h < 19) return { sea: "#c45c3e", sandGlow: 0.35, label: "노을" };
+  return { sea: "#062433", sandGlow: 0, label: "밤" };
+}
+
+function clockLabel(minutes: number) {
+  const m = Math.floor(minutes) % (24 * 60);
+  const h = Math.floor(m / 60);
+  const min = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(min).padStart(2, "0")}`;
+}
 
 function alongPath(path: { x: number; y: number }[], t: number) {
   const first = path[0];
@@ -45,14 +63,22 @@ export function DhigaliExperience() {
   const [flyStep, setFlyStep] = useState(0);
   const [pos, setPos] = useState({ x: -20, y: 140, heading: 0 });
   const [near, setNear] = useState<DhigaliSpot | null>(null);
+  const [done, setDone] = useState<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [npcT, setNpcT] = useState(0);
+  const [ride, setRide] = useState<"walk" | "buggy">("walk");
+  const [minutes, setMinutes] = useState(7 * 60 + 40);
+  const [destName, setDestName] = useState<string | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [bar, setBar] = useState({ x: 16, y: 16 });
   const keys = useRef({ up: false, down: false, left: false, right: false });
   const drag = useRef<{ kind: "map" | "bar"; x: number; y: number; ox: number; oy: number } | null>(null);
   const posRef = useRef(pos);
+  const rideRef = useRef(ride);
+  const destRef = useRef<{ x: number; y: number } | null>(null);
+  const nearIdRef = useRef<string | null>(null);
   posRef.current = pos;
+  rideRef.current = ride;
 
   useEffect(() => {
     if (phase !== "fly") return;
@@ -86,13 +112,31 @@ export function DhigaliExperience() {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       setNpcT((t) => (t + dt * 0.08) % 1);
+      setMinutes((m) => (m + dt * 2.4) % (24 * 60));
       const k = keys.current;
+      const manual = k.up || k.down || k.left || k.right;
+      if (manual) destRef.current = null;
       let heading = posRef.current.heading;
+      let speed = 0;
+      const cruise = rideRef.current === "buggy" ? 12 : 3.4;
       if (k.left) heading = (heading - 140 * dt + 360) % 360;
       if (k.right) heading = (heading + 140 * dt) % 360;
-      let speed = 0;
-      if (k.up) speed = 4.2;
-      else if (k.down) speed = -2.2;
+      if (k.up) speed = cruise;
+      else if (k.down) speed = -cruise * 0.45;
+      const dest = destRef.current;
+      if (!manual && dest) {
+        const dx = dest.x - posRef.current.x;
+        const dy = dest.y - posRef.current.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < 8) {
+          destRef.current = null;
+          setDestName(null);
+        } else {
+          heading = (Math.atan2(dx, -dy) * 180) / Math.PI;
+          if (heading < 0) heading += 360;
+          speed = cruise;
+        }
+      }
       if (speed !== 0) {
         const rad = (heading * Math.PI) / 180;
         const nx = posRef.current.x + Math.sin(rad) * speed * dt;
@@ -101,9 +145,16 @@ export function DhigaliExperience() {
           const next = { x: nx, y: ny, heading };
           posRef.current = next;
           setPos(next);
-          setNear(nearestSpot(nx, ny));
+          const found = nearestSpot(nx, ny);
+          if ((found?.id ?? null) !== nearIdRef.current) {
+            nearIdRef.current = found?.id ?? null;
+            setNear(found);
+          }
         } else {
+          destRef.current = null;
+          setDestName(null);
           setPos((p) => ({ ...p, heading }));
+          posRef.current = { ...posRef.current, heading };
         }
       } else if (k.left || k.right) {
         setPos((p) => ({ ...p, heading }));
@@ -131,7 +182,19 @@ export function DhigaliExperience() {
 
   function joinEvent() {
     if (!near) return;
-    setLog((prev) => (prev.includes(near.event) ? prev : [near.event, ...prev].slice(0, 8)));
+    const hour = (minutes / 60) % 24;
+    const line =
+      near.id === "haali" && (hour < 16 || hour >= 19)
+        ? "할리는 열렸지만 돌핀은 노을 때 가깝다. 지금은 음료만 마셨다."
+        : near.event;
+    setLog((prev) => (prev[0] === line ? prev : [line, ...prev].slice(0, 6)));
+    setDone((prev) => (prev.includes(near.id) ? prev : [...prev, near.id]));
+  }
+
+  function goTo(spot: DhigaliSpot) {
+    destRef.current = { x: spot.x, y: spot.y };
+    setDestName(spot.name);
+    setRide("buggy");
   }
 
   if (phase === "gate") {
@@ -204,6 +267,12 @@ export function DhigaliExperience() {
 
   const camX = pos.x * SCALE;
   const camY = pos.y * SCALE;
+  const sky = skyFor(minutes);
+  const people = DHIGALI_NPCS.map((npc) => {
+    const p = alongPath(npc.path, npcT * npc.speed * 8);
+    return { npc, x: p.x, y: p.y };
+  });
+  const talk = nearestPerson(pos.x, pos.y, people);
 
   function pointerDown(kind: "map" | "bar", e: React.PointerEvent) {
     if (kind === "map" && (e.target as HTMLElement).closest("button, a, aside")) return;
@@ -228,7 +297,8 @@ export function DhigaliExperience() {
 
   return (
     <main
-      className="relative h-dvh cursor-grab overflow-hidden bg-[#0b6e8a] text-white active:cursor-grabbing"
+      className="relative h-dvh cursor-grab overflow-hidden text-white active:cursor-grabbing"
+      style={{ background: sky.sea }}
       onPointerDown={(e) => pointerDown("map", e)}
     >
       <div
@@ -236,37 +306,41 @@ export function DhigaliExperience() {
         style={{ transform: `translate(${pan.x - camX}px, ${pan.y - camY}px)` }}
       >
         <svg
-          width={1100}
-          height={700}
-          viewBox="-550 -350 1100 700"
-          className="absolute left-[-550px] top-[-350px] overflow-visible"
+          width={560 * SCALE}
+          height={420 * SCALE}
+          viewBox="-280 -210 560 420"
+          className="absolute overflow-visible"
+          style={{ left: -280 * SCALE, top: -210 * SCALE }}
         >
-          <ellipse
-            cx={0}
-            cy={0}
-            rx={(DHIGALI.rx + 36) * SCALE}
-            ry={(DHIGALI.ry + 22) * SCALE}
-            fill="#7fd0c4"
-            transform={`rotate(${DHIGALI.rotDeg})`}
-            opacity={0.85}
-          />
-          <ellipse
-            cx={0}
-            cy={0}
-            rx={DHIGALI.rx * SCALE}
-            ry={DHIGALI.ry * SCALE}
-            fill="#e7d3a1"
-            transform={`rotate(${DHIGALI.rotDeg})`}
-          />
-          <ellipse
-            cx={-10}
-            cy={8}
-            rx={70 * SCALE}
-            ry={28 * SCALE}
-            fill="#8fbf73"
-            opacity={0.55}
-            transform={`rotate(${DHIGALI.rotDeg})`}
-          />
+          <ellipse cx={0} cy={0} rx={DHIGALI.rx + 48} ry={DHIGALI.ry + 34} fill="#7fd0c4" transform={`rotate(${DHIGALI.rotDeg})`} opacity={0.9} />
+          <ellipse cx={0} cy={0} rx={DHIGALI.rx + 8} ry={DHIGALI.ry + 6} fill="#f3e6c4" transform={`rotate(${DHIGALI.rotDeg})`} />
+          <ellipse cx={0} cy={0} rx={DHIGALI.rx - 18} ry={DHIGALI.ry - 16} fill="#e7d3a1" transform={`rotate(${DHIGALI.rotDeg})`} />
+          <ellipse cx={-8} cy={6} rx={78} ry={30} fill="#7dae6a" opacity={0.8} transform={`rotate(${DHIGALI.rotDeg})`} />
+          {DHIGALI_PIERS.map((pier) => (
+            <line
+              key={`${pier[0].x}-${pier[1].y}`}
+              x1={pier[0].x}
+              y1={pier[0].y}
+              x2={pier[1].x}
+              y2={pier[1].y}
+              stroke="#f7f1e4"
+              strokeWidth={10}
+              strokeLinecap="round"
+            />
+          ))}
+          {DHIGALI_SPOTS.map((spot) => (
+            <rect
+              key={spot.id}
+              x={spot.x - 7}
+              y={spot.y - 5}
+              width={14}
+              height={10}
+              rx={1.5}
+              fill={spot.roof}
+              stroke="#1b4965"
+              strokeWidth={0.6}
+            />
+          ))}
         </svg>
         {DHIGALI_SPOTS.map((spot) => (
           <button
@@ -274,11 +348,7 @@ export function DhigaliExperience() {
             type="button"
             className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center"
             style={{ left: spot.x * SCALE, top: spot.y * SCALE }}
-            onClick={() => {
-              setPos({ x: spot.x, y: spot.y, heading: pos.heading });
-              posRef.current = { x: spot.x, y: spot.y, heading: pos.heading };
-              setNear(spot);
-            }}
+            onClick={() => goTo(spot)}
           >
             <span className="size-2.5 rounded-full bg-[#1b4965] ring-2 ring-white" />
             <span className="absolute left-4 top-0 whitespace-nowrap text-[10px] font-semibold text-[#073044]">
@@ -286,17 +356,16 @@ export function DhigaliExperience() {
             </span>
           </button>
         ))}
-        {DHIGALI_NPCS.map((npc) => {
-          const p = alongPath(npc.path, npcT * npc.speed * 8);
-          return (
-            <span
-              key={npc.id}
-              className="absolute size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-2 ring-white"
-              style={{ left: p.x * SCALE, top: p.y * SCALE, background: npc.color }}
-              title={npc.name}
-            />
-          );
-        })}
+        {people.map(({ npc, x, y }) => (
+          <span
+            key={npc.id}
+            className="absolute grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[9px] font-bold text-white ring-2 ring-white"
+            style={{ left: x * SCALE, top: y * SCALE, background: npc.color }}
+            title={npc.name}
+          >
+            {npc.name.slice(0, 1)}
+          </span>
+        ))}
         <span
           className="absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow"
           style={{
@@ -309,10 +378,20 @@ export function DhigaliExperience() {
         </span>
       </div>
 
-      <header className="absolute left-4 top-4 z-10 max-w-xs">
-        <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI</p>
+      <header className="absolute left-4 top-4 z-10 max-w-sm">
+        <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI · {sky.label}</p>
         <h1 className="font-serif text-2xl">디갈리 섬</h1>
-        <p className="mt-1 text-[12px] text-white/80">드래그로 섬을 밀고, WASD로 걷는다.</p>
+        <p className="mt-1 text-[12px] text-white/80">
+          {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}
+          {destName ? ` · ${destName}으로` : ""}
+        </p>
+        <div className="mt-2 flex flex-wrap gap-1">
+          <button type="button" onClick={() => setRide("walk")} className={`rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/30"}`}>도보</button>
+          <button type="button" onClick={() => setRide("buggy")} className={`rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/30"}`}>버기</button>
+          <button type="button" onClick={() => setMinutes(7 * 60 + 30)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">아침</button>
+          <button type="button" onClick={() => setMinutes(16 * 60 + 40)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">노을</button>
+          <button type="button" onClick={() => setMinutes(20 * 60 + 10)} className="rounded-full bg-black/30 px-2.5 py-1 text-[11px]">밤</button>
+        </div>
       </header>
       <Link href="/" className="absolute right-4 top-4 z-10 rounded-full bg-black/30 px-3 py-1.5 text-xs">
         나가기
@@ -333,6 +412,22 @@ export function DhigaliExperience() {
         >
           안내 바 옮기기
         </button>
+        <div className="flex flex-wrap gap-1">
+          {DHIGALI_ITINERARY.map((item) => (
+            <span
+              key={item.id}
+              className={`rounded-full px-2 py-0.5 text-[10px] ${done.includes(item.id) ? "bg-white text-[#073044]" : "bg-black/35"}`}
+            >
+              {done.includes(item.id) ? "✓ " : ""}
+              {item.label}
+            </span>
+          ))}
+        </div>
+        {talk && (
+          <p className="rounded-2xl bg-black/45 px-3 py-2 text-[12px] leading-relaxed">
+            <span className="font-semibold">{talk.name}</span> · {talk.line}
+          </p>
+        )}
         {near ? (
           <div className="rounded-2xl bg-white/95 p-3 text-stone-900">
             <p className="text-[11px] text-stone-500">가까이</p>
@@ -347,7 +442,7 @@ export function DhigaliExperience() {
             </button>
           </div>
         ) : (
-          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">시설 가까이 가면 이벤트가 열린다.</p>
+          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">시설 점을 누르면 버기가 그쪽으로 간다.</p>
         )}
         {log.length > 0 && (
           <ul className="rounded-2xl bg-black/35 px-3 py-2 text-[12px] leading-relaxed">
@@ -357,6 +452,31 @@ export function DhigaliExperience() {
           </ul>
         )}
       </aside>
+      <div className="absolute bottom-4 right-4 z-10 grid grid-cols-3 gap-1" onPointerDown={(e) => e.stopPropagation()}>
+        <span />
+        <Pad label="앞" onDown={() => { keys.current.up = true; }} onUp={() => { keys.current.up = false; }} />
+        <span />
+        <Pad label="왼" onDown={() => { keys.current.left = true; }} onUp={() => { keys.current.left = false; }} />
+        <Pad label="뒤" onDown={() => { keys.current.down = true; }} onUp={() => { keys.current.down = false; }} />
+        <Pad label="오" onDown={() => { keys.current.right = true; }} onUp={() => { keys.current.right = false; }} />
+      </div>
     </main>
+  );
+}
+
+function Pad({ label, onDown, onUp }: { label: string; onDown: () => void; onUp: () => void }) {
+  return (
+    <button
+      type="button"
+      className="grid size-11 place-items-center rounded-xl bg-black/40 text-[11px] font-semibold"
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        onDown();
+      }}
+      onPointerUp={onUp}
+      onPointerLeave={onUp}
+    >
+      {label}
+    </button>
   );
 }
