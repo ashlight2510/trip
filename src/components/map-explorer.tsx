@@ -1096,6 +1096,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             >
               {t.picksNav}
             </Link>
+            <Link
+              href="/maldives"
+              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-[#1b4965] ring-1 ring-sky-200 hover:bg-sky-50"
+            >
+              디갈리
+            </Link>
           </div>
           <h1 className="font-display mt-1 text-2xl text-stone-900">{t.mapTitle}</h1>
           <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.mapBlurb}</p>
