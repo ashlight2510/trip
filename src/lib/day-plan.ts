@@ -14,12 +14,19 @@ export type DayStop = {
   kmFromPrev: number;
 };
 
-const ROLES: { role: DayRole; categories: Place["category"][] }[] = [
+export const DAY_SLOTS: { role: DayRole; categories: Place["category"][] }[] = [
   { role: "morning", categories: ["beach", "cafe", "park"] },
   { role: "lunch", categories: ["restaurant", "market", "cafe"] },
   { role: "afternoon", categories: ["heritage", "landmark", "forest"] },
   { role: "sunset", categories: ["viewpoint", "beach"] },
 ];
+
+export function roleForCategory(category: Place["category"]): DayRole {
+  for (const slot of DAY_SLOTS) {
+    if (slot.categories.includes(category)) return slot.role;
+  }
+  return "afternoon";
+}
 
 export function placeVerdict(place: MapPlace): Verdict {
   if (place.is_pick || place.description || place.source_count >= 3 || (place.pin_score ?? 0) >= 40) {
@@ -44,7 +51,7 @@ export function placeAccess(place: MapPlace, from: { lat: number; lng: number })
   return "walk";
 }
 
-function slotScore(place: MapPlace, origin: { lat: number; lng: number }): number {
+export function scoreDayPlace(place: MapPlace, origin: { lat: number; lng: number }): number {
   const verdict = placeVerdict(place);
   if (verdict === "skip") return -1;
   const km = haversineM(origin.lat, origin.lng, place.lat, place.lng) / 1000;
@@ -60,7 +67,7 @@ export function buildDayPlan(places: MapPlace[], origin: { lat: number; lng: num
   const stops: DayStop[] = [];
   let cursor = origin;
 
-  for (const slot of ROLES) {
+  for (const slot of DAY_SLOTS) {
     const pool = places.filter((p) => {
       if (used.has(p.id)) return false;
       if (slot.role === "afternoon") {
@@ -73,7 +80,7 @@ export function buildDayPlan(places: MapPlace[], origin: { lat: number; lng: num
       return slot.categories.includes(p.category);
     });
     const ranked = pool
-      .map((place) => ({ place, score: slotScore(place, cursor) }))
+      .map((place) => ({ place, score: scoreDayPlace(place, cursor) }))
       .filter((row) => row.score >= 0)
       .sort((a, b) => b.score - a.score);
     const pick = ranked[0]?.place;

@@ -2,6 +2,13 @@ import "server-only";
 import { compareSourceSort } from "@/lib/source-rank";
 import { scorePlaceSearch } from "@/lib/place-search";
 import { sampleByCategory } from "@/lib/sample-by-category";
+import {
+  briefFillDay,
+  buildTripBrief,
+  parseTripBrief,
+  type ParsedTripBrief,
+  type TripBrief,
+} from "@/lib/trip-brief";
 import { isFranchiseChainName, SOURCE_VOTE_HIDE_AT } from "./curation";
 import { readTable, tableStamp } from "./json-table";
 import * as s from "./schema";
@@ -593,6 +600,226 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
       : cands.slice(0, limit);
 
   return ranked.map((c) => toMapPlace(c.place, ix, { includeSources }));
+}
+
+export type MapSearchResult = {
+  places: MapPlace[];
+  brief: TripBrief | null;
+  dayOffer: { name: string } | null;
+  briefNeedsLoc: boolean;
+};
+
+function shortRegionName(name: string): string {
+  const stripped = name
+    .replace(/(특별자치시|특별자치도|광역시|특별시)$/u, "")
+    .replace(/(시|군|구)$/u, "")
+    .trim();
+  return stripped || name;
+}
+
+function bestBriefRegion(q: string): s.Region | null {
+  const { db } = getMapDb();
+  let best: { region: s.Region; score: number } | null = null;
+  for (const region of db.regions) {
+    if (region.level !== "city" && region.level !== "district") continue;
+    const score = regionNameScore(region, q);
+    if (score < 90) continue;
+    const better =
+      !best ||
+      score > best.score ||
+      (score === best.score && region.level === "city" && best.region.level !== "city") ||
+      (score === best.score && region.level === best.region.level && region.name.length < best.region.name.length);
+    if (better) best = { region, score };
+  }
+  return best?.region ?? null;
+}
+
+/** City or district for a brief. Token fallback is for "제주 협재", not a bare place name. */
+function matchBriefRegion(qRaw: string, allowTokens: boolean): { region: s.Region; name: string } | null {
+  const q = qRaw.trim().toLowerCase();
+  if (q.length < 2) return null;
+  const direct = bestBriefRegion(q);
+  if (direct) return { region: direct, name: shortRegionName(direct.name) };
+  if (!allowTokens) return null;
+  const parts = q.split(/\s+/).filter((part) => part.length >= 2);
+  if (parts.length <= 1) return null;
+  let best: { region: s.Region; score: number } | null = null;
+  for (const part of parts) {
+    const region = bestBriefRegion(part);
+    if (!region) continue;
+    const score = regionNameScore(region, part);
+    const better =
+      !best ||
+      score > best.score ||
+      (score === best.score && region.level === "city" && best.region.level !== "city");
+    if (better) best = { region, score };
+  }
+  return best ? { region: best.region, name: shortRegionName(best.region.name) } : null;
+}
+
+/** Strong place-name hit. A pile of loose substring matches is not an anchor. */
+function matchBriefPlace(qRaw: string): s.Place | null {
+  const { db, ix } = getMapDb();
+  const q = qRaw.trim().toLowerCase();
+  if (q.length < 2) return null;
+  const pick = (query: string) => {
+    let topScore = 0;
+    let top: s.Place[] = [];
+    for (const place of db.places) {
+      const city = ix.cityByRegion.get(place.region_id);
+      const district = ix.districtByRegion.get(place.region_id);
+      const score = placeMatchScore(place, city?.name, district?.name, query);
+      if (score < 780) continue;
+      if (score > topScore) {
+        topScore = score;
+        top = [place];
+      } else if (score === topScore) {
+        top.push(place);
+      }
+    }
+    if (!top.length) return null;
+    if (topScore < 920 && top.length > 1) return null;
+    top.sort((a, b) => computePinScore(b, ix) - computePinScore(a, ix));
+    return top[0] ?? null;
+  };
+  const direct = pick(q);
+  if (direct) return direct;
+  const parts = q.split(/\s+/).filter((part) => part.length >= 2);
+  if (parts.length <= 1) return null;
+  return pick(parts[parts.length - 1] ?? "");
+}
+
+function placesForBriefRegion(region: s.Region): MapPlace[] {
+  const { db, ix } = getMapDb();
+  const matched: s.Place[] = [];
+  for (const place of db.places) {
+    if (region.level === "city") {
+      if (ix.cityByRegion.get(place.region_id)?.id !== region.id) continue;
+    } else {
+      const district = ix.districtByRegion.get(place.region_id);
+      if (district?.id !== region.id && place.region_id !== region.id) continue;
+    }
+    matched.push(place);
+  }
+  matched.sort(
+    (a, b) => computePinScore(b, ix) - computePinScore(a, ix) || a.name.localeCompare(b.name, "ko"),
+  );
+  return matched.slice(0, 500).map((place) => toMapPlace(place, ix, { includeSources: false }));
+}
+
+/** Nearby pool with each category kept, so a dense cafe cluster cannot hide a park. */
+function placesNearAnchor(lat: number, lng: number, radiusKm: number): MapPlace[] {
+  const { db, ix } = getMapDb();
+  const buckets = new Map<string, { place: s.Place; dist: number }[]>();
+  for (const place of db.places) {
+    const dist = haversineKm(lat, lng, place.lat, place.lng);
+    if (dist > radiusKm) continue;
+    const list = buckets.get(place.category) ?? [];
+    list.push({ place, dist });
+    buckets.set(place.category, list);
+  }
+  const picked: s.Place[] = [];
+  for (const list of buckets.values()) {
+    list.sort(
+      (a, b) => computePinScore(b.place, ix) - computePinScore(a.place, ix) || a.dist - b.dist,
+    );
+    for (const row of list.slice(0, 40)) picked.push(row.place);
+  }
+  return picked.map((place) => toMapPlace(place, ix, { includeSources: false }));
+}
+
+type BriefAnchor = {
+  kind: "region" | "place" | "near";
+  name: string;
+  lat: number;
+  lng: number;
+  regionId?: string;
+  placeId?: string;
+};
+
+function resolveBriefAnchor(
+  parsed: ParsedTripBrief,
+  query: MapPlaceQuery,
+): BriefAnchor | null {
+  if (parsed.near) {
+    if (query.lat == null || query.lng == null) return null;
+    return { kind: "near", name: parsed.nearLabel ?? "근처", lat: query.lat, lng: query.lng };
+  }
+  const region = parsed.rest ? matchBriefRegion(parsed.rest, true) : null;
+  if (region) {
+    return {
+      kind: "region",
+      name: region.name,
+      lat: region.region.lat,
+      lng: region.region.lng,
+      regionId: region.region.id,
+    };
+  }
+  const place = parsed.rest ? matchBriefPlace(parsed.rest) : null;
+  if (!place) return null;
+  return { kind: "place", name: place.name, lat: place.lat, lng: place.lng, placeId: place.id };
+}
+
+function composeTripBrief(anchor: BriefAnchor, parsed: ParsedTripBrief): TripBrief | null {
+  const { db, ix } = getMapDb();
+  const region = anchor.regionId ? ix.regionById.get(anchor.regionId) : undefined;
+  const pool =
+    anchor.kind === "region" && region
+      ? placesForBriefRegion(region)
+      : placesNearAnchor(anchor.lat, anchor.lng, anchor.kind === "place" ? 3 : 12);
+
+  let anchorPlace: MapPlace | null = null;
+  if (anchor.kind === "place" && anchor.placeId) {
+    anchorPlace = pool.find((p) => p.id === anchor.placeId) ?? null;
+    if (!anchorPlace) {
+      const raw = db.places.find((p) => p.id === anchor.placeId);
+      if (raw) anchorPlace = toMapPlace(raw, ix, { includeSources: false });
+    }
+  }
+
+  const fillDay = briefFillDay(parsed);
+  const shape = anchor.kind === "place" && !fillDay ? "addon" : "day";
+  return buildTripBrief({
+    pool,
+    origin: { lat: anchor.lat, lng: anchor.lng },
+    anchorPlace,
+    anchorName: anchor.name,
+    wishes: parsed.wishes,
+    fillDay: shape === "addon" ? false : fillDay,
+    shape,
+    day: parsed.day,
+  });
+}
+
+export function searchMapPlaces(query: MapPlaceQuery): MapSearchResult {
+  const places = queryMapPlaces(query);
+  const parsed = parseTripBrief(query.q ?? "");
+  if (!query.q?.trim()) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: false };
+  }
+  if (!parsed.isBrief) {
+    const region =
+      parsed.rest && !parsed.near && !parsed.day && parsed.wishes.length === 0
+        ? matchBriefRegion(parsed.rest, false)
+        : null;
+    return {
+      places,
+      brief: null,
+      dayOffer: region ? { name: region.name } : null,
+      briefNeedsLoc: false,
+    };
+  }
+  if (parsed.near && (query.lat == null || query.lng == null)) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: true };
+  }
+  const anchor = resolveBriefAnchor(parsed, query);
+  if (!anchor) return { places, brief: null, dayOffer: null, briefNeedsLoc: false };
+  return {
+    places,
+    brief: composeTripBrief(anchor, parsed),
+    dayOffer: null,
+    briefNeedsLoc: false,
+  };
 }
 
 export function getMapPlace(id: string): MapPlace | null {

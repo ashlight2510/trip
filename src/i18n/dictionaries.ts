@@ -31,6 +31,12 @@ const categoriesEn: Record<Place["category"], string> = {
   viewpoint: "Viewpoint",
 };
 
+function koIro(name: string): "으로" | "로" {
+  const ch = name.charCodeAt(name.length - 1);
+  if (!name || ch < 0xac00 || ch > 0xd7a3) return "으로";
+  return (ch - 0xac00) % 28 === 0 ? "로" : "으로";
+}
+
 export const dictionaries = {
   ko: {
     brand: "풍경너머",
@@ -44,7 +50,7 @@ export const dictionaries = {
       "시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다. 직접 연결하면 포인트가 쌓여요.",
     allCities: "전체 시",
     searchLabel: "통합검색",
-    searchPlaceholderNationwide: "숲카페, 경복궁, 해운대… (전국)",
+    searchPlaceholderNationwide: "강릉 카페 노을, 경복궁, 해운대…",
     searchPlaceholderNear: "근처 숲카페, 카페, 해변…",
     scopeNationwide: "전국",
     scopeNearMe: "내 위치",
@@ -65,6 +71,16 @@ export const dictionaries = {
     tripBoardPlan: "하루 짜기",
     tripBoardSave: "이 날짜에 담기",
     tripBoardSaved: "담아 둔 하루",
+    briefPlanDay: (name: string) => `${name}${koIro(name)} 하루 짜기`,
+    briefSwap: "다른 곳",
+    briefSave: "이 하루 담기",
+    briefSaved: "담았어요",
+    briefFiller: "이어 붙인 곳",
+    briefMore: "후보 더 보기",
+    briefLess: "후보 접기",
+    briefDay: "하루",
+    briefStatus: (n: number) => `하루 코스 · ${n}곳`,
+    briefNeedsLoc: "내 위치를 켜면 근처로 코스를 짤게요.",
     dayMorning: "아침",
     dayLunch: "점심",
     dayAfternoon: "오후",
@@ -138,7 +154,7 @@ export const dictionaries = {
       "City → district → place. Reviews link out to the original (up to 10 per place). Connect your own links to earn points.",
     allCities: "All cities",
     searchLabel: "Search",
-    searchPlaceholderNationwide: "Forest cafe, temple, beach… (nationwide)",
+    searchPlaceholderNationwide: "Cafe and sunset in a city, a palace…",
     searchPlaceholderNear: "Nearby cafe, beach, park…",
     scopeNationwide: "Nationwide",
     scopeNearMe: "Near me",
@@ -159,6 +175,16 @@ export const dictionaries = {
     tripBoardPlan: "Plan a day",
     tripBoardSave: "Save to this date",
     tripBoardSaved: "Saved day",
+    briefPlanDay: (name: string) => `Plan a day in ${name}`,
+    briefSwap: "Another",
+    briefSave: "Save this day",
+    briefSaved: "Saved",
+    briefFiller: "Filled in",
+    briefMore: "Show other places",
+    briefLess: "Hide other places",
+    briefDay: "A day",
+    briefStatus: (n: number) => `Day plan · ${n}`,
+    briefNeedsLoc: "Turn on location to plan a nearby day.",
     dayMorning: "Morning",
     dayLunch: "Lunch",
     dayAfternoon: "Afternoon",

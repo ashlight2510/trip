@@ -8,42 +8,13 @@ import { formatDistanceKm } from "@/lib/near-suggest";
 import { fetchPlaces } from "@/lib/map-fetch";
 import { displayName } from "@/i18n/display-name";
 import { useLocale, useT } from "@/i18n/locale";
-
-const STORAGE_KEY = "pn-trip-board";
-
-type SavedStop = {
-  id: string;
-  name: string;
-  name_en: string | null;
-  lat: number;
-  lng: number;
-  category: MapPlace["category"];
-  role: DayRole;
-  access: AccessMode;
-  verdict: Verdict;
-};
-
-type SavedTrip = { date: string; stops: SavedStop[] };
-
-function todayISO() {
-  const d = new Date();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${d.getFullYear()}-${m}-${day}`;
-}
-
-function loadTrip(): SavedTrip {
-  if (typeof window === "undefined") return { date: todayISO(), stops: [] };
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { date: todayISO(), stops: [] };
-    const parsed = JSON.parse(raw) as SavedTrip;
-    if (!parsed?.date || !Array.isArray(parsed.stops)) return { date: todayISO(), stops: [] };
-    return parsed;
-  } catch {
-    return { date: todayISO(), stops: [] };
-  }
-}
+import {
+  TRIP_BOARD_EVENT,
+  loadTripBoard,
+  writeTripBoard,
+  type TripBoardState,
+  type TripBoardStop,
+} from "@/lib/trip-board-storage";
 
 export function TripBoard({
   origin,
@@ -56,22 +27,33 @@ export function TripBoard({
 }) {
   const t = useT();
   const { locale } = useLocale();
-  const [date, setDate] = useState(todayISO);
+  const [date, setDate] = useState("");
   const [draft, setDraft] = useState<DayStop[]>([]);
-  const [saved, setSaved] = useState<SavedStop[]>([]);
+  const [saved, setSaved] = useState<TripBoardStop[]>([]);
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const trip = loadTrip();
+    const trip = loadTripBoard();
     setDate(trip.date);
     setSaved(trip.stops);
     setReady(true);
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ date, stops: saved }));
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<TripBoardState>).detail;
+      if (!detail?.date || !Array.isArray(detail.stops)) return;
+      setDate(detail.date);
+      setSaved(detail.stops);
+    };
+    window.addEventListener(TRIP_BOARD_EVENT, onChange);
+    return () => window.removeEventListener(TRIP_BOARD_EVENT, onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!ready || !date) return;
+    writeTripBoard({ date, stops: saved }, false);
   }, [date, saved, ready]);
 
   async function makeDay() {

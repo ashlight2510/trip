@@ -8,7 +8,7 @@ import "leaflet/dist/leaflet.css";
 import type { MapArea, MapPlace } from "@/db/repo";
 import type { Place } from "@/db/schema";
 import { categoryColor, categoryGlyph, categoryIconSvg } from "@/lib/categories";
-import { fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
+import { fetchMapSearch, fetchPlaceDetail, fetchPlaces, mergePlaces } from "@/lib/map-fetch";
 import { attachOpenFreeMap, type BasemapHandle } from "@/lib/map-basemap";
 import { scorePlaceSearch } from "@/lib/place-search";
 import { enrichPlaceTags, formatHashtag } from "@/lib/place-tags";
@@ -18,6 +18,7 @@ import { SettingsMenu, useLocale, useT } from "@/i18n/locale";
 import { ContributeLinkForm } from "@/components/contribute-link-form";
 import { NearSuggestPanel } from "@/components/near-suggest-panel";
 import { TripBoard } from "@/components/trip-board";
+import { TripBriefCard } from "@/components/trip-brief-card";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
 import { PlaceLikeControls } from "@/components/place-like-controls";
@@ -31,6 +32,8 @@ import {
   WANDER_RADIUS_KM,
   type WanderMode,
 } from "@/lib/near-suggest";
+import { parseTripBrief, rechainBriefStops, type BriefStop, type TripBrief } from "@/lib/trip-brief";
+import { saveTripBoardStops } from "@/lib/trip-board-storage";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -335,6 +338,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const wanderCircleRef = useRef<L.Circle | null>(null);
   const boundaryRef = useRef<L.GeoJSON | null>(null);
+  const routeRef = useRef<L.Polyline | null>(null);
   const basemapRef = useRef<BasemapHandle | null>(null);
   const fetchSeq = useRef(0);
   const boundarySeq = useRef(0);
@@ -346,6 +350,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [places, setPlaces] = useState<MapPlace[]>([]);
   /** Latest server search hits (includes area-nearby). Null when not searching. */
   const [searchHits, setSearchHits] = useState<MapPlace[] | null>(null);
+  const [course, setCourse] = useState<TripBrief | null>(null);
+  const [courseStops, setCourseStops] = useState<BriefStop[]>([]);
+  const [dayOffer, setDayOffer] = useState<{ name: string } | null>(null);
+  const [briefNeedsLoc, setBriefNeedsLoc] = useState(false);
+  const [showCoursePool, setShowCoursePool] = useState(false);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [level, setLevel] = useState<Level>("city");
   const [cityId, setCityId] = useState<string | null>(null);
@@ -545,6 +554,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const selectedPlace = places.find((p) => p.id === selectedPlaceId) ?? null;
   const searchQ = query.trim().toLowerCase();
   const isSearching = searchQ.length > 0;
+  const parsedQuery = useMemo(() => parseTripBrief(query), [query]);
+  const showSearchList = courseStops.length === 0 || showCoursePool;
 
   const visiblePlaces = useMemo(() => {
     if (!isSearching) {
@@ -682,6 +693,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       basemapRef.current = null;
       wanderCircleRef.current?.remove();
       wanderCircleRef.current = null;
+      routeRef.current?.remove();
+      routeRef.current = null;
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -773,6 +786,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const q = query.trim();
     if (!q) {
       setSearchHits(null);
+      setCourse(null);
+      setCourseStops([]);
+      setDayOffer(null);
+      setBriefNeedsLoc(false);
+      setShowCoursePool(false);
       fittedSearchQ.current = null;
       return;
     }
@@ -780,17 +798,30 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const timer = setTimeout(() => {
       setPlacesLoading(true);
       const params: Record<string, string | number | undefined> = { q, limit: 200 };
-      if (searchNearMe) {
+      if (parsedQuery.near) {
+        if (hasUserGps) {
+          params.lat = userLoc.lat;
+          params.lng = userLoc.lng;
+        }
+      } else if (searchNearMe) {
         params.lat = userLoc.lat;
         params.lng = userLoc.lng;
         params.radiusKm = SEARCH_NEAR_RADIUS_KM;
         params.scope = "near";
       }
-      void fetchPlaces(params)
-        .then((next) => {
+      void fetchMapSearch(params)
+        .then((res) => {
           if (seq !== fetchSeq.current) return;
-          setSearchHits(next);
-          ingestPlaces(next);
+          setSearchHits(res.places);
+          setCourse(res.brief);
+          setCourseStops(res.brief?.stops ?? []);
+          setDayOffer(res.dayOffer);
+          setBriefNeedsLoc(res.briefNeedsLoc);
+          setShowCoursePool(false);
+          const extra = res.brief
+            ? res.brief.stops.flatMap((stop) => [stop.place, ...stop.alternates])
+            : [];
+          ingestPlaces([...res.places, ...extra]);
         })
         .catch(console.error)
         .finally(() => {
@@ -798,7 +829,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         });
     }, 220);
     return () => clearTimeout(timer);
-  }, [query, searchNearMe, userLoc.lat, userLoc.lng]);
+  }, [query, parsedQuery.near, searchNearMe, hasUserGps, userLoc.lat, userLoc.lng]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -807,7 +838,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       boundaryRef.current.remove();
       boundaryRef.current = null;
     }
-    if (!map || !q || searchNearMe) return;
+    if (!map || !q || searchNearMe || parsedQuery.isBrief) return;
     const seq = ++boundarySeq.current;
     const timer = setTimeout(() => {
       void fetch(`/api/map/boundary?q=${encodeURIComponent(q)}`)
@@ -833,13 +864,44 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
         .catch(() => {});
     }, 280);
     return () => clearTimeout(timer);
-  }, [query, searchNearMe, mapReady]);
+  }, [query, searchNearMe, mapReady, parsedQuery.isBrief]);
 
   useEffect(() => {
     const map = mapRef.current;
     const layer = layerRef.current;
     if (!map || !layer || !mapReady) return;
     layer.clearLayers();
+    routeRef.current?.remove();
+    routeRef.current = null;
+
+    if (courseStops.length > 0) {
+      if (courseStops.length >= 2) {
+        routeRef.current = L.polyline(
+          courseStops.map((stop) => [stop.place.lat, stop.place.lng] as [number, number]),
+          { color: "#1b4965", weight: 3, opacity: 0.9, interactive: false },
+        ).addTo(map);
+      }
+      courseStops.forEach((stop) => {
+        const place = stop.place;
+        const marker = L.marker([place.lat, place.lng], {
+          icon: placeMarkerIcon(place, selectedPlaceId, t.category[place.category]),
+          title: `${displayName(place, locale)} · ${t.category[place.category]}`,
+          zIndexOffset: 500,
+        });
+        marker.on("click", () => openPlace(place));
+        marker.addTo(layer);
+      });
+      const fitKey = `brief|${courseStops.map((stop) => stop.place.id).join(",")}`;
+      if (fittedSearchQ.current !== fitKey) {
+        fittedSearchQ.current = fitKey;
+        fitLatLngs(
+          map,
+          courseStops.map((stop) => stop.place),
+          14,
+        );
+      }
+      return;
+    }
 
     if (wanderActive && !isSearching) {
       wanderPicks.forEach((place) => {
@@ -950,7 +1012,40 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     t.category,
     wanderActive,
     wanderPicks,
+    courseStops,
   ]);
+
+  function swapCourseStop(index: number) {
+    if (!course) return;
+    setCourseStops((prev) => {
+      const stop = prev[index];
+      if (!stop || stop.alternates.length === 0) return prev;
+      const taken = new Set(prev.filter((_, i) => i !== index).map((row) => row.place.id));
+      const nextPlace = stop.alternates.find((place) => !taken.has(place.id));
+      if (!nextPlace) return prev;
+      const alternates = [...stop.alternates.filter((place) => place.id !== nextPlace.id), stop.place].filter(
+        (place) => !taken.has(place.id),
+      );
+      const next = prev.map((row, i) => (i === index ? { ...row, place: nextPlace, alternates } : row));
+      return rechainBriefStops(next, course.origin);
+    });
+  }
+
+  function saveCourse() {
+    saveTripBoardStops(
+      courseStops.map((stop) => ({
+        id: stop.place.id,
+        name: stop.place.name,
+        name_en: stop.place.name_en,
+        lat: stop.place.lat,
+        lng: stop.place.lng,
+        category: stop.place.category,
+        role: stop.role,
+        access: stop.access,
+        verdict: stop.verdict,
+      })),
+    );
+  }
 
   async function openPlace(place: MapPlace) {
     setCityId(place.city_id);
@@ -1065,13 +1160,13 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   return (
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
       <aside
-        className={`z-10 flex w-full flex-col overflow-hidden border-[var(--border-soft)] bg-[var(--background-panel)] transition-[max-height,width] duration-200 ${
+        className={`z-10 flex w-full flex-col border-[var(--border-soft)] bg-[var(--background-panel)] transition-[max-height,width] duration-200 ${
           panelOpen
-            ? "max-h-[46vh] border-b md:max-h-none md:w-[380px] md:border-b-0 md:border-r"
-            : "max-h-0 border-b-0 md:w-0 md:border-r-0"
+            ? "max-h-[min(62vh,38rem)] overflow-y-auto overscroll-contain border-b md:max-h-none md:overflow-hidden md:w-[380px] md:border-b-0 md:border-r"
+            : "max-h-0 overflow-hidden border-b-0 md:w-0 md:border-r-0"
         }`}
       >
-        <header className="shrink-0 px-5 pb-3 pt-5">
+        <header className="sticky top-0 z-20 border-b border-[var(--border-soft)]/70 bg-[var(--background-panel)] px-5 pb-2.5 pt-[max(0.875rem,env(safe-area-inset-top))] md:static md:pt-4">
           <div className="flex items-start justify-between gap-3">
             <Image
               src="/logo-brand.png"
@@ -1079,11 +1174,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               width={190}
               height={52}
               priority
-              className="h-11 w-auto object-contain object-left"
+              className="h-10 w-auto object-contain object-left"
             />
             <SettingsMenu className="shrink-0" />
           </div>
-          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <Link
               href="/my-list"
               className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
@@ -1109,140 +1204,196 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               브이로그
             </Link>
           </div>
-          <h1 className="font-display mt-1 text-2xl text-stone-900">{t.mapTitle}</h1>
-          <p className="mt-2 text-sm leading-relaxed text-stone-600">{t.mapBlurb}</p>
-
-          <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
-            <button
-              type="button"
-              onClick={goCities}
-              className={`rounded-full px-2.5 py-1 ${level === "city" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
-            >
-              {t.allCities}
-            </button>
-            {city && (
-              <>
-                <span className="text-stone-400">/</span>
-                <button
-                  type="button"
-                  onClick={goDistricts}
-                  className={`rounded-full px-2.5 py-1 ${level === "district" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
-                >
-                  {cityLabel}
-                </button>
-              </>
-            )}
-            {district && level === "place" && (
-              <>
-                <span className="text-stone-400">/</span>
-                <span className="rounded-full bg-stone-900 px-2.5 py-1 text-white">{districtLabel}</span>
-              </>
-            )}
-          </nav>
-
-          <label className="mt-3 block">
-            <span className="sr-only">{t.searchLabel}</span>
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={searchNearMe ? t.searchPlaceholderNear : t.searchPlaceholderNationwide}
-              className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-sky-700/30 placeholder:text-stone-400 focus:ring-2"
-            />
-          </label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
-              <button
-                type="button"
-                onClick={() => setSearchNearMe(false)}
-                className={`rounded-full px-2.5 py-1 ${!searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-              >
-                {t.scopeNationwide}
-              </button>
-              <button
-                type="button"
-                onClick={() => setSearchNearMe(true)}
-                className={`rounded-full px-2.5 py-1 ${searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-              >
-                {t.scopeNearMe}
-              </button>
-            </div>
-            <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
-              <button
-                type="button"
-                onClick={() => setReviewsOnly(true)}
-                className={`rounded-full px-2.5 py-1 ${reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-              >
-                {t.reviewsOnly}
-              </button>
-              <button
-                type="button"
-                onClick={() => setReviewsOnly(false)}
-                className={`rounded-full px-2.5 py-1 ${!reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
-              >
-                {t.reviewsAll}
-              </button>
-            </div>
-          </div>
-
-          <NearSuggestPanel
-            active={wanderActive}
-            mode={wanderMode}
-            cats={wanderCats}
-            picks={wanderPicks}
-            poolSize={
-              wanderPool.filter((p) => {
-                if (reviewsOnly && p.source_count <= 0) return false;
-                if (wanderCats.length > 0 && !wanderCats.includes(p.category)) return false;
-                return true;
-              }).length
-            }
-            loading={wanderLoading}
-            hasGps={hasUserGps}
-            origin={userLoc}
-            selectedPlaceId={selectedPlaceId}
-            onMode={(m) => void startWander(m)}
-            onToggleCat={toggleWanderCat}
-            onShuffle={shuffleWander}
-            onClose={closeWander}
-            onEnableLoc={() => {
-              void (async () => {
-                const gps = await requestUserGps();
-                if (gps && wanderMode) await runWander(wanderMode, wanderCats, gps);
-              })();
-            }}
-            onSelect={(place) => void openPlace(place)}
-          />
-
-          <TripBoard
-            origin={userLoc}
-            hasGps={hasUserGps}
-            onSelect={(place) => void openPlace(place)}
-          />
-
-          {showCategoryFilter && !wanderActive && (
-            <CategoryFilterBar
-              options={categoryOptions}
-              value={categoryFilter}
-              onChange={setCategoryFilter}
-              className="mt-3 flex flex-wrap gap-1.5"
-            />
-          )}
-          <p className="mt-2 text-[11px] font-medium tracking-wide text-stone-500">
-            {placesLoading
-              ? t.loadingNearby
-              : isSearching
-                ? t.searchResults(visiblePlaces.length, listCities.length)
-                : categoryFilter !== "all"
-                  ? `${t.category[categoryFilter as Place["category"]] ?? categoryFilter} · ${t.placesCount(visiblePlaces.length)}`
-                  : t.loadedCount(title, places.length)}
-          </p>
         </header>
 
-        <ul className="min-h-0 flex-1 overflow-y-auto px-3 pb-4">
+        <div className="min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain">
+          <div className="px-5 pb-4 pt-3">
+            <h1 className="font-display text-xl text-stone-900 md:text-2xl">{t.mapTitle}</h1>
+            <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600 md:line-clamp-none">
+              {t.mapBlurb}
+            </p>
+
+            <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
+              <button
+                type="button"
+                onClick={goCities}
+                className={`rounded-full px-2.5 py-1 ${level === "city" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
+              >
+                {t.allCities}
+              </button>
+              {city && (
+                <>
+                  <span className="text-stone-400">/</span>
+                  <button
+                    type="button"
+                    onClick={goDistricts}
+                    className={`rounded-full px-2.5 py-1 ${level === "district" ? "bg-stone-900 text-white" : "bg-white text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"}`}
+                  >
+                    {cityLabel}
+                  </button>
+                </>
+              )}
+              {district && level === "place" && (
+                <>
+                  <span className="text-stone-400">/</span>
+                  <span className="rounded-full bg-stone-900 px-2.5 py-1 text-white">{districtLabel}</span>
+                </>
+              )}
+            </nav>
+
+            <label className="mt-3 block">
+              <span className="sr-only">{t.searchLabel}</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder={searchNearMe ? t.searchPlaceholderNear : t.searchPlaceholderNationwide}
+                className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-sky-700/30 placeholder:text-stone-400 focus:ring-2"
+              />
+            </label>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
+                <button
+                  type="button"
+                  onClick={() => setSearchNearMe(false)}
+                  className={`rounded-full px-2.5 py-1 ${!searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+                >
+                  {t.scopeNationwide}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSearchNearMe(true)}
+                  className={`rounded-full px-2.5 py-1 ${searchNearMe ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+                >
+                  {t.scopeNearMe}
+                </button>
+              </div>
+              <div className="inline-flex rounded-full bg-white p-0.5 text-[11px] font-semibold ring-1 ring-stone-200" role="group">
+                <button
+                  type="button"
+                  onClick={() => setReviewsOnly(true)}
+                  className={`rounded-full px-2.5 py-1 ${reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+                >
+                  {t.reviewsOnly}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReviewsOnly(false)}
+                  className={`rounded-full px-2.5 py-1 ${!reviewsOnly ? "bg-stone-900 text-white" : "text-stone-600 hover:bg-stone-50"}`}
+                >
+                  {t.reviewsAll}
+                </button>
+              </div>
+            </div>
+
+            <NearSuggestPanel
+              active={wanderActive}
+              mode={wanderMode}
+              cats={wanderCats}
+              picks={wanderPicks}
+              poolSize={
+                wanderPool.filter((p) => {
+                  if (reviewsOnly && p.source_count <= 0) return false;
+                  if (wanderCats.length > 0 && !wanderCats.includes(p.category)) return false;
+                  return true;
+                }).length
+              }
+              loading={wanderLoading}
+              hasGps={hasUserGps}
+              origin={userLoc}
+              selectedPlaceId={selectedPlaceId}
+              onMode={(m) => void startWander(m)}
+              onToggleCat={toggleWanderCat}
+              onShuffle={shuffleWander}
+              onClose={closeWander}
+              onEnableLoc={() => {
+                void (async () => {
+                  const gps = await requestUserGps();
+                  if (gps && wanderMode) await runWander(wanderMode, wanderCats, gps);
+                })();
+              }}
+              onSelect={(place) => void openPlace(place)}
+            />
+
+            <TripBoard
+              origin={userLoc}
+              hasGps={hasUserGps}
+              onSelect={(place) => void openPlace(place)}
+            />
+
+            {showCategoryFilter && !wanderActive && (
+              <CategoryFilterBar
+                options={categoryOptions}
+                value={categoryFilter}
+                onChange={setCategoryFilter}
+                className="mt-3 flex flex-wrap gap-1.5"
+              />
+            )}
+            <p className="mt-2 text-[11px] font-medium tracking-wide text-stone-500">
+              {placesLoading
+                ? t.loadingNearby
+                : isSearching
+                  ? courseStops.length > 0
+                    ? t.briefStatus(courseStops.length)
+                    : t.searchResults(visiblePlaces.length, listCities.length)
+                  : categoryFilter !== "all"
+                    ? `${t.category[categoryFilter as Place["category"]] ?? categoryFilter} · ${t.placesCount(visiblePlaces.length)}`
+                    : t.loadedCount(title, places.length)}
+            </p>
+          </div>
+
+          <ul className="px-3 pb-4">
           {isSearching ? (
-            visiblePlaces.length === 0 && listCities.length === 0 && listDistricts.length === 0 ? (
-              <Empty />
-            ) : (
+            <>
+              {dayOffer && courseStops.length === 0 && (
+                <li className="mb-2">
+                  <button
+                    type="button"
+                    onClick={() => setQuery(`${dayOffer.name} 하루`)}
+                    className="w-full rounded-2xl bg-white/80 px-3 py-2.5 text-left text-[12px] font-semibold text-[#1b4965] ring-1 ring-stone-200 hover:bg-white"
+                  >
+                    {t.briefPlanDay(dayOffer.name)}
+                  </button>
+                </li>
+              )}
+              {briefNeedsLoc && (
+                <li className="mb-2 rounded-2xl bg-white/80 px-3 py-3 ring-1 ring-stone-200">
+                  <p className="text-[12px] leading-relaxed text-stone-600">{t.briefNeedsLoc}</p>
+                  <button
+                    type="button"
+                    onClick={() => void requestUserGps()}
+                    className="mt-2 rounded-full bg-[#1b4965] px-3 py-1.5 text-[11px] font-semibold text-white"
+                  >
+                    {t.nearSuggestEnableLoc}
+                  </button>
+                </li>
+              )}
+              {course && courseStops.length > 0 && (
+                <li className="mb-2">
+                  <TripBriefCard
+                    brief={course}
+                    stops={courseStops}
+                    onSwap={swapCourseStop}
+                    onSave={saveCourse}
+                    onSelect={(place) => void openPlace(place)}
+                  />
+                </li>
+              )}
+              {courseStops.length > 0 &&
+                (visiblePlaces.length > 0 || listCities.length > 0 || listDistricts.length > 0) && (
+                  <li className="mb-2 px-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowCoursePool((open) => !open)}
+                      className="text-[11px] font-semibold text-[#1b4965] hover:underline"
+                    >
+                      {showCoursePool ? t.briefLess : t.briefMore}
+                    </button>
+                  </li>
+                )}
+              {showSearchList &&
+                (visiblePlaces.length === 0 && listCities.length === 0 && listDistricts.length === 0 ? (
+                  courseStops.length === 0 && !briefNeedsLoc ? <Empty /> : null
+                ) : (
               <>
                 {visiblePlaces.map((place) => (
                   <PlaceListItem
@@ -1289,7 +1440,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                   </li>
                 ))}
               </>
-            )
+              ))}
+            </>
           ) : (
             <>
               {showFilteredPlaceList && (
@@ -1352,7 +1504,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                 ))}
             </>
           )}
-        </ul>
+          </ul>
+        </div>
       </aside>
 
       <div className="relative min-h-0 flex-1">

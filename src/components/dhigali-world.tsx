@@ -6,6 +6,7 @@ import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { LAGOON_TRACK } from "@/lib/dhigali-coaster";
 import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_CENTER, GEO_SPOTS, toLocal } from "@/lib/dhigali-geo";
+import { buildPavilion, DHIGALI_ROOM_KIND, furnishLagoonVilla, makeRoomKit } from "@/lib/dhigali-rooms";
 
 type Person = { id: string; lat: number; lng: number; color: string };
 
@@ -27,6 +28,7 @@ export function DhigaliWorld({
   mode,
   lift,
   onCoaster,
+  insideId,
   onLanded,
 }: {
   lat: number;
@@ -46,13 +48,14 @@ export function DhigaliWorld({
   mode: "orbit" | "drop" | "play";
   lift: number;
   onCoaster: boolean;
+  insideId: string | null;
   onLanded: () => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const landedRef = useRef(onLanded);
   landedRef.current = onLanded;
-  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading, guestName, shirt, mode, lift, onCoaster });
-  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading, guestName, shirt, mode, lift, onCoaster };
+  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading, guestName, shirt, mode, lift, onCoaster, insideId });
+  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading, guestName, shirt, mode, lift, onCoaster, insideId };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -61,8 +64,10 @@ export function DhigaliWorld({
     let frame = 0;
     const cleanups: (() => void)[] = [];
 
-    void import("three").then((THREE) => {
+    void import("three")
+      .then((THREE) => {
       if (dead || !hostRef.current) return;
+      try {
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(host.clientWidth, host.clientHeight);
@@ -189,19 +194,35 @@ export function DhigaliWorld({
       };
       const cream = new THREE.MeshStandardMaterial({ color: 0xf4efe4, roughness: 0.62 });
       const timber = new THREE.MeshStandardMaterial({ color: 0xe2c48a, roughness: 0.72 });
-      const glassMat = new THREE.MeshStandardMaterial({
-        color: 0xc5eef2,
-        roughness: 0.08,
-        metalness: 0.15,
-        transparent: true,
-        opacity: 0.55,
-      });
       const poolMat = new THREE.MeshStandardMaterial({ color: 0x2fbfc8, roughness: 0.18, metalness: 0.05 });
       const slatMat = new THREE.MeshStandardMaterial({ color: 0xd2b07a, roughness: 0.8 });
       const railMat = new THREE.MeshStandardMaterial({ color: 0xe4e8ee, metalness: 0.55, roughness: 0.28 });
-      const overwaterVilla = (x: number, z: number) => {
+      const kit = makeRoomKit(THREE);
+      const fans: import("three").Object3D[] = [];
+      const villaRooms: {
+        eye: Vector3;
+        look: Vector3;
+        stand: Vector3;
+        floorY: number;
+        trim: MeshStandardMaterial;
+      }[] = [];
+      const pavilionRooms = new Map<string, { eye: Vector3; look: Vector3; stand: Vector3; floorY: number }>();
+      const roomLight = new THREE.PointLight(0xfff0dd, 0, 9, 2);
+      scene.add(roomLight);
+      cleanups.push(() => {
+        for (const mat of kit.materials) {
+          const mapped = mat as MeshStandardMaterial;
+          if (mapped.map) mapped.map.dispose();
+          mat.dispose();
+        }
+        roomLight.dispose();
+      });
+      const centerLocal = toLocal(DHIGALI_CENTER.lat, DHIGALI_CENTER.lng);
+      const centerWorld = new THREE.Vector3(centerLocal.x, 0, -centerLocal.z);
+      const overwaterVilla = (east: number, north: number, faceX: number, faceZ: number) => {
         const g = new THREE.Group();
-        g.position.set(x, 0, -z);
+        g.position.set(east, 0, -north);
+        g.rotation.y = Math.atan2(faceX, faceZ);
         for (const [px, pz] of [
           [-2.4, -1.5],
           [2.4, -1.5],
@@ -212,25 +233,14 @@ export function DhigaliWorld({
           pillar.position.set(px, 1.25, pz);
           g.add(pillar);
         }
-        const deck = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.16, 5), timber);
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.16, 5), kit.teakFloor);
         deck.position.y = 2.45;
+        deck.receiveShadow = true;
         g.add(deck);
-        const house = new THREE.Mesh(new THREE.BoxGeometry(5.4, 2.15, 3.5), cream);
-        house.position.set(0.3, 3.6, -0.35);
-        house.castShadow = true;
-        g.add(house);
         const slab = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.16, 4.3), cream);
         slab.position.set(0.3, 4.75, -0.35);
         g.add(slab);
-        const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.85, 0.05), glassMat);
-        door.position.set(0.15, 3.45, 1.42);
-        g.add(door);
-        const curtain = new THREE.Mesh(
-          new THREE.BoxGeometry(0.12, 1.7, 0.08),
-          new THREE.MeshStandardMaterial({ color: 0xf3e6cf, roughness: 0.9 }),
-        );
-        curtain.position.set(1.15, 3.45, 1.46);
-        g.add(curtain);
+        const gaze = furnishLagoonVilla(THREE, g, kit, fans);
         const rim = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.55, 2.3), cream);
         rim.position.set(-1.1, 1.85, 3.35);
         g.add(rim);
@@ -251,6 +261,15 @@ export function DhigaliWorld({
           g.add(step);
         }
         scene.add(g);
+        g.updateMatrixWorld(true);
+        const lift = (v: Vector3) => v.clone().applyMatrix4(g.matrixWorld);
+        villaRooms.push({
+          eye: lift(gaze.eye),
+          look: lift(gaze.look),
+          stand: lift(gaze.stand),
+          floorY: gaze.floorY,
+          trim: gaze.trim.material as MeshStandardMaterial,
+        });
       };
 
       const bulbMat = new THREE.MeshStandardMaterial({
@@ -379,7 +398,18 @@ export function DhigaliWorld({
               walked += Math.hypot(cur.x - prev.x, cur.z - prev.z);
               if (walked > 22) {
                 walked = 0;
-                overwaterVilla(cur.x, cur.z);
+                const tEast = cur.x - prev.x;
+                const tNorth = cur.z - prev.z;
+                const tlen = Math.hypot(tEast, tNorth) || 1;
+                const wx = tEast / tlen;
+                const wz = -tNorth / tlen;
+                const awayX = cur.x - centerWorld.x;
+                const awayZ = -cur.z - centerWorld.z;
+                const scoreA = -wz * awayX + wx * awayZ;
+                const scoreB = wz * awayX + -wx * awayZ;
+                const faceX = scoreA >= scoreB ? -wz : wz;
+                const faceZ = scoreA >= scoreB ? wx : -wx;
+                overwaterVilla(cur.x, cur.z, faceX, faceZ);
               }
               prev = cur;
             }
@@ -405,30 +435,18 @@ export function DhigaliWorld({
       const buildings = new Map<string, Mesh>();
       for (const spot of GEO_SPOTS) {
         const look = spotLook[spot.id];
-        if (!look) continue;
+        const kind = DHIGALI_ROOM_KIND[spot.id];
+        if (!look || !kind) continue;
         const p = toLocal(spot.lat, spot.lng);
-        const wall = new THREE.Mesh(
-          new THREE.CylinderGeometry(look.r * 0.85, look.r, look.h, 14),
-          new THREE.MeshStandardMaterial({ color: look.wall, roughness: 0.75 }),
+        const built = buildPavilion(
+          THREE,
+          scene,
+          { id: spot.id, x: p.x, z: -p.z, radius: look.r, height: look.h, accent: look.roof, kind },
+          kit,
+          fans,
         );
-        wall.position.y = look.h / 2 + 0.4;
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        const roof = new THREE.Mesh(
-          new THREE.CylinderGeometry(look.r * 1.08, look.r * 1.08, 0.22, 16),
-          new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.55 }),
-        );
-        roof.position.y = look.h + 0.55;
-        const band = new THREE.Mesh(
-          new THREE.CylinderGeometry(look.r * 1.1, look.r * 1.1, 0.12, 16),
-          new THREE.MeshStandardMaterial({ color: look.roof, roughness: 0.6 }),
-        );
-        band.position.y = look.h + 0.28;
-        const group = new THREE.Group();
-        group.add(wall, roof, band);
-        group.position.set(p.x, 0, -p.z);
-        scene.add(group);
-        buildings.set(spot.id, wall);
+        buildings.set(spot.id, built.highlight);
+        pavilionRooms.set(spot.id, built);
       }
 
       DHIGALI_COAST.forEach(([la, ln], i) => {
@@ -715,6 +733,25 @@ export function DhigaliWorld({
       const npcs = new Map<string, ReturnType<typeof makeWalker>>();
       const lastNpc = new Map<string, Vector3>();
       let orbit = 0.35;
+      const slide = new THREE.Vector3();
+      const indoorEye = new THREE.Vector3();
+      const indoorLook = new THREE.Vector3();
+      const pickRoom = (id: string | null, x: number, z: number) => {
+        if (!id) return null;
+        if (id === "villas") {
+          let best: (typeof villaRooms)[number] | null = null;
+          let bestD = 80 * 80;
+          for (const villa of villaRooms) {
+            const d = (villa.stand.x - x) ** 2 + (villa.stand.z - z) ** 2;
+            if (d < bestD) {
+              bestD = d;
+              best = villa;
+            }
+          }
+          return best;
+        }
+        return pavilionRooms.get(id) ?? null;
+      };
       const onDown = (e: PointerEvent) => {
         const startX = e.clientX;
         const start = orbit;
@@ -757,6 +794,8 @@ export function DhigaliWorld({
           dropping = false;
         }
         const here = toLocal(now.lat, now.lng);
+        const portal =
+          now.mode === "play" && !now.underwater && !now.onCoaster ? pickRoom(now.insideId, here.x, -here.z) : null;
         const stood = you.g.position.clone();
         const busAt = toLocal(now.busLat, now.busLng);
         bus.position.set(busAt.x, 0, -busAt.z);
@@ -785,6 +824,7 @@ export function DhigaliWorld({
           nameSprite.position.set(0, 2.55, 0);
         }
         clouds.rotation.y += dt * 0.02;
+        for (const fan of fans) fan.rotation.y += dt * 2.4;
         for (const performer of [...duo, trumpet, sax]) {
           if (!performer) continue;
           performer.phase += 0.08;
@@ -795,6 +835,12 @@ export function DhigaliWorld({
         for (const part of you.limbs) part.material = now.swimsuit ? you.skinMat : you.cloth;
         you.g.position.set(here.x, airY, -here.z);
         you.g.rotation.y = -((now.heading * Math.PI) / 180);
+        if (portal) {
+          you.g.visible = true;
+          you.g.position.copy(portal.stand);
+          you.g.rotation.y = Math.atan2(-(portal.look.x - portal.stand.x), -(portal.look.z - portal.stand.z));
+          if (nameSprite.parent === you.g) nameSprite.position.set(0, portal.floorY > 1.2 ? 1.7 : 2.15, 0);
+        }
         swing(you, stood.distanceTo(you.g.position));
         const hour = (now.minutes / 60) % 24;
         const arc = ((hour - 6) / 12) * Math.PI;
@@ -830,6 +876,21 @@ export function DhigaliWorld({
           mat.emissive.set(id === now.nearId ? 0xf0c27a : 0x000000);
           mat.emissiveIntensity = id === now.nearId ? 0.45 : 0;
         }
+        let closestVilla: (typeof villaRooms)[number] | null = null;
+        let closestD = Infinity;
+        for (const villa of villaRooms) {
+          villa.trim.emissive.set(0x000000);
+          villa.trim.emissiveIntensity = 0;
+          const d = (villa.stand.x - here.x) ** 2 + (villa.stand.z + here.z) ** 2;
+          if (d < closestD) {
+            closestD = d;
+            closestVilla = villa;
+          }
+        }
+        if (now.nearId === "villas" && closestVilla) {
+          closestVilla.trim.emissive.set(0xf0c27a);
+          closestVilla.trim.emissiveIntensity = 0.55;
+        }
         for (const person of now.people) {
           let walker = npcs.get(person.id);
           if (!walker) {
@@ -856,7 +917,19 @@ export function DhigaliWorld({
         fish.rotation.y += 0.01;
         let desired: Vector3;
         let look: Vector3;
-        if (now.mode === "orbit") {
+        roomLight.intensity = 0;
+        if (portal) {
+          slide.set(-(portal.look.z - portal.eye.z), 0, portal.look.x - portal.eye.x);
+          if (slide.lengthSq() < 1e-4) slide.set(1, 0, 0);
+          slide.normalize().multiplyScalar(Math.sin(orbit) * 0.55);
+          indoorEye.copy(portal.eye).add(slide);
+          indoorLook.copy(portal.look).addScaledVector(slide, 0.15);
+          desired = indoorEye;
+          look = indoorLook;
+          roomLight.intensity = elev > 0.2 ? 26 : 44;
+          roomLight.position.copy(portal.eye);
+          roomLight.position.y = portal.floorY + 1.65;
+        } else if (now.mode === "orbit") {
           preview += dt * 0.15;
           const focus = dock ?? new THREE.Vector3(here.x, 4, -here.z);
           const dir = new THREE.Vector3(focus.x, 0, focus.z);
@@ -893,7 +966,7 @@ export function DhigaliWorld({
           look = new THREE.Vector3(here.x, 1.15 + bob, -here.z);
         }
         if (camera.position.lengthSq() < 1) camera.position.copy(desired);
-        else camera.position.lerp(desired, now.mode === "orbit" ? 0.05 : 0.12);
+        else camera.position.lerp(desired, portal ? 0.1 : now.mode === "orbit" ? 0.05 : 0.12);
         camera.lookAt(look);
         if (now.fireworks) {
           nextBurst -= 0.016;
@@ -941,7 +1014,19 @@ export function DhigaliWorld({
         renderer.dispose();
         host.removeChild(renderer.domElement);
       });
-    });
+      } catch (error) {
+        console.error(error);
+        if (!host.querySelector("canvas")) {
+          host.textContent = error instanceof Error ? error.message : String(error);
+        }
+      }
+    })
+      .catch((error: unknown) => {
+        console.error(error);
+        if (!host.querySelector("canvas")) {
+          host.textContent = error instanceof Error ? error.message : String(error);
+        }
+      });
 
     return () => {
       dead = true;

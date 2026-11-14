@@ -20,9 +20,10 @@ import {
 } from "@/lib/dhigali-geo";
 import { haversineM, offsetLatLng } from "@/lib/travel-mode";
 import { DhigaliWorld } from "@/components/dhigali-world";
+import { DHIGALI_ROOM_COPY } from "@/lib/dhigali-rooms";
 import { dhigaliAmbience } from "@/lib/sound/dhigali-ambience";
 
-type Phase = "gate" | "fly" | "island";
+type Phase = "gate" | "arrive" | "fly" | "island";
 
 const GUEST_NAMES = [
   "라군을 걷는 손님",
@@ -73,7 +74,7 @@ export function DhigaliExperience() {
   const [guest, setGuest] = useState(GUEST_NAMES[0] ?? "손님");
   const [shirt, setShirt] = useState(SHIRTS[6] ?? 0x8ed9b4);
   const [pos, setPos] = useState({ lat: ARRIVAL.lat, lng: ARRIVAL.lng, heading: 0 });
-  const [near, setNear] = useState<GeoSpot | null>(null);
+  const [near, setNear] = useState<GeoSpot | null>(() => nearestGeoSpot(ARRIVAL.lat, ARRIVAL.lng, 42));
   const [done, setDone] = useState<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [npcT, setNpcT] = useState(0);
@@ -86,6 +87,7 @@ export function DhigaliExperience() {
   const [swimsuit, setSwimsuit] = useState(false);
   const [aboard, setAboard] = useState(false);
   const [onCoaster, setOnCoaster] = useState(false);
+  const [inside, setInside] = useState<string | null>(null);
   const [lift, setLift] = useState(0);
   const [bus, setBus] = useState({ lat: BUS_ROUTE[0]?.lat ?? ARRIVAL.lat, lng: BUS_ROUTE[0]?.lng ?? ARRIVAL.lng, heading: 90 });
   const underwaterRef = useRef(false);
@@ -109,11 +111,15 @@ export function DhigaliExperience() {
   const movingRef = useRef(false);
   const npcTRef = useRef(0);
   const nearIdRef = useRef<string | null>(null);
+  const insideRef = useRef<string | null>(null);
+  const afterArriveRef = useRef<"fly" | "island">("fly");
+  const arrivalDoneRef = useRef(false);
   posRef.current = pos;
   rideRef.current = ride;
   underwaterRef.current = underwater;
   aboardRef.current = aboard;
   coasterRef.current = onCoaster;
+  insideRef.current = inside;
 
   useEffect(() => {
     const saved = localStorage.getItem("pn-dhigali-guest");
@@ -164,6 +170,7 @@ export function DhigaliExperience() {
       if (e.key === "s" || e.key === "S" || e.key === "ArrowDown") keys.current.down = true;
       if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.current.left = true;
       if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.current.right = true;
+      if (e.key === "Escape") setInside(null);
     };
     const up = (e: KeyboardEvent) => {
       if (e.key === "w" || e.key === "W" || e.key === "ArrowUp") keys.current.up = false;
@@ -242,6 +249,10 @@ export function DhigaliExperience() {
           nearIdRef.current = found?.id ?? null;
           setNear(found);
         }
+        raf = requestAnimationFrame(tick);
+        return;
+      }
+      if (insideRef.current) {
         raf = requestAnimationFrame(tick);
         return;
       }
@@ -443,6 +454,19 @@ export function DhigaliExperience() {
     };
   }, [phase]);
 
+  function beginArrival(next: "fly" | "island") {
+    afterArriveRef.current = next;
+    arrivalDoneRef.current = false;
+    void dhigaliAmbience.start();
+    setPhase("arrive");
+  }
+
+  function finishArrival() {
+    if (arrivalDoneRef.current) return;
+    arrivalDoneRef.current = true;
+    setPhase(afterArriveRef.current);
+  }
+
   async function enterAdmin() {
     setCodeError("");
     const ok = await checkDhigaliAdmin(code);
@@ -493,9 +517,20 @@ export function DhigaliExperience() {
     setLog((prev) => (prev[0] === line ? prev : [line, ...prev].slice(0, 6)));
     setDone((prev) => (prev.includes(near.id) ? prev : [...prev, near.id]));
     if (near.id === "jetty") {
+      setInside(null);
       setUnderwater(true);
       dhigaliAmbience.dive(true);
     }
+  }
+
+  function enterRoom(id: string) {
+    const copy = DHIGALI_ROOM_COPY[id];
+    if (!copy) return;
+    destRef.current = null;
+    setDestName(null);
+    setInside(id);
+    setDone((prev) => (prev.includes(id) ? prev : [...prev, id]));
+    setLog((prev) => (prev[0] === copy.line ? prev : [copy.line, ...prev].slice(0, 6)));
   }
 
   function goTo(spot: GeoSpot) {
@@ -562,9 +597,10 @@ export function DhigaliExperience() {
         busHeading={bus.heading}
         guestName={guest.trim() || "손님"}
         shirt={shirt}
-        mode={phase === "gate" ? "orbit" : phase === "fly" ? "drop" : "play"}
+        mode={phase === "fly" ? "drop" : phase === "island" ? "play" : "orbit"}
         lift={lift}
         onCoaster={onCoaster}
+        insideId={phase === "island" ? inside : null}
         onLanded={() => setPhase("island")}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
@@ -574,7 +610,7 @@ export function DhigaliExperience() {
             <p className="text-[11px] tracking-[0.22em] text-amber-100/80">DHIGALI · 라 환초</p>
             <h1 className="font-serif mt-2 text-3xl">디갈리에 오신 걸 환영해요</h1>
             <p className="mt-3 text-sm leading-relaxed text-white/75">
-              낙하산을 타고 라 환초의 섬으로 내려간다. 이름은 머리 위에 보인다. 관리자 코드가 있으면 바로 모래 위다.
+              잔교를 따라 들어선 뒤, 낙하산을 타고 라 환초의 섬으로 내려간다. 이름은 머리 위에 보인다. 관리자 코드가 있으면 바로 모래 위다.
             </p>
             <label className="mt-4 block text-xs text-white/60">
               이름
@@ -615,10 +651,7 @@ export function DhigaliExperience() {
             </div>
             <button
               type="button"
-              onClick={() => {
-                void dhigaliAmbience.start();
-                setPhase("fly");
-              }}
+              onClick={() => beginArrival("fly")}
               className="mt-5 w-full rounded-2xl bg-gradient-to-r from-amber-200 via-orange-200 to-rose-300 py-3 text-sm font-semibold text-[#1a1208]"
             >
               낙하산 타고 입장하기
@@ -651,6 +684,32 @@ export function DhigaliExperience() {
               </Link>
             </div>
           </div>
+        </div>
+      )}
+      {phase === "arrive" && (
+        <div className="absolute inset-0 z-30 bg-black">
+          <video
+            className="size-full object-cover"
+            src="/dhigali-arrival.mp4"
+            poster="/dhigali-arrival.jpg"
+            autoPlay
+            muted
+            playsInline
+            preload="auto"
+            onEnded={finishArrival}
+            onError={finishArrival}
+          />
+          <div className="pointer-events-none absolute inset-x-0 top-8 text-center">
+            <p className="text-[11px] tracking-[0.22em] text-amber-100/90">DHIGALI · 라 환초</p>
+            <h1 className="font-serif mt-2 text-3xl text-white drop-shadow">잔교를 따라 들어갑니다</h1>
+          </div>
+          <button
+            type="button"
+            onClick={finishArrival}
+            className="absolute right-4 bottom-6 rounded-2xl bg-black/55 px-4 py-3 text-sm font-semibold"
+          >
+            건너뛰기 ▶
+          </button>
         </div>
       )}
       {phase === "fly" && (
@@ -798,7 +857,10 @@ export function DhigaliExperience() {
         {(onCoaster || haversineM(pos.lat, pos.lng, COASTER_STATION.lat, COASTER_STATION.lng) < 110) && (
           <button
             type="button"
-            onClick={boardCoaster}
+            onClick={() => {
+              setInside(null);
+              boardCoaster();
+            }}
             className="rounded-2xl bg-gradient-to-r from-amber-200 to-rose-300 px-3 py-2 text-left text-[12px] font-semibold text-[#1a1208]"
           >
             {onCoaster ? "코스터에서 내리기" : "라군 코스터 타기"}
@@ -810,11 +872,29 @@ export function DhigaliExperience() {
         {(aboard || haversineM(pos.lat, pos.lng, bus.lat, bus.lng) < 16) && (
           <button
             type="button"
-            onClick={() => setAboard((on) => !on)}
+            onClick={() => {
+              setInside(null);
+              setAboard((on) => !on);
+            }}
             className="rounded-2xl bg-[#1b6f8a] px-3 py-2 text-left text-[12px] font-semibold text-white"
           >
             {aboard ? "버스에서 내리기" : "버스 타기"}
           </button>
+        )}
+        {inside && DHIGALI_ROOM_COPY[inside] && (
+          <div className="rounded-2xl bg-white/95 p-3 text-stone-900">
+            <p className="text-[11px] text-stone-500">안</p>
+            <p className="font-semibold">{DHIGALI_ROOM_COPY[inside].title}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-stone-600">{DHIGALI_ROOM_COPY[inside].line}</p>
+            <p className="mt-1 text-[11px] text-stone-500">화면을 끌면 방 안을 둘러봅니다.</p>
+            <button
+              type="button"
+              onClick={() => setInside(null)}
+              className="mt-2 rounded-full bg-[#1b4965] px-3 py-1.5 text-[12px] font-semibold text-white"
+            >
+              밖으로
+            </button>
+          </div>
         )}
         {near ? (
           <div className="rounded-2xl bg-white/95 p-3 text-stone-900">
@@ -829,6 +909,15 @@ export function DhigaliExperience() {
               >
                 {near.id === "jetty" ? "스노클 들어가기" : "참여"}
               </button>
+              {DHIGALI_ROOM_COPY[near.id] && inside !== near.id && (
+                <button
+                  type="button"
+                  onClick={() => enterRoom(near.id)}
+                  className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-[#1b4965] ring-1 ring-[#1b4965]"
+                >
+                  안으로
+                </button>
+              )}
               {underwater && (
                 <button
                   type="button"
@@ -848,8 +937,8 @@ export function DhigaliExperience() {
         )}
         {log.length > 0 && (
           <ul className="rounded-2xl bg-black/35 px-3 py-2 text-[12px] leading-relaxed">
-            {log.map((line) => (
-              <li key={line}>· {line}</li>
+            {log.map((line, index) => (
+              <li key={`${index}-${line}`}>· {line}</li>
             ))}
           </ul>
         )}

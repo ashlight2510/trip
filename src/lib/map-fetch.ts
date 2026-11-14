@@ -1,4 +1,12 @@
 import type { MapPlace } from "@/db/repo";
+import type { TripBrief } from "@/lib/trip-brief";
+
+export type MapSearchResponse = {
+  places: MapPlace[];
+  brief: TripBrief | null;
+  dayOffer: { name: string } | null;
+  briefNeedsLoc: boolean;
+};
 
 export function mergePlaces(prev: MapPlace[], next: MapPlace[]): MapPlace[] {
   const map = new Map(prev.map((p) => [p.id, p]));
@@ -35,6 +43,25 @@ export async function fetchPlaces(params: Record<string, string | number | undef
   if (!res.ok) throw new Error(`places ${res.status}`);
   const data = (await res.json()) as { places: MapPlace[] };
   return data.places ?? [];
+}
+
+export async function fetchMapSearch(
+  params: Record<string, string | number | undefined>,
+): Promise<MapSearchResponse> {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v == null || v === "") continue;
+    qs.set(k, String(v));
+  }
+  const res = await fetch(`/api/map/places?${qs.toString()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`places ${res.status}`);
+  const data = (await res.json()) as Partial<MapSearchResponse>;
+  return {
+    places: data.places ?? [],
+    brief: data.brief ?? null,
+    dayOffer: data.dayOffer ?? null,
+    briefNeedsLoc: Boolean(data.briefNeedsLoc),
+  };
 }
 
 export async function fetchPlaceDetail(id: string): Promise<MapPlace | null> {
