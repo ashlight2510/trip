@@ -75,6 +75,7 @@ export function DhigaliExperience() {
   const [soundOn, setSoundOn] = useState(true);
   const [fireworks, setFireworks] = useState(false);
   const [underwater, setUnderwater] = useState(false);
+  const [swimsuit, setSwimsuit] = useState(false);
   const underwaterRef = useRef(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [bar, setBar] = useState({ x: 16, y: 16 });
@@ -457,6 +458,7 @@ export function DhigaliExperience() {
         nearId={near?.id ?? null}
         fireworks={fireworks}
         underwater={underwater}
+        swimsuit={swimsuit}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
       <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
@@ -480,6 +482,7 @@ export function DhigaliExperience() {
           </Link>
         </div>
         <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
+          <button type="button" onClick={() => setSwimsuit((on) => !on)} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${swimsuit ? "bg-white text-[#073044]" : "bg-black/40"}`}>{swimsuit ? "수영복" : "옷"}</button>
           <button type="button" onClick={() => setRide("walk")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/40"}`}>도보</button>
           <button type="button" onClick={() => setRide("run")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "run" ? "bg-white text-[#073044]" : "bg-black/40"}`}>달리기</button>
           <button type="button" onClick={() => setRide("buggy")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/40"}`}>버기</button>

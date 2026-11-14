@@ -17,6 +17,7 @@ export function DhigaliWorld({
   people,
   fireworks,
   underwater,
+  swimsuit,
 }: {
   lat: number;
   lng: number;
@@ -26,10 +27,11 @@ export function DhigaliWorld({
   people: Person[];
   fireworks: boolean;
   underwater: boolean;
+  swimsuit: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater });
-  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater };
+  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit });
+  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -195,11 +197,15 @@ export function DhigaliWorld({
       function makeWalker(color: number) {
         const g = new THREE.Group();
         const cloth = new THREE.MeshStandardMaterial({ color });
-        const skin = new THREE.MeshStandardMaterial({ color: 0xf1c7a5 });
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xf1c7a5 });
+        const suitMat = new THREE.MeshStandardMaterial({ color: 0x1b6f8a });
         const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.58, 0.26), cloth);
         torso.position.y = 1.18;
-        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), skin);
+        const head = new THREE.Mesh(new THREE.SphereGeometry(0.18, 12, 8), skinMat);
         head.position.y = 1.64;
+        const shorts = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.22, 0.28), suitMat);
+        shorts.position.y = 0.96;
+        shorts.visible = false;
         const limb = (x: number, y: number, tall: number) => {
           const pivot = new THREE.Group();
           pivot.position.set(x, y, 0);
@@ -207,14 +213,26 @@ export function DhigaliWorld({
           part.position.y = -tall / 2;
           pivot.add(part);
           g.add(pivot);
-          return pivot;
+          return { pivot, part };
         };
         const armL = limb(-0.32, 1.38, 0.52);
         const armR = limb(0.32, 1.38, 0.52);
         const legL = limb(-0.12, 0.88, 0.72);
         const legR = limb(0.12, 0.88, 0.72);
-        g.add(torso, head);
-        return { g, armL, armR, legL, legR, phase: 0 };
+        g.add(torso, head, shorts);
+        return {
+          g,
+          armL: armL.pivot,
+          armR: armR.pivot,
+          legL: legL.pivot,
+          legR: legR.pivot,
+          torso,
+          shorts,
+          cloth,
+          skinMat,
+          limbs: [armL.part, armR.part, legL.part, legR.part],
+          phase: 0,
+        };
       }
       const swing = (walker: ReturnType<typeof makeWalker>, stride: number) => {
         if (stride > 0.015) walker.phase += Math.min(0.55, stride * 1.6);
@@ -288,6 +306,9 @@ export function DhigaliWorld({
         const here = toLocal(now.lat, now.lng);
         const stood = you.g.position.clone();
         you.g.visible = !now.underwater;
+        you.shorts.visible = now.swimsuit;
+        you.torso.material = now.swimsuit ? you.skinMat : you.cloth;
+        for (const part of you.limbs) part.material = now.swimsuit ? you.skinMat : you.cloth;
         you.g.position.set(here.x, 0, -here.z);
         you.g.rotation.y = -((now.heading * Math.PI) / 180);
         swing(you, stood.distanceTo(you.g.position));
