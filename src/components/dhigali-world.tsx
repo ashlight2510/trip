@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Points, PointsMaterial, Vector3 } from "three";
+import type { Color, Mesh, MeshBasicMaterial, MeshStandardMaterial, Points, PointsMaterial, Vector3 } from "three";
 import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_CENTER, GEO_SPOTS, toLocal } from "@/lib/dhigali-geo";
@@ -16,6 +16,7 @@ export function DhigaliWorld({
   nearId,
   people,
   fireworks,
+  underwater,
 }: {
   lat: number;
   lng: number;
@@ -24,10 +25,11 @@ export function DhigaliWorld({
   nearId: string | null;
   people: Person[];
   fireworks: boolean;
+  underwater: boolean;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks });
-  live.current = { lat, lng, heading, minutes, nearId, people, fireworks };
+  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater });
+  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -60,12 +62,40 @@ export function DhigaliWorld({
       const skyNight = new THREE.Color(0x07141c);
       const skyMix = new THREE.Color();
 
-      const water = new THREE.Mesh(
-        new THREE.CircleGeometry(1800, 48),
-        new THREE.MeshStandardMaterial({ color: 0x0b6e8a, roughness: 0.35 }),
-      );
+      const waterMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uTime: { value: 0 },
+          uShallow: { value: new THREE.Color(0x3ec6c6) },
+          uDeep: { value: new THREE.Color(0x0a4f66) },
+        },
+        vertexShader: `
+          uniform float uTime;
+          varying float vWave;
+          void main() {
+            vec3 p = position;
+            float w = sin(p.x * 0.045 + uTime * 0.9) * 0.55 + cos(p.y * 0.038 + uTime * 0.65) * 0.4;
+            p.z += w;
+            vWave = w;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 uShallow;
+          uniform vec3 uDeep;
+          varying float vWave;
+          void main() {
+            float t = clamp(vWave * 0.55 + 0.5, 0.0, 1.0);
+            gl_FragColor = vec4(mix(uDeep, uShallow, t), 1.0);
+          }
+        `,
+      });
+      const water = new THREE.Mesh(new THREE.CircleGeometry(1800, 80), waterMat);
       water.rotation.x = -Math.PI / 2;
       scene.add(water);
+      const fog = new THREE.Fog(0x8ecae6, 40, 520);
+      scene.fog = fog;
+      const uShallow = waterMat.uniforms.uShallow!.value as Color;
+      const uDeep = waterMat.uniforms.uDeep!.value as Color;
 
       const shape = new THREE.Shape();
       DHIGALI_COAST.forEach(([la, ln], i) => {
@@ -104,6 +134,29 @@ export function DhigaliWorld({
         } else {
           const color = feature.kind === "pier" ? 0xf7f1e4 : feature.kind === "service" ? 0xe6c98a : 0xffffff;
           scene.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({ color })));
+          if (feature.kind === "pier" && feature.points.length >= 8) {
+            let walked = 0;
+            let prev = toLocal(feature.points[0]![0], feature.points[0]![1]);
+            for (let i = 1; i < feature.points.length; i++) {
+              const cur = toLocal(feature.points[i]![0], feature.points[i]![1]);
+              walked += Math.hypot(cur.x - prev.x, cur.z - prev.z);
+              if (walked > 16) {
+                walked = 0;
+                const pole = new THREE.Mesh(
+                  new THREE.CylinderGeometry(0.12, 0.16, 2.2, 6),
+                  new THREE.MeshStandardMaterial({ color: 0xc8b89a }),
+                );
+                pole.position.set(cur.x, 1.1, -cur.z);
+                const deck = new THREE.Mesh(
+                  new THREE.BoxGeometry(6.5, 2.2, 4.8),
+                  new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.7 }),
+                );
+                deck.position.set(cur.x, 2.4, -cur.z);
+                scene.add(pole, deck);
+              }
+              prev = cur;
+            }
+          }
         }
       }
 
@@ -174,6 +227,17 @@ export function DhigaliWorld({
 
       const you = makeWalker(0xf4f7fb);
       scene.add(you.g);
+      const fish = new THREE.Group();
+      for (let i = 0; i < 14; i++) {
+        const body = new THREE.Mesh(
+          new THREE.ConeGeometry(0.18, 0.7, 6),
+          new THREE.MeshStandardMaterial({ color: i % 2 ? 0xffd166 : 0x7bdff2 }),
+        );
+        body.rotation.z = Math.PI / 2;
+        body.position.set((i % 5) * 1.4, -1.2 - (i % 3) * 0.4, i * 0.8);
+        fish.add(body);
+      }
+      scene.add(fish);
 
       type Spark = { points: Points; life: number; vel: Vector3[] };
       const sparks: Spark[] = [];
@@ -223,6 +287,7 @@ export function DhigaliWorld({
         const now = live.current;
         const here = toLocal(now.lat, now.lng);
         const stood = you.g.position.clone();
+        you.g.visible = !now.underwater;
         you.g.position.set(here.x, 0, -here.z);
         you.g.rotation.y = -((now.heading * Math.PI) / 180);
         swing(you, stood.distanceTo(you.g.position) > 0.015);
@@ -240,8 +305,12 @@ export function DhigaliWorld({
         else if (elev > -0.05) skyMix.copy(rising ? skyRise : skySet).lerp(skyDay, (elev + 0.05) / 0.3);
         else skyMix.copy(skyNight).lerp(rising ? skyRise : skySet, Math.max(0, (elev + 0.35) / 0.3));
         scene.background = skyMix;
-        const sea = water.material as MeshStandardMaterial;
-        sea.color.set(elev > 0.2 ? 0x0e7490 : setting || rising ? 0x8a4a3a : 0x062433);
+        fog.color.copy(now.underwater ? uDeep : skyMix);
+        fog.near = now.underwater ? 1 : 40;
+        fog.far = now.underwater ? 26 : 520;
+        waterMat.uniforms.uTime!.value += 0.016;
+        uShallow.set(setting || rising ? 0xe08a62 : 0x3ec6c6);
+        uDeep.set(now.underwater ? 0x06384c : setting || rising ? 0x5a3a48 : 0x0a4f66);
         sun.intensity = elev > 0 ? 0.35 + elev * 0.9 : 0.15;
         sun.color.set(setting || rising ? 0xffb067 : 0xfff4dd);
         (sunDisk.material as MeshBasicMaterial).color.set(setting || rising ? 0xffb15a : 0xfff6d4);
@@ -269,10 +338,20 @@ export function DhigaliWorld({
           lastNpc.set(person.id, next);
         }
         const ang = (now.heading * Math.PI) / 180 + orbit;
-        const desired = new THREE.Vector3(here.x - Math.sin(ang) * 5.2, 2.5, -here.z + Math.cos(ang) * 5.2);
+        const bob = Math.sin(you.phase) * (stood.distanceTo(you.g.position) > 0.015 ? 0.06 : 0);
+        fish.visible = now.underwater;
+        fish.position.set(here.x, 0, -here.z);
+        fish.rotation.y += 0.01;
+        const desired = now.underwater
+          ? new THREE.Vector3(here.x, -1.15, -here.z)
+          : new THREE.Vector3(here.x - Math.sin(ang) * 4.2, 1.85 + bob, -here.z + Math.cos(ang) * 4.2);
         if (camera.position.lengthSq() < 1) camera.position.copy(desired);
-        else camera.position.lerp(desired, 0.18);
-        camera.lookAt(here.x, 1.35, -here.z);
+        else camera.position.lerp(desired, now.underwater ? 0.12 : 0.16);
+        if (now.underwater) {
+          camera.lookAt(here.x + Math.sin(now.heading * Math.PI / 180) * 6, -1.25, -here.z - Math.cos(now.heading * Math.PI / 180) * 6);
+        } else {
+          camera.lookAt(here.x, 1.25 + bob, -here.z);
+        }
         if (now.fireworks) {
           nextBurst -= 0.016;
           if (nextBurst <= 0) {

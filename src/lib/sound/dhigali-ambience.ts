@@ -2,7 +2,9 @@ import { generators, type Voice } from "@/lib/sound/generators";
 
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
+let air: BiquadFilterNode | null = null;
 let voices: Voice[] = [];
+let lastStep = 0;
 
 function layer(kind: "waves" | "wind" | "gulls", level: number) {
   if (!ctx || !master) return;
@@ -18,7 +20,10 @@ export const dhigaliAmbience = {
       ctx = new AudioContext();
       master = ctx.createGain();
       master.gain.value = 0.75;
-      master.connect(ctx.destination);
+      air = ctx.createBiquadFilter();
+      air.type = "lowpass";
+      air.frequency.value = 18000;
+      master.connect(air).connect(ctx.destination);
       layer("waves", 0.55);
       layer("wind", 0.22);
       layer("gulls", 0.07);
@@ -29,6 +34,29 @@ export const dhigaliAmbience = {
   setOn(on: boolean) {
     if (!ctx || !master) return;
     master.gain.setTargetAtTime(on ? 0.75 : 0, ctx.currentTime, 0.08);
+  },
+
+  dive(under: boolean) {
+    if (!ctx || !air) return;
+    air.frequency.setTargetAtTime(under ? 420 : 18000, ctx.currentTime, 0.15);
+  },
+
+  step() {
+    if (!ctx || !master || ctx.state !== "running") return;
+    const now = performance.now();
+    if (now - lastStep < 380) return;
+    lastStep = now;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(90 + Math.random() * 40, t);
+    const env = ctx.createGain();
+    env.gain.setValueAtTime(0.0001, t);
+    env.gain.exponentialRampToValueAtTime(0.12, t + 0.01);
+    env.gain.exponentialRampToValueAtTime(0.0001, t + 0.09);
+    osc.connect(env).connect(master);
+    osc.start(t);
+    osc.stop(t + 0.1);
   },
 
   boom() {
@@ -67,5 +95,6 @@ export const dhigaliAmbience = {
     void ctx?.close();
     ctx = null;
     master = null;
+    air = null;
   },
 };

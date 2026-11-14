@@ -74,6 +74,8 @@ export function DhigaliExperience() {
   const [destName, setDestName] = useState<string | null>(null);
   const [soundOn, setSoundOn] = useState(true);
   const [fireworks, setFireworks] = useState(false);
+  const [underwater, setUnderwater] = useState(false);
+  const underwaterRef = useRef(false);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [bar, setBar] = useState({ x: 16, y: 16 });
   const keys = useRef({ up: false, down: false, left: false, right: false });
@@ -90,6 +92,7 @@ export function DhigaliExperience() {
   const nearIdRef = useRef<string | null>(null);
   posRef.current = pos;
   rideRef.current = ride;
+  underwaterRef.current = underwater;
 
   useEffect(() => {
     if (phase !== "fly") return;
@@ -165,6 +168,7 @@ export function DhigaliExperience() {
         }
       }
       movingRef.current = speed !== 0;
+      if (speed > 0 && rideRef.current === "walk" && !underwaterRef.current) dhigaliAmbience.step();
       if (speed !== 0) {
         const step = offsetLatLng(here.lat, here.lng, heading, speed * dt);
         if (canWalk(step.lat, step.lng)) {
@@ -326,6 +330,10 @@ export function DhigaliExperience() {
         : near.event;
     setLog((prev) => (prev[0] === line ? prev : [line, ...prev].slice(0, 6)));
     setDone((prev) => (prev.includes(near.id) ? prev : [...prev, near.id]));
+    if (near.id === "jetty") {
+      setUnderwater(true);
+      dhigaliAmbience.dive(true);
+    }
   }
 
   function goTo(spot: GeoSpot) {
@@ -446,6 +454,7 @@ export function DhigaliExperience() {
         minutes={minutes}
         nearId={near?.id ?? null}
         fireworks={fireworks}
+        underwater={underwater}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
       <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
@@ -555,13 +564,27 @@ export function DhigaliExperience() {
             <p className="text-[11px] text-stone-500">가까이</p>
             <p className="font-semibold">{near.name}</p>
             <p className="mt-1 text-[12px] leading-relaxed text-stone-600">{near.blurb}</p>
-            <button
-              type="button"
-              onClick={joinEvent}
-              className="mt-2 rounded-full bg-[#1b4965] px-3 py-1.5 text-[12px] font-semibold text-white"
-            >
-              참여
-            </button>
+            <div className="mt-2 flex gap-1">
+              <button
+                type="button"
+                onClick={joinEvent}
+                className="rounded-full bg-[#1b4965] px-3 py-1.5 text-[12px] font-semibold text-white"
+              >
+                {near.id === "jetty" ? "스노클 들어가기" : "참여"}
+              </button>
+              {underwater && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnderwater(false);
+                    dhigaliAmbience.dive(false);
+                  }}
+                  className="rounded-full px-3 py-1.5 text-[12px] font-semibold text-[#1b4965] ring-1 ring-[#1b4965]"
+                >
+                  물 밖으로
+                </button>
+              )}
+            </div>
           </div>
         ) : (
           <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">3D 화면을 끌면 시선이 돌아갑니다. 미니맵의 점을 누르면 버기가 그쪽으로 갑니다.</p>
@@ -574,6 +597,18 @@ export function DhigaliExperience() {
           </ul>
         )}
       </aside>
+      {underwater && (
+        <button
+          type="button"
+          onClick={() => {
+            setUnderwater(false);
+            dhigaliAmbience.dive(false);
+          }}
+          className="absolute bottom-44 left-4 z-30 rounded-full bg-white px-3 py-2 text-[12px] font-semibold text-[#073044]"
+        >
+          물 밖으로
+        </button>
+      )}
       <div className="absolute bottom-44 right-4 z-30 grid grid-cols-3 gap-1" onPointerDown={(e) => e.stopPropagation()}>
         <span />
         <Pad label="앞" onDown={() => { keys.current.up = true; }} onUp={() => { keys.current.up = false; }} />
