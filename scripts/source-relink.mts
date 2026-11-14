@@ -1,18 +1,20 @@
 /**
- * Offline orphan-source relinker (0 external API calls).
+ * Offline source relinker (0 external API calls).
  *
- * Scans unreferenced blog/video rows in `sources` and links high-confidence,
- * visit-worthy matches to:
+ * Scans blog/video rows in `sources` (orphans + already-linked) and attaches
+ * high-confidence, visit-worthy matches to:
  *   1) Under-cap places (`< MAX_BLOG_SOURCES_PER_PLACE` / `< MAX_SOURCES_PER_PLACE`)
  *      with strict word-boundary, geo-context, non-nearby-shop, and
  *      `scoreVisitRelevance` checks (compatible with `yarn source:prune`).
- *   2) Empty/under-cap city `region_sources` (`<= MAX_SOURCES_PER_REGION`).
+ *   2) Empty/under-cap city `region_sources` (`<= MAX_SOURCES_PER_REGION`)
+ *      — still orphan-only, so city guides don't steal place-linked posts.
  *
  * Usage:
  *   yarn source:relink                        # dry-run summary + samples
  *   yarn source:relink -- --apply             # write updated links & tags
  *   yarn source:relink -- --apply --gc        # also drop remaining orphan/stub sources
  *   yarn source:relink -- --apply --force-write  # bypass active-batch guard
+ *   yarn source:relink -- --orphans-only      # old behavior: unreferenced sources only
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -36,6 +38,7 @@ const { values } = parseArgs({
     apply: { type: "boolean", default: false },
     gc: { type: "boolean", default: false },
     "force-write": { type: "boolean", default: false },
+    "orphans-only": { type: "boolean", default: false },
     sample: { type: "string", default: "20" },
   },
 });
@@ -295,26 +298,30 @@ for (const l of links) referencedBefore.add(l.source_id);
 for (const l of regionLinks) referencedBefore.add(l.source_id);
 for (const c of contribs) if (c.source_id) referencedBefore.add(c.source_id);
 
-type IndexedOrphan = {
+type IndexedSource = {
   src: Source;
   isYt: boolean;
+  orphan: boolean;
   titleLower: string;
   titleCompact: string;
   fullCompact: string;
   isListicle: boolean;
 };
 
-const orphanPool: IndexedOrphan[] = [];
+const orphansOnly = Boolean(values["orphans-only"]);
+const candidatePool: IndexedSource[] = [];
 for (const src of sources) {
-  if (referencedBefore.has(src.id)) continue;
+  const orphan = !referencedBefore.has(src.id);
+  if (orphansOnly && !orphan) continue;
   if (STUB_PROVIDERS.has(src.provider)) continue;
   if (bannedSourceIds.has(src.id)) continue;
   const full = `${src.title} ${src.snippet ?? ""}`;
   if (JUNK_QUICK_RE.test(full)) continue;
   const isYt = src.type === "youtube" || src.provider === "youtube";
-  orphanPool.push({
+  candidatePool.push({
     src,
     isYt,
+    orphan,
     titleLower: src.title.toLowerCase(),
     titleCompact: stripNonWord(src.title),
     fullCompact: stripNonWord(full),
@@ -324,7 +331,7 @@ for (const src of sources) {
 
 // Trigram inverted index over `titleCompact` for fast candidate lookup
 const trigramIndex = new Map<string, number[]>();
-orphanPool.forEach((item, idx) => {
+candidatePool.forEach((item, idx) => {
   const t = item.titleCompact;
   const seen = new Set<string>();
   for (let i = 0; i <= t.length - 3; i++) {
@@ -486,7 +493,7 @@ for (const place of sortedPlaces) {
   const ytHits: { src: Source; score: number }[] = [];
 
   for (const idx of posting) {
-    const cand = orphanPool[idx]!;
+    const cand = candidatePool[idx]!;
     if (!cand.titleCompact.includes(needle)) continue;
     if (existingIds.has(cand.src.id) || existingUrls.has(cand.src.url)) continue;
     if (seenTitleKeys.has(cand.titleCompact)) continue;
@@ -577,7 +584,7 @@ for (const place of sortedPlaces) {
       return {
         source: a.src,
         relevance: Number((a.score / 100).toFixed(2)),
-        note: "orphan_relink",
+        note: referencedBefore.has(a.src.id) ? "source_reuse" : "orphan_relink",
         timestamp_sec: null,
       };
     }),
@@ -644,7 +651,9 @@ for (const city of cities) {
   const cands: { src: Source; score: number }[] = [];
   const authorSeen = new Set<string>();
 
-  for (const item of orphanPool) {
+  // Region fill stays orphan-only so place-linked posts aren't drained into city guides.
+  for (const item of candidatePool) {
+    if (!item.orphan) continue;
     if (item.isYt) continue;
     if (newlyLinkedSourceIds.has(item.src.id) || existingIds.has(item.src.id)) continue;
     if (!item.titleCompact.startsWith(bareNorm) && !hasBoundaryMatch(item.src.title, normCompact(bare), [])) {
@@ -700,7 +709,9 @@ console.log(
     {
       dry_run: !values.apply,
       gc_requested: Boolean(values.gc),
-      orphans_scanned: orphanPool.length,
+      orphans_only: orphansOnly,
+      candidates_scanned: candidatePool.length,
+      orphan_candidates: candidatePool.filter((c) => c.orphan).length,
       places_matched: placesMatched,
       zero_link_places_filled: zeroLinkPlacesFilled,
       place_links_before: links.length,
@@ -708,7 +719,7 @@ console.log(
       place_links_added: totalPlaceLinksAdded,
       cities_matched_for_region_sources: regionsMatched,
       region_links_added: totalRegionLinksAdded,
-      unique_orphan_sources_rescued: newlyLinkedSourceIds.size,
+      unique_sources_attached: newlyLinkedSourceIds.size,
       remaining_unreferenced_sources: remainingOrphans.length,
       samples,
     },
