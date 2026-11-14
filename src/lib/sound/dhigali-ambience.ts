@@ -6,6 +6,7 @@ let air: BiquadFilterNode | null = null;
 let voices: Voice[] = [];
 let lastStep = 0;
 let musicBus: GainNode | null = null;
+let glideGain: GainNode | null = null;
 let act: "none" | "duo" | "sax" = "none";
 let actTimer: number | null = null;
 const phrase = [262, 294, 330, 349, 392, 440, 392, 349, 330, 294, 262];
@@ -77,6 +78,17 @@ export const dhigaliAmbience = {
   dive(under: boolean) {
     if (!ctx || !air) return;
     air.frequency.setTargetAtTime(under ? 420 : 18000, ctx.currentTime, 0.15);
+  },
+
+  glide(on: boolean) {
+    if (!ctx || !master) return;
+    if (!glideGain) {
+      glideGain = ctx.createGain();
+      glideGain.gain.value = 0;
+      glideGain.connect(master);
+      voices.push(generators.wind(ctx, glideGain));
+    }
+    glideGain.gain.setTargetAtTime(on ? 0.34 : 0, ctx.currentTime, 0.22);
   },
 
   setAct(next: "none" | "duo" | "sax") {
@@ -164,5 +176,6 @@ export const dhigaliAmbience = {
     master = null;
     air = null;
     musicBus = null;
+    glideGain = null;
   },
 };

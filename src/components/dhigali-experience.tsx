@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
 import { checkDhigaliAdmin } from "@/app/actions/dhigali-admin";
 import { DHIGALI_ITINERARY } from "@/lib/dhigali";
+import { COASTER_BEACH, COASTER_STATION, coasterAt, LAGOON_TRACK } from "@/lib/dhigali-coaster";
 import {
   ARRIVAL,
   bearingDeg,
@@ -23,13 +24,18 @@ import { dhigaliAmbience } from "@/lib/sound/dhigali-ambience";
 
 type Phase = "gate" | "fly" | "island";
 
-const FLY_STEPS = [
-  { title: "인천 출발", body: "비행기 예약만으로 입장할 수 있다. 첫 구간은 인천에서 쿠알라룸푸르." },
-  { title: "쿠알라룸푸르", body: "말레이시아에서 환승한다. 여기서 말레행 비행기로 갈아탄다." },
-  { title: "말레", body: "벨라나 국제공항. 리조트 데스크에서 수상비행기 시간을 확인한다." },
-  { title: "수상비행기", body: "라 환초까지 약 45분. 산호 고리가 창문 아래로 이어진다." },
-  { title: "디갈리 도착", body: "남쪽 파빌리온에 내렸다. 신발을 벗고 모래를 밟는다." },
+const GUEST_NAMES = [
+  "라군을 걷는 손님",
+  "노을 앞의 나그네",
+  "산호 위 여행자",
+  "잔교 끝의 사람",
+  "바람 듣는 손님",
+  "물빛 셔츠의 사람",
+  "야자수 아래 손님",
+  "수평선을 보는 사람",
 ];
+
+const SHIRTS = [0xf08a7a, 0xf3b6c8, 0x8eb6ea, 0xf0d27a, 0xb7a6e2, 0x6ec8e0, 0x8ed9b4, 0xf7f4ee, 0xf0a05a, 0x3aa8a0];
 
 function skyFor(minutes: number) {
   const h = (minutes / 60) % 24;
@@ -64,7 +70,8 @@ export function DhigaliExperience() {
   const [phase, setPhase] = useState<Phase>("gate");
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
-  const [flyStep, setFlyStep] = useState(0);
+  const [guest, setGuest] = useState(GUEST_NAMES[0] ?? "손님");
+  const [shirt, setShirt] = useState(SHIRTS[6] ?? 0x8ed9b4);
   const [pos, setPos] = useState({ lat: ARRIVAL.lat, lng: ARRIVAL.lng, heading: 0 });
   const [near, setNear] = useState<GeoSpot | null>(null);
   const [done, setDone] = useState<string[]>([]);
@@ -78,9 +85,14 @@ export function DhigaliExperience() {
   const [underwater, setUnderwater] = useState(false);
   const [swimsuit, setSwimsuit] = useState(false);
   const [aboard, setAboard] = useState(false);
+  const [onCoaster, setOnCoaster] = useState(false);
+  const [lift, setLift] = useState(0);
   const [bus, setBus] = useState({ lat: BUS_ROUTE[0]?.lat ?? ARRIVAL.lat, lng: BUS_ROUTE[0]?.lng ?? ARRIVAL.lng, heading: 90 });
   const underwaterRef = useRef(false);
   const aboardRef = useRef(false);
+  const coasterRef = useRef(false);
+  const coasterTRef = useRef(0);
+  const reefRef = useRef(false);
   const busTRef = useRef(0);
   const busMarkerRef = useRef<import("leaflet").CircleMarker | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -101,16 +113,49 @@ export function DhigaliExperience() {
   rideRef.current = ride;
   underwaterRef.current = underwater;
   aboardRef.current = aboard;
+  coasterRef.current = onCoaster;
+
+  useEffect(() => {
+    const saved = localStorage.getItem("pn-dhigali-guest");
+    const color = Number(localStorage.getItem("pn-dhigali-shirt"));
+    if (saved) setGuest(saved.slice(0, 16));
+    if (SHIRTS.includes(color)) setShirt(color);
+  }, []);
 
   useEffect(() => {
     if (phase !== "fly") return;
-    if (flyStep >= FLY_STEPS.length - 1) {
-      const timer = setTimeout(() => setPhase("island"), 1600);
-      return () => clearTimeout(timer);
-    }
-    const timer = setTimeout(() => setFlyStep((n) => n + 1), 2600);
-    return () => clearTimeout(timer);
-  }, [phase, flyStep]);
+    const down = (e: KeyboardEvent) => {
+      if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.current.left = true;
+      if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.current.right = true;
+    };
+    const up = (e: KeyboardEvent) => {
+      if (e.key === "a" || e.key === "A" || e.key === "ArrowLeft") keys.current.left = false;
+      if (e.key === "d" || e.key === "D" || e.key === "ArrowRight") keys.current.right = false;
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    let last = performance.now();
+    let raf = 0;
+    const tick = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      let heading = posRef.current.heading;
+      if (keys.current.left) heading = (heading - 70 * dt + 360) % 360;
+      if (keys.current.right) heading = (heading + 70 * dt) % 360;
+      if (heading !== posRef.current.heading) {
+        const next = { ...posRef.current, heading };
+        posRef.current = next;
+        setPos(next);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "island") return;
@@ -164,6 +209,28 @@ export function DhigaliExperience() {
       };
       setBus(busPose);
       busMarkerRef.current?.setLatLng([busPose.lat, busPose.lng]);
+      if (coasterRef.current) {
+        coasterTRef.current = (coasterTRef.current + dt * 0.042) % 1;
+        const here = coasterAt(coasterTRef.current);
+        const ahead = coasterAt((coasterTRef.current + 0.015) % 1);
+        const riding = {
+          lat: here.lat,
+          lng: here.lng,
+          heading: bearingDeg({ lat: here.lat, lng: here.lng }, { lat: ahead.lat, lng: ahead.lng }),
+        };
+        posRef.current = riding;
+        setPos(riding);
+        setLift(here.lift);
+        playerRef.current?.setLatLng([riding.lat, riding.lng]);
+        mapRef.current?.panTo([riding.lat, riding.lng], { animate: false });
+        const reef = here.lift < -0.3;
+        if (reef !== reefRef.current) {
+          reefRef.current = reef;
+          dhigaliAmbience.dive(reef);
+        }
+        raf = requestAnimationFrame(tick);
+        return;
+      }
       if (aboardRef.current) {
         const riding = { ...busPose };
         posRef.current = riding;
@@ -307,6 +374,10 @@ export function DhigaliExperience() {
         { color: "#fff7e6", weight: 2, fillColor: "#fff7e6", fillOpacity: 0.06 },
       ).addTo(map);
       map.fitBounds(shore.getBounds().pad(0.35), { maxZoom: 17, animate: false });
+      L.polyline(
+        LAGOON_TRACK.map((point) => [point.lat, point.lng] as [number, number]),
+        { color: "#f0d27a", weight: 3, opacity: 0.95 },
+      ).addTo(map);
       for (const feature of DHIGALI_FEATURES) {
         const line = feature.points.map(([lat, lng]) => [lat, lng] as [number, number]);
         if (feature.kind === "wood") {
@@ -383,6 +454,35 @@ export function DhigaliExperience() {
     setPhase("island");
   }
 
+  function rememberGuest(next: string) {
+    const name = next.slice(0, 16);
+    setGuest(name);
+    localStorage.setItem("pn-dhigali-guest", name);
+  }
+
+  function boardCoaster() {
+    if (coasterRef.current) {
+      coasterRef.current = false;
+      setOnCoaster(false);
+      setLift(0);
+      reefRef.current = false;
+      dhigaliAmbience.glide(false);
+      dhigaliAmbience.dive(underwaterRef.current);
+      const next = { lat: COASTER_BEACH.lat, lng: COASTER_BEACH.lng, heading: posRef.current.heading };
+      posRef.current = next;
+      setPos(next);
+      return;
+    }
+    coasterTRef.current = 0;
+    coasterRef.current = true;
+    setOnCoaster(true);
+    aboardRef.current = false;
+    setAboard(false);
+    setUnderwater(false);
+    underwaterRef.current = false;
+    dhigaliAmbience.glide(true);
+  }
+
   function joinEvent() {
     if (!near) return;
     const hour = (minutes / 60) % 24;
@@ -402,75 +502,6 @@ export function DhigaliExperience() {
     destRef.current = { lat: spot.lat, lng: spot.lng };
     setDestName(spot.name);
     setRide("buggy");
-  }
-
-  if (phase === "gate") {
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#073044] px-5 text-white">
-        <div className="w-full max-w-md">
-          <p className="text-[11px] tracking-[0.28em] text-white/50">RAA ATOLL · 5.4754, 72.9542</p>
-          <h1 className="font-serif mt-2 text-4xl">디갈리</h1>
-          <p className="mt-3 text-sm leading-relaxed text-white/75">
-            몰디브 라 환초의 섬을 걸어 다닌다. 일반 입장은 비행기 예약뿐이고, 경유지는 쿠알라룸푸르다.
-            관리자 코드가 있으면 바로 모래 위로 들어간다.
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              void dhigaliAmbience.start();
-              setFlyStep(0);
-              setPhase("fly");
-            }}
-            className="mt-6 w-full rounded-2xl bg-white py-3 text-sm font-semibold text-[#073044]"
-          >
-            비행기 예약 · 인천 → 쿠알라룸푸르 → 말레
-          </button>
-          <form
-            className="mt-4 flex gap-2"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void enterAdmin();
-            }}
-          >
-            <input
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder="관리자 코드"
-              className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2.5 text-sm outline-none ring-1 ring-white/20 placeholder:text-white/40"
-              autoComplete="off"
-            />
-            <button type="submit" className="rounded-xl px-3 text-sm font-semibold ring-1 ring-white/30">
-              입장
-            </button>
-          </form>
-          {codeError && <p className="mt-2 text-xs text-rose-200">{codeError}</p>}
-          <Link href="/" className="mt-6 inline-block text-xs text-white/50 hover:text-white">
-            지도로 돌아가기
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  if (phase === "fly") {
-    const step = FLY_STEPS[flyStep] ?? FLY_STEPS[0]!;
-    return (
-      <main className="grid min-h-dvh place-items-center bg-[#041820] px-5 text-white">
-        <div className="w-full max-w-lg">
-          <p className="text-[11px] tracking-[0.22em] text-sky-200/70">
-            {flyStep + 1} / {FLY_STEPS.length}
-          </p>
-          <h1 className="font-serif mt-2 text-4xl">{step.title}</h1>
-          <p className="mt-3 text-sm leading-relaxed text-white/75">{step.body}</p>
-          <div className="mt-6 h-1 overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full bg-sky-200 transition-all"
-              style={{ width: `${((flyStep + 1) / FLY_STEPS.length) * 100}%` }}
-            />
-          </div>
-        </div>
-      </main>
-    );
   }
 
   const sky = skyFor(minutes);
@@ -521,7 +552,7 @@ export function DhigaliExperience() {
         lat={pos.lat}
         lng={pos.lng}
         heading={pos.heading}
-        minutes={minutes}
+        minutes={phase === "island" ? minutes : 17 * 60 + 25}
         nearId={near?.id ?? null}
         fireworks={fireworks}
         underwater={underwater}
@@ -529,8 +560,111 @@ export function DhigaliExperience() {
         busLat={bus.lat}
         busLng={bus.lng}
         busHeading={bus.heading}
+        guestName={guest.trim() || "손님"}
+        shirt={shirt}
+        mode={phase === "gate" ? "orbit" : phase === "fly" ? "drop" : "play"}
+        lift={lift}
+        onCoaster={onCoaster}
+        onLanded={() => setPhase("island")}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
+      {phase === "gate" && (
+        <div className="pointer-events-none absolute inset-0 z-20 grid place-items-center bg-black/15 px-4">
+          <div className="pointer-events-auto w-full max-w-md rounded-3xl border border-dashed border-amber-100/50 bg-[#141a2b]/92 p-6 text-white shadow-2xl backdrop-blur-md">
+            <p className="text-[11px] tracking-[0.22em] text-amber-100/80">DHIGALI · 라 환초</p>
+            <h1 className="font-serif mt-2 text-3xl">디갈리에 오신 걸 환영해요</h1>
+            <p className="mt-3 text-sm leading-relaxed text-white/75">
+              낙하산을 타고 라 환초의 섬으로 내려간다. 이름은 머리 위에 보인다. 관리자 코드가 있으면 바로 모래 위다.
+            </p>
+            <label className="mt-4 block text-xs text-white/60">
+              이름
+              <div className="mt-1 flex gap-2">
+                <input
+                  value={guest}
+                  onChange={(e) => rememberGuest(e.target.value)}
+                  placeholder="머리 위에 보일 이름"
+                  className="min-w-0 flex-1 rounded-2xl bg-white/10 px-3 py-2.5 text-sm text-white outline-none ring-1 ring-white/15"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = GUEST_NAMES[Math.floor(Math.random() * GUEST_NAMES.length)] ?? "손님";
+                    rememberGuest(next);
+                  }}
+                  className="shrink-0 rounded-2xl bg-white/10 px-3 text-xs ring-1 ring-white/15"
+                >
+                  다른 이름
+                </button>
+              </div>
+            </label>
+            <p className="mt-4 text-xs text-white/60">옷 색</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {SHIRTS.map((hex) => (
+                <button
+                  key={hex}
+                  type="button"
+                  aria-label="옷 색"
+                  onClick={() => {
+                    setShirt(hex);
+                    localStorage.setItem("pn-dhigali-shirt", String(hex));
+                  }}
+                  className={`size-8 rounded-full ${shirt === hex ? "ring-2 ring-white ring-offset-2 ring-offset-[#141a2b]" : ""}`}
+                  style={{ background: `#${hex.toString(16).padStart(6, "0")}` }}
+                />
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                void dhigaliAmbience.start();
+                setPhase("fly");
+              }}
+              className="mt-5 w-full rounded-2xl bg-gradient-to-r from-amber-200 via-orange-200 to-rose-300 py-3 text-sm font-semibold text-[#1a1208]"
+            >
+              낙하산 타고 입장하기
+            </button>
+            <form
+              className="mt-3 flex gap-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void enterAdmin();
+              }}
+            >
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="관리자 코드"
+                className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm outline-none ring-1 ring-white/15 placeholder:text-white/40"
+                autoComplete="off"
+              />
+              <button type="submit" className="rounded-xl px-3 text-sm ring-1 ring-white/25">
+                바로 입장
+              </button>
+            </form>
+            {codeError && <p className="mt-2 text-xs text-rose-200">{codeError}</p>}
+            <Link href="/" className="mt-4 inline-block text-xs text-white/50 hover:text-white">
+              지도로 돌아가기
+            </Link>
+          </div>
+        </div>
+      )}
+      {phase === "fly" && (
+        <>
+          <div className="pointer-events-none absolute inset-x-0 top-8 z-20 text-center">
+            <h1 className="font-serif text-3xl text-white drop-shadow">낙하산 하강 중</h1>
+            <p className="mt-1 text-sm text-white/85">방향키로 내려올 방향을 조금 바꿀 수 있어요</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPhase("island")}
+            className="absolute right-4 bottom-6 z-20 rounded-2xl bg-black/55 px-4 py-3 text-sm font-semibold"
+          >
+            건너뛰기 ▶
+          </button>
+        </>
+      )}
+      {phase === "island" && (
+      <>
       <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
       <p className="pointer-events-none absolute bottom-[9.6rem] right-4 z-30 text-[10px] text-white/80">미니맵</p>
 
@@ -543,7 +677,7 @@ export function DhigaliExperience() {
             <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · 수집한 길·잔교 · {sky.label}</p>
             <h1 className="font-serif text-2xl">디갈리 섬</h1>
             <p className="mt-0.5 truncate text-[12px] text-white/80">
-              {clockLabel(minutes)} · {aboard ? "버스" : ride === "buggy" ? "버기" : ride === "run" ? "달리기" : "도보"}
+              {clockLabel(minutes)} · {onCoaster ? "라군 코스터" : aboard ? "버스" : ride === "buggy" ? "버기" : ride === "run" ? "달리기" : "도보"}
               {destName ? ` · ${destName}으로` : ""}
             </p>
           </div>
@@ -556,6 +690,17 @@ export function DhigaliExperience() {
           <button type="button" onClick={() => setRide("walk")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/40"}`}>도보</button>
           <button type="button" onClick={() => setRide("run")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "run" ? "bg-white text-[#073044]" : "bg-black/40"}`}>달리기</button>
           <button type="button" onClick={() => setRide("buggy")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/40"}`}>버기</button>
+          <button
+            type="button"
+            onClick={() => {
+              destRef.current = { lat: COASTER_BEACH.lat, lng: COASTER_BEACH.lng };
+              setDestName("라군 코스터");
+              setRide("buggy");
+            }}
+            className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]"
+          >
+            라군 코스터
+          </button>
           <button
             type="button"
             onClick={() => {
@@ -645,6 +790,18 @@ export function DhigaliExperience() {
             <span className="font-semibold">{talk.name}</span> · {talk.line}
           </p>
         )}
+        {(onCoaster || haversineM(pos.lat, pos.lng, COASTER_STATION.lat, COASTER_STATION.lng) < 110) && (
+          <button
+            type="button"
+            onClick={boardCoaster}
+            className="rounded-2xl bg-gradient-to-r from-amber-200 to-rose-300 px-3 py-2 text-left text-[12px] font-semibold text-[#1a1208]"
+          >
+            {onCoaster ? "코스터에서 내리기" : "라군 코스터 타기"}
+          </button>
+        )}
+        {onCoaster && lift < -0.3 && (
+          <p className="rounded-2xl bg-black/45 px-3 py-2 text-[12px]">산호 바로 위를 스치고 지나간다.</p>
+        )}
         {(aboard || haversineM(pos.lat, pos.lng, bus.lat, bus.lng) < 16) && (
           <button
             type="button"
@@ -712,6 +869,8 @@ export function DhigaliExperience() {
         <Pad label="뒤" onDown={() => { keys.current.down = true; }} onUp={() => { keys.current.down = false; }} />
         <Pad label="오" onDown={() => { keys.current.right = true; }} onUp={() => { keys.current.right = false; }} />
       </div>
+      </>
+      )}
     </main>
   );
 }
