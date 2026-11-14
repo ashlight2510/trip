@@ -11,8 +11,9 @@ import {
   DHIGALI_COAST,
   GEO_NPCS,
   GEO_SPOTS,
+  canWalk,
+  DHIGALI_FEATURES,
   nearestGeoSpot,
-  onDhigaliLand,
   type GeoSpot,
 } from "@/lib/dhigali-geo";
 import { haversineM, offsetLatLng } from "@/lib/travel-mode";
@@ -153,7 +154,7 @@ export function DhigaliExperience() {
       movingRef.current = speed !== 0;
       if (speed !== 0) {
         const step = offsetLatLng(here.lat, here.lng, heading, speed * dt);
-        if (onDhigaliLand(step.lat, step.lng)) {
+        if (canWalk(step.lat, step.lng)) {
           const next = { lat: step.lat, lng: step.lng, heading };
           posRef.current = next;
           setPos(next);
@@ -213,6 +214,15 @@ export function DhigaliExperience() {
         { color: "#fff7e6", weight: 2, fillColor: "#fff7e6", fillOpacity: 0.06 },
       ).addTo(map);
       map.fitBounds(shore.getBounds().pad(0.35), { maxZoom: 17, animate: false });
+      for (const feature of DHIGALI_FEATURES) {
+        const line = feature.points.map(([lat, lng]) => [lat, lng] as [number, number]);
+        if (feature.kind === "wood") {
+          L.polygon(line, { color: "#2f6b45", weight: 1, fillColor: "#3f8f55", fillOpacity: 0.18 }).addTo(map!);
+        } else {
+          const color = feature.kind === "pier" ? "#f7f1e4" : feature.kind === "service" ? "#f0d9a0" : "#ffffff";
+          L.polyline(line, { color, weight: feature.kind === "pier" ? 3 : 2, opacity: 0.9 }).addTo(map!);
+        }
+      }
       for (const spot of GEO_SPOTS) {
         const marker = L.circleMarker([spot.lat, spot.lng], {
           radius: 6,
@@ -398,7 +408,7 @@ export function DhigaliExperience() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · OSM 해안선 · {sky.label}</p>
+            <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · 수집한 길·잔교 · {sky.label}</p>
             <h1 className="font-serif text-2xl">디갈리 섬</h1>
             <p className="mt-0.5 truncate text-[12px] text-white/80">
               {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}

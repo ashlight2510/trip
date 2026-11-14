@@ -1,6 +1,9 @@
+import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_NPCS, DHIGALI_SPOTS } from "@/lib/dhigali";
 import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { haversineM, offsetLatLng } from "@/lib/travel-mode";
+
+export { DHIGALI_FEATURES };
 
 export { DHIGALI_COAST };
 
@@ -32,6 +35,54 @@ function localToLatLng(eastM: number, southM: number) {
   return offsetLatLng(east.lat, east.lng, 180, southM);
 }
 
+function segmentDistance(lat: number, lng: number, a: [number, number], b: [number, number]) {
+  const dx = b[1] - a[1];
+  const dy = b[0] - a[0];
+  const l2 = dx * dx + dy * dy || 1e-12;
+  const t = Math.max(0, Math.min(1, ((lng - a[1]) * dx + (lat - a[0]) * dy) / l2));
+  return haversineM(lat, lng, a[0] + t * dy, a[1] + t * dx);
+}
+
+export function onCollectedPath(lat: number, lng: number, reach = 18) {
+  for (const feature of DHIGALI_FEATURES) {
+    if (feature.kind === "wood") continue;
+    const pts = feature.points;
+    for (let i = 0; i < pts.length - 1; i++) {
+      if (segmentDistance(lat, lng, pts[i]!, pts[i + 1]!) <= reach) return true;
+    }
+  }
+  return false;
+}
+
+export function canWalk(lat: number, lng: number) {
+  return onDhigaliLand(lat, lng) || onCollectedPath(lat, lng);
+}
+
+function nearestVertex(lat: number, lng: number, kinds: string[]) {
+  let best: { lat: number; lng: number } | null = null;
+  let bestD = Infinity;
+  for (const feature of DHIGALI_FEATURES) {
+    if (!kinds.includes(feature.kind)) continue;
+    for (const [la, ln] of feature.points) {
+      const d = haversineM(lat, lng, la, ln);
+      if (d < bestD) {
+        bestD = d;
+        best = { lat: la, lng: ln };
+      }
+    }
+  }
+  return best ? { ...best, d: bestD } : null;
+}
+
+const SNAP_KIND: Record<string, string[]> = {
+  villas: ["pier"],
+  jetty: ["pier", "footway"],
+  dive: ["footway", "service"],
+  splash: ["pier", "footway"],
+  arrival: ["pier", "service"],
+  faru: ["pier", "footway"],
+};
+
 /** Drop a layout point onto the real cay, pulling inward until it sits on land. */
 export function placeOnIsland(xEast: number, ySouth: number) {
   let east = xEast * 2.5;
@@ -47,15 +98,24 @@ export function placeOnIsland(xEast: number, ySouth: number) {
 
 export type GeoSpot = (typeof DHIGALI_SPOTS)[number] & { lat: number; lng: number };
 
-export const GEO_SPOTS: GeoSpot[] = DHIGALI_SPOTS.map((spot) => ({
-  ...spot,
-  ...placeOnIsland(spot.x, spot.y),
-}));
+export const GEO_SPOTS: GeoSpot[] = DHIGALI_SPOTS.map((spot) => {
+  const guess = placeOnIsland(spot.x, spot.y);
+  const kinds = SNAP_KIND[spot.id] ?? ["service", "footway", "pier"];
+  const hit = nearestVertex(guess.lat, guess.lng, kinds);
+  const at = hit && hit.d < 140 ? { lat: hit.lat, lng: hit.lng } : guess;
+  return { ...spot, ...at };
+});
 
-export const GEO_NPCS = DHIGALI_NPCS.map((npc) => ({
-  ...npc,
-  path: npc.path.map((p) => placeOnIsland(p.x, p.y)),
-}));
+const PATHS = DHIGALI_FEATURES.filter((feature) => feature.kind === "service" || feature.kind === "footway");
+
+export const GEO_NPCS = DHIGALI_NPCS.map((npc, index) => {
+  const line = PATHS[index % PATHS.length];
+  const path = (line?.points ?? []).map(([lat, lng]) => ({ lat, lng }));
+  return {
+    ...npc,
+    path: path.length ? path : npc.path.map((p) => placeOnIsland(p.x, p.y)),
+  };
+});
 
 export const ARRIVAL = GEO_SPOTS.find((s) => s.id === "arrival") ?? GEO_SPOTS[0]!;
 
