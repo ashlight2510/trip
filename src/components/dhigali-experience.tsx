@@ -25,13 +25,16 @@ const FLY_STEPS = [
 const SCALE = 2.15;
 
 function alongPath(path: { x: number; y: number }[], t: number) {
-  const seg = path.length - 1;
-  if (seg <= 0) return path[0] ?? { x: 0, y: 0 };
-  const dist = t * seg;
-  const i = Math.min(seg - 1, Math.floor(dist));
+  const first = path[0];
+  if (!first) return { x: 0, y: 0 };
+  const last = path.length - 1;
+  if (last <= 0) return first;
+  const u = Number.isFinite(t) ? ((t % 1) + 1) % 1 : 0;
+  const dist = u * last;
+  const i = Math.max(0, Math.min(last - 1, Math.floor(dist)));
+  const a = path[i] ?? first;
+  const b = path[i + 1] ?? a;
   const f = dist - i;
-  const a = path[i]!;
-  const b = path[i + 1]!;
   return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
 }
 
@@ -284,7 +287,7 @@ export function DhigaliExperience() {
           </button>
         ))}
         {DHIGALI_NPCS.map((npc) => {
-          const p = alongPath(npc.path, (npcT * npc.speed * 12) % 1);
+          const p = alongPath(npc.path, npcT * npc.speed * 8);
           return (
             <span
               key={npc.id}
