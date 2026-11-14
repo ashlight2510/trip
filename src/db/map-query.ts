@@ -341,6 +341,7 @@ function bareAreaName(name: string) {
 /** Strong area-name hits only — used to expand "동/시" search to nearby places. */
 function regionQueryScore(regionName: string, q: string): number {
   const n = regionName.toLowerCase();
+  if (!n || !q) return 0;
   if (n === q) return 100;
   if (n.startsWith(q) && q.length >= 2) return 90;
   const bare = bareAreaName(regionName);
@@ -348,6 +349,60 @@ function regionQueryScore(regionName: string, q: string): number {
   // "주교" → 주교동/주교면. "주교동" must not also expand 주교면 via bare strip.
   if (q === qBare && bare && bare === qBare) return 95;
   return 0;
+}
+
+function regionNameScore(region: s.Region, q: string): number {
+  return Math.max(regionQueryScore(region.name, q), regionQueryScore(region.name_en ?? "", q));
+}
+
+export type OutlineRegion = {
+  id: string;
+  name: string;
+  nameEn: string | null;
+  level: s.Region["level"];
+  countryCode: string;
+};
+
+/** Best admin area to outline for a search. District beats a looser city/country tie. */
+export function matchOutlineRegion(qRaw: string | undefined): OutlineRegion | null {
+  const q = qRaw?.trim().toLowerCase() ?? "";
+  if (q.length < 2) return null;
+  const { db } = getMapDb();
+  const levelRank: Record<s.Region["level"], number> = {
+    district: 4,
+    city: 3,
+    province: 2,
+    country: 1,
+  };
+  let best: { region: s.Region; score: number } | null = null;
+  for (const region of db.regions) {
+    const score = regionNameScore(region, q);
+    if (score < 90) continue;
+    const exact =
+      region.name.toLowerCase() === q || (region.name_en ?? "").toLowerCase() === q;
+    const bestExact =
+      best != null &&
+      (best.region.name.toLowerCase() === q || (best.region.name_en ?? "").toLowerCase() === q);
+    const better =
+      !best ||
+      score > best.score ||
+      (score === best.score &&
+        exact &&
+        bestExact &&
+        levelRank[region.level] < levelRank[best.region.level]) ||
+      (score === best.score &&
+        !(exact && bestExact) &&
+        levelRank[region.level] > levelRank[best.region.level]);
+    if (better) best = { region, score };
+  }
+  if (!best) return null;
+  return {
+    id: best.region.id,
+    name: best.region.name,
+    nameEn: best.region.name_en,
+    level: best.region.level,
+    countryCode: best.region.country_code,
+  };
 }
 
 /** How far around a matched 동/시 to also show places (km). */
@@ -386,11 +441,16 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
   // Area anchors: matched 동/시/구 so we can show places nearby even if name doesn't contain q.
   // Skip nationwide area expansion when searching near the user — stay local.
   const areaAnchors: { lat: number; lng: number; score: number; regionId: string }[] = [];
+  const broadRegionIds = new Set<string>();
   if (q && !nearScope) {
     for (const r of db.regions) {
-      if (r.level !== "district" && r.level !== "city") continue;
-      const rs = regionQueryScore(r.name, q);
+      const rs = regionNameScore(r, q);
       if (rs <= 0) continue;
+      if (r.level === "country" || r.level === "province") {
+        if (rs >= 90) broadRegionIds.add(r.id);
+        continue;
+      }
+      if (r.level !== "district" && r.level !== "city") continue;
       areaAnchors.push({ lat: r.lat, lng: r.lng, score: rs, regionId: r.id });
     }
     areaAnchors.sort((a, b) => b.score - a.score);
@@ -461,6 +521,10 @@ export function queryMapPlaces(query: MapPlaceQuery): MapPlace[] {
       }
       if (score <= 0 && city && matchedRegionIds.has(city.id)) {
         score = 420;
+      }
+      if (score <= 0 && broadRegionIds.size) {
+        const chain = ancestors(ix.regionById, place.region_id);
+        if (chain.some((r) => broadRegionIds.has(r.id))) score = 430;
       }
 
       // Near a matched 동/시 centroid (the main fix for "주교동" → nearby pins).
