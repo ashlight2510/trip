@@ -51,14 +51,27 @@ export function DhigaliWorld({
       const renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setSize(host.clientWidth, host.clientHeight);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.08;
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       host.appendChild(renderer.domElement);
 
       const scene = new THREE.Scene();
-      const camera = new THREE.PerspectiveCamera(55, host.clientWidth / Math.max(1, host.clientHeight), 0.4, 4000);
-      scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-      const sun = new THREE.DirectionalLight(0xfff2d8, 1.15);
+      const camera = new THREE.PerspectiveCamera(52, host.clientWidth / Math.max(1, host.clientHeight), 0.4, 4000);
+      scene.add(new THREE.AmbientLight(0xfff4e8, 0.28));
+      scene.add(new THREE.HemisphereLight(0x8ecfff, 0xc4a06a, 0.55));
+      const sun = new THREE.DirectionalLight(0xfff2d8, 1.35);
       sun.position.set(-80, 120, 40);
-      scene.add(sun);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      sun.shadow.camera.near = 2;
+      sun.shadow.camera.far = 180;
+      sun.shadow.camera.left = -28;
+      sun.shadow.camera.right = 28;
+      sun.shadow.camera.top = 28;
+      sun.shadow.camera.bottom = -28;
+      scene.add(sun, sun.target);
       const sunDisk = new THREE.Mesh(
         new THREE.SphereGeometry(14, 24, 16),
         new THREE.MeshBasicMaterial({ color: 0xfff1c9 }),
@@ -69,6 +82,20 @@ export function DhigaliWorld({
       const skySet = new THREE.Color(0xe07a4c);
       const skyNight = new THREE.Color(0x07141c);
       const skyMix = new THREE.Color();
+      const skyMat = new THREE.ShaderMaterial({
+        side: THREE.BackSide,
+        depthWrite: false,
+        uniforms: {
+          uTop: { value: new THREE.Color(0x2f7ec8) },
+          uHorizon: { value: new THREE.Color(0xd7e7f5) },
+        },
+        vertexShader: `varying vec3 vP; void main(){ vP = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); }`,
+        fragmentShader: `uniform vec3 uTop; uniform vec3 uHorizon; varying vec3 vP; void main(){ float h = clamp(normalize(vP).y*0.55+0.45, 0.0, 1.0); gl_FragColor = vec4(mix(uHorizon, uTop, pow(h, 0.7)), 1.0); }`,
+      });
+      const skyDome = new THREE.Mesh(new THREE.SphereGeometry(900, 28, 18), skyMat);
+      scene.add(skyDome);
+      const uSkyTop = skyMat.uniforms.uTop!.value as Color;
+      const uSkyHorizon = skyMat.uniforms.uHorizon!.value as Color;
 
       const waterMat = new THREE.ShaderMaterial({
         uniforms: {
@@ -115,6 +142,7 @@ export function DhigaliWorld({
       const island = new THREE.Mesh(new THREE.ShapeGeometry(shape), sand);
       island.rotation.x = -Math.PI / 2;
       island.position.y = 0.35;
+      island.receiveShadow = true;
       scene.add(island);
 
       const greens = [0x1f6b3a, 0x2f8f4e, 0x3d6b45, 0x145c32, 0x4caf6a];
@@ -123,6 +151,7 @@ export function DhigaliWorld({
         const h = 4.2 * scale;
         const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * scale, 0.2 * scale, h, 7), trunkMat);
         trunk.position.set(x, h / 2 + 0.4, -z);
+        trunk.castShadow = true;
         const crownMat = new THREE.MeshStandardMaterial({
           color: greens[Math.floor(Math.random() * greens.length)]!,
           roughness: 0.75,
@@ -173,6 +202,7 @@ export function DhigaliWorld({
         g.add(deck);
         const house = new THREE.Mesh(new THREE.BoxGeometry(5.4, 2.15, 3.5), cream);
         house.position.set(0.3, 3.6, -0.35);
+        house.castShadow = true;
         g.add(house);
         const slab = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.16, 4.3), cream);
         slab.position.set(0.3, 4.75, -0.35);
@@ -309,6 +339,8 @@ export function DhigaliWorld({
           new THREE.MeshStandardMaterial({ color: look.wall, roughness: 0.75 }),
         );
         wall.position.y = look.h / 2 + 0.4;
+        wall.castShadow = true;
+        wall.receiveShadow = true;
         const roof = new THREE.Mesh(
           new THREE.CylinderGeometry(look.r * 1.08, look.r * 1.08, 0.22, 16),
           new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.55 }),
@@ -524,6 +556,11 @@ export function DhigaliWorld({
         else if (elev > -0.05) skyMix.copy(rising ? skyRise : skySet).lerp(skyDay, (elev + 0.05) / 0.3);
         else skyMix.copy(skyNight).lerp(rising ? skyRise : skySet, Math.max(0, (elev + 0.35) / 0.3));
         scene.background = skyMix;
+        uSkyTop.copy(skyMix);
+        uSkyHorizon.copy(skyMix).lerp(setting || rising ? skySet : skyDay, 0.35);
+        skyDome.position.set(here.x, 0, -here.z);
+        sun.target.position.set(here.x, 0, -here.z);
+        sun.target.updateMatrixWorld();
         fog.color.copy(now.underwater ? uDeep : skyMix);
         fog.near = now.underwater ? 1 : 40;
         fog.far = now.underwater ? 26 : 520;

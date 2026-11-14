@@ -5,9 +5,10 @@ let master: GainNode | null = null;
 let air: BiquadFilterNode | null = null;
 let voices: Voice[] = [];
 let lastStep = 0;
+let musicBus: GainNode | null = null;
 let act: "none" | "duo" | "sax" = "none";
 let actTimer: number | null = null;
-const phrase = [262, 294, 330, 349, 392, 440, 392, 349, 330, 294];
+const phrase = [262, 294, 330, 349, 392, 440, 392, 349, 330, 294, 262];
 
 function layer(kind: "waves" | "wind" | "gulls", level: number) {
   if (!ctx || !master) return;
@@ -17,25 +18,30 @@ function layer(kind: "waves" | "wind" | "gulls", level: number) {
   voices.push(generators[kind](ctx, gain));
 }
 
-function tone(freq: number, when: number, type: OscillatorType, level: number, lowpass?: number) {
-  if (!ctx || !master) return;
+function tone(freq: number, when: number, type: OscillatorType, level: number, pan = 0, lowpass?: number) {
+  if (!ctx || !musicBus) return;
   const osc = ctx.createOscillator();
   osc.type = type;
   osc.frequency.setValueAtTime(freq, when);
+  const lfo = ctx.createOscillator();
+  const lfoGain = ctx.createGain();
+  lfo.frequency.value = type === "sawtooth" ? 5.5 : 4.2;
+  lfoGain.gain.value = freq * 0.012;
+  lfo.connect(lfoGain).connect(osc.frequency);
+  lfo.start(when);
+  lfo.stop(when + 0.7);
   const env = ctx.createGain();
   env.gain.setValueAtTime(0.0001, when);
-  env.gain.exponentialRampToValueAtTime(level, when + 0.04);
-  env.gain.exponentialRampToValueAtTime(0.0001, when + 0.42);
-  if (lowpass) {
-    const filter = ctx.createBiquadFilter();
-    filter.type = "lowpass";
-    filter.frequency.value = lowpass;
-    osc.connect(filter).connect(env).connect(master);
-  } else {
-    osc.connect(env).connect(master);
-  }
+  env.gain.exponentialRampToValueAtTime(level, when + 0.06);
+  env.gain.exponentialRampToValueAtTime(0.0001, when + 0.62);
+  const panner = ctx.createStereoPanner();
+  panner.pan.value = pan;
+  const filter = ctx.createBiquadFilter();
+  filter.type = "lowpass";
+  filter.frequency.value = lowpass ?? 2400;
+  osc.connect(filter).connect(env).connect(panner).connect(musicBus);
   osc.start(when);
-  osc.stop(when + 0.46);
+  osc.stop(when + 0.66);
 }
 
 export const dhigaliAmbience = {
@@ -47,6 +53,14 @@ export const dhigaliAmbience = {
       air = ctx.createBiquadFilter();
       air.type = "lowpass";
       air.frequency.value = 18000;
+      musicBus = ctx.createGain();
+      musicBus.gain.value = 0.9;
+      const echo = ctx.createDelay(0.5);
+      echo.delayTime.value = 0.28;
+      const echoGain = ctx.createGain();
+      echoGain.gain.value = 0.28;
+      musicBus.connect(master);
+      musicBus.connect(echo).connect(echoGain).connect(master);
       master.connect(air).connect(ctx.destination);
       layer("waves", 0.55);
       layer("wind", 0.22);
@@ -78,13 +92,15 @@ export const dhigaliAmbience = {
       const f = phrase[step % phrase.length]!;
       step += 1;
       if (next === "duo") {
-        tone(f, t, "sine", 0.07);
-        tone(f * 1.25, t + 0.03, "triangle", 0.045);
-        tone(f, t + 0.04, "sawtooth", 0.04, 1400);
+        tone(f, t, "sine", 0.06, -0.45, 1800);
+        tone(f * 1.26, t + 0.05, "triangle", 0.045, 0.45, 1600);
+        tone(f, t + 0.02, "sawtooth", 0.035, 0, 1100);
+        if (step % 4 === 0) tone(f / 2, t, "sine", 0.04, 0, 400);
       } else {
-        tone(f * 1.5, t, "sawtooth", 0.05, 900);
+        tone(f * 1.5, t, "triangle", 0.055, 0.15, 1400);
+        tone(f * 0.75, t, "sine", 0.03, -0.2, 500);
       }
-      actTimer = window.setTimeout(play, 480);
+      actTimer = window.setTimeout(play, 560);
     };
     play();
   },
@@ -147,5 +163,6 @@ export const dhigaliAmbience = {
     ctx = null;
     master = null;
     air = null;
+    musicBus = null;
   },
 };
