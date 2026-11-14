@@ -58,7 +58,7 @@ export function DhigaliWorld({
         new THREE.MeshBasicMaterial({ color: 0xfff1c9 }),
       );
       scene.add(sunDisk);
-      const skyDay = new THREE.Color(0x8ecae6);
+      const skyDay = new THREE.Color(0x4da3ef);
       const skyRise = new THREE.Color(0xf3b183);
       const skySet = new THREE.Color(0xe07a4c);
       const skyNight = new THREE.Color(0x07141c);
@@ -67,8 +67,8 @@ export function DhigaliWorld({
       const waterMat = new THREE.ShaderMaterial({
         uniforms: {
           uTime: { value: 0 },
-          uShallow: { value: new THREE.Color(0x3ec6c6) },
-          uDeep: { value: new THREE.Color(0x0a4f66) },
+          uShallow: { value: new THREE.Color(0x7eefe4) },
+          uDeep: { value: new THREE.Color(0x1a9eb8) },
         },
         vertexShader: `
           uniform float uTime;
@@ -114,16 +114,92 @@ export function DhigaliWorld({
       const greens = [0x1f6b3a, 0x2f8f4e, 0x3d6b45, 0x145c32, 0x4caf6a];
       const trunkMat = new THREE.MeshStandardMaterial({ color: 0x6b4423, roughness: 0.85 });
       const plantPalm = (x: number, z: number, scale: number) => {
-        const h = 3.2 * scale;
-        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.12 * scale, 0.22 * scale, h, 7), trunkMat);
+        const h = 4.2 * scale;
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.1 * scale, 0.2 * scale, h, 7), trunkMat);
         trunk.position.set(x, h / 2 + 0.4, -z);
         const crownMat = new THREE.MeshStandardMaterial({
           color: greens[Math.floor(Math.random() * greens.length)]!,
-          roughness: 0.8,
+          roughness: 0.75,
         });
-        const crown = new THREE.Mesh(new THREE.ConeGeometry(1.15 * scale, 2.4 * scale, 8), crownMat);
-        crown.position.set(x, h + 0.7, -z);
-        scene.add(trunk, crown);
+        const crown = new THREE.Group();
+        for (let f = 0; f < 6; f++) {
+          const frond = new THREE.Mesh(new THREE.ConeGeometry(0.28 * scale, 2.2 * scale, 5), crownMat);
+          frond.position.y = 0.35 * scale;
+          frond.rotation.z = 0.9;
+          frond.rotation.y = (f / 6) * Math.PI * 2;
+          crown.add(frond);
+        }
+        crown.position.set(x, h + 0.2, -z);
+        const bush = new THREE.Mesh(
+          new THREE.SphereGeometry(0.85 * scale, 8, 6),
+          new THREE.MeshStandardMaterial({ color: greens[(greens.length + 2) % greens.length]!, roughness: 1 }),
+        );
+        bush.position.set(x + 0.9 * scale, 0.7, -z + 0.4);
+        scene.add(trunk, crown, bush);
+      };
+      const cream = new THREE.MeshStandardMaterial({ color: 0xf4efe4, roughness: 0.62 });
+      const timber = new THREE.MeshStandardMaterial({ color: 0xe2c48a, roughness: 0.72 });
+      const glassMat = new THREE.MeshStandardMaterial({
+        color: 0xc5eef2,
+        roughness: 0.08,
+        metalness: 0.15,
+        transparent: true,
+        opacity: 0.55,
+      });
+      const poolMat = new THREE.MeshStandardMaterial({ color: 0x2fbfc8, roughness: 0.18, metalness: 0.05 });
+      const slatMat = new THREE.MeshStandardMaterial({ color: 0xd2b07a, roughness: 0.8 });
+      const railMat = new THREE.MeshStandardMaterial({ color: 0xe4e8ee, metalness: 0.55, roughness: 0.28 });
+      const overwaterVilla = (x: number, z: number) => {
+        const g = new THREE.Group();
+        g.position.set(x, 0, -z);
+        for (const [px, pz] of [
+          [-2.4, -1.5],
+          [2.4, -1.5],
+          [-2.4, 1.5],
+          [2.4, 1.5],
+        ] as [number, number][]) {
+          const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.14, 2.5, 8), cream);
+          pillar.position.set(px, 1.25, pz);
+          g.add(pillar);
+        }
+        const deck = new THREE.Mesh(new THREE.BoxGeometry(7.4, 0.16, 5), timber);
+        deck.position.y = 2.45;
+        g.add(deck);
+        const house = new THREE.Mesh(new THREE.BoxGeometry(5.4, 2.15, 3.5), cream);
+        house.position.set(0.3, 3.6, -0.35);
+        g.add(house);
+        const slab = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.16, 4.3), cream);
+        slab.position.set(0.3, 4.75, -0.35);
+        g.add(slab);
+        const door = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.85, 0.05), glassMat);
+        door.position.set(0.15, 3.45, 1.42);
+        g.add(door);
+        const curtain = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 1.7, 0.08),
+          new THREE.MeshStandardMaterial({ color: 0xf3e6cf, roughness: 0.9 }),
+        );
+        curtain.position.set(1.15, 3.45, 1.46);
+        g.add(curtain);
+        const rim = new THREE.Mesh(new THREE.BoxGeometry(3.3, 0.55, 2.3), cream);
+        rim.position.set(-1.1, 1.85, 3.35);
+        g.add(rim);
+        const pool = new THREE.Mesh(new THREE.BoxGeometry(2.55, 0.1, 1.65), poolMat);
+        pool.position.set(-1.1, 2.12, 3.35);
+        g.add(pool);
+        for (let i = 0; i < 7; i++) {
+          const slat = new THREE.Mesh(new THREE.BoxGeometry(0.07, 1.55, 0.32), slatMat);
+          slat.position.set(-3.15, 3.35, -1.35 + i * 0.36);
+          g.add(slat);
+        }
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(6.6, 0.05, 0.05), railMat);
+        rail.position.set(0.5, 3.15, 2.35);
+        g.add(rail);
+        for (let i = 0; i < 5; i++) {
+          const step = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.07, 0.26), timber);
+          step.position.set(2.7, 2.15 - i * 0.38, 2.55 + i * 0.26);
+          g.add(step);
+        }
+        scene.add(g);
       };
 
       for (const feature of DHIGALI_FEATURES) {
@@ -192,24 +268,9 @@ export function DhigaliWorld({
             for (let i = 1; i < feature.points.length; i++) {
               const cur = toLocal(feature.points[i]![0], feature.points[i]![1]);
               walked += Math.hypot(cur.x - prev.x, cur.z - prev.z);
-              if (walked > 16) {
+              if (walked > 22) {
                 walked = 0;
-                const pole = new THREE.Mesh(
-                  new THREE.CylinderGeometry(0.12, 0.16, 2.2, 6),
-                  new THREE.MeshStandardMaterial({ color: 0xc8b89a }),
-                );
-                pole.position.set(cur.x, 1.1, -cur.z);
-                const deck = new THREE.Mesh(
-                  new THREE.CylinderGeometry(2.6, 2.8, 0.35, 10),
-                  new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.65 }),
-                );
-                deck.position.set(cur.x, 2.3, -cur.z);
-                const roof = new THREE.Mesh(
-                  new THREE.ConeGeometry(3.1, 1.5, 10),
-                  new THREE.MeshStandardMaterial({ color: 0xc4784a, roughness: 0.7 }),
-                );
-                roof.position.set(cur.x, 3.3, -cur.z);
-                scene.add(pole, deck, roof);
+                overwaterVilla(cur.x, cur.z);
               }
               prev = cur;
             }
@@ -243,12 +304,17 @@ export function DhigaliWorld({
         );
         wall.position.y = look.h / 2 + 0.4;
         const roof = new THREE.Mesh(
-          new THREE.ConeGeometry(look.r * 1.15, 1.8, 14),
-          new THREE.MeshStandardMaterial({ color: look.roof, roughness: 0.65 }),
+          new THREE.CylinderGeometry(look.r * 1.08, look.r * 1.08, 0.22, 16),
+          new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.55 }),
         );
-        roof.position.y = look.h + 1.3;
+        roof.position.y = look.h + 0.55;
+        const band = new THREE.Mesh(
+          new THREE.CylinderGeometry(look.r * 1.1, look.r * 1.1, 0.12, 16),
+          new THREE.MeshStandardMaterial({ color: look.roof, roughness: 0.6 }),
+        );
+        band.position.y = look.h + 0.28;
         const group = new THREE.Group();
-        group.add(wall, roof);
+        group.add(wall, roof, band);
         group.position.set(p.x, 0, -p.z);
         scene.add(group);
         buildings.set(spot.id, wall);
@@ -423,8 +489,8 @@ export function DhigaliWorld({
         fog.near = now.underwater ? 1 : 40;
         fog.far = now.underwater ? 26 : 520;
         waterMat.uniforms.uTime!.value += 0.016;
-        uShallow.set(setting || rising ? 0xe08a62 : 0x3ec6c6);
-        uDeep.set(now.underwater ? 0x06384c : setting || rising ? 0x5a3a48 : 0x0a4f66);
+        uShallow.set(setting || rising ? 0xe7b089 : 0x7eefe4);
+        uDeep.set(now.underwater ? 0x0a6e86 : setting || rising ? 0xc4846a : 0x169eb4);
         sun.intensity = elev > 0 ? 0.35 + elev * 0.9 : 0.15;
         sun.color.set(setting || rising ? 0xffb067 : 0xfff4dd);
         (sunDisk.material as MeshBasicMaterial).color.set(setting || rising ? 0xffb15a : 0xfff6d4);
