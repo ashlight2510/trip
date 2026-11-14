@@ -18,6 +18,9 @@ export function DhigaliWorld({
   fireworks,
   underwater,
   swimsuit,
+  busLat,
+  busLng,
+  busHeading,
 }: {
   lat: number;
   lng: number;
@@ -28,10 +31,13 @@ export function DhigaliWorld({
   fireworks: boolean;
   underwater: boolean;
   swimsuit: boolean;
+  busLat: number;
+  busLng: number;
+  busHeading: number;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
-  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit });
-  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit };
+  const live = useRef({ lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading });
+  live.current = { lat, lng, heading, minutes, nearId, people, fireworks, underwater, swimsuit, busLat, busLng, busHeading };
 
   useEffect(() => {
     const host = hostRef.current;
@@ -378,6 +384,35 @@ export function DhigaliWorld({
 
       const you = makeWalker(0xf4f7fb);
       scene.add(you.g);
+      const bus = new THREE.Group();
+      const body = new THREE.Mesh(
+        new THREE.BoxGeometry(4.6, 1.7, 1.9),
+        new THREE.MeshStandardMaterial({ color: 0xf7f4ee, roughness: 0.55 }),
+      );
+      body.position.y = 1.55;
+      const stripe = new THREE.Mesh(
+        new THREE.BoxGeometry(4.62, 0.28, 1.92),
+        new THREE.MeshStandardMaterial({ color: 0x1b6f8a }),
+      );
+      stripe.position.y = 1.35;
+      const glass = new THREE.Mesh(
+        new THREE.BoxGeometry(3.4, 0.55, 1.7),
+        new THREE.MeshStandardMaterial({ color: 0xb9e4ea, transparent: true, opacity: 0.55, roughness: 0.1 }),
+      );
+      glass.position.y = 2.05;
+      bus.add(body, stripe, glass);
+      for (const wx of [-1.4, 1.4]) {
+        for (const wz of [-0.7, 0.7]) {
+          const wheel = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.32, 0.32, 0.22, 10),
+            new THREE.MeshStandardMaterial({ color: 0x222222 }),
+          );
+          wheel.rotation.x = Math.PI / 2;
+          wheel.position.set(wx, 0.32, wz);
+          bus.add(wheel);
+        }
+      }
+      scene.add(bus);
       const stageAt = (spotId: string, east: number, north: number, color: number) => {
         const spot = GEO_SPOTS.find((item) => item.id === spotId);
         if (!spot) return null;
@@ -459,7 +494,11 @@ export function DhigaliWorld({
         const now = live.current;
         const here = toLocal(now.lat, now.lng);
         const stood = you.g.position.clone();
-        you.g.visible = !now.underwater;
+        const busAt = toLocal(now.busLat, now.busLng);
+        bus.position.set(busAt.x, 0, -busAt.z);
+        bus.rotation.y = -((now.busHeading * Math.PI) / 180);
+        const riding = Math.hypot(here.x - busAt.x, here.z - busAt.z) < 1.2;
+        you.g.visible = !now.underwater && !riding;
         for (const performer of [...duo, trumpet, sax]) {
           if (!performer) continue;
           performer.phase += 0.08;

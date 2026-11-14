@@ -141,6 +141,20 @@ export function nearestGeoSpot(lat: number, lng: number, reach = 42) {
   return best;
 }
 
+function serviceLine(id: number) {
+  return DHIGALI_FEATURES.find((feature) => feature.id === id)?.points ?? [];
+}
+
+/** Island shuttle: west road, east road, then back. */
+const busOut = [...serviceLine(734620482), ...serviceLine(734620481).slice(1), ...serviceLine(734620480)];
+export const BUS_ROUTE: { lat: number; lng: number }[] = [
+  ...busOut.map(([lat, lng]) => ({ lat, lng })),
+  ...busOut
+    .slice(0, -1)
+    .reverse()
+    .map(([lat, lng]) => ({ lat, lng })),
+];
+
 export function bearingDeg(from: { lat: number; lng: number }, to: { lat: number; lng: number }) {
   const φ1 = (from.lat * Math.PI) / 180;
   const φ2 = (to.lat * Math.PI) / 180;

@@ -10,6 +10,7 @@ import {
   bearingDeg,
   DHIGALI_COAST,
   GEO_NPCS,
+  BUS_ROUTE,
   GEO_SPOTS,
   canWalk,
   DHIGALI_FEATURES,
@@ -76,7 +77,12 @@ export function DhigaliExperience() {
   const [fireworks, setFireworks] = useState(false);
   const [underwater, setUnderwater] = useState(false);
   const [swimsuit, setSwimsuit] = useState(false);
+  const [aboard, setAboard] = useState(false);
+  const [bus, setBus] = useState({ lat: BUS_ROUTE[0]?.lat ?? ARRIVAL.lat, lng: BUS_ROUTE[0]?.lng ?? ARRIVAL.lng, heading: 90 });
   const underwaterRef = useRef(false);
+  const aboardRef = useRef(false);
+  const busTRef = useRef(0);
+  const busMarkerRef = useRef<import("leaflet").CircleMarker | null>(null);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [bar, setBar] = useState({ x: 16, y: 16 });
   const keys = useRef({ up: false, down: false, left: false, right: false });
@@ -94,6 +100,7 @@ export function DhigaliExperience() {
   posRef.current = pos;
   rideRef.current = ride;
   underwaterRef.current = underwater;
+  aboardRef.current = aboard;
 
   useEffect(() => {
     if (phase !== "fly") return;
@@ -146,6 +153,31 @@ export function DhigaliExperience() {
         }
         return next % (24 * 60);
       });
+      const busPath = BUS_ROUTE.map((point) => ({ x: point.lat, y: point.lng }));
+      busTRef.current = (busTRef.current + dt * 0.012) % 1;
+      const busHere = alongPath(busPath, busTRef.current);
+      const busAhead = alongPath(busPath, (busTRef.current + 0.01) % 1);
+      const busPose = {
+        lat: busHere.x,
+        lng: busHere.y,
+        heading: bearingDeg({ lat: busHere.x, lng: busHere.y }, { lat: busAhead.x, lng: busAhead.y }),
+      };
+      setBus(busPose);
+      busMarkerRef.current?.setLatLng([busPose.lat, busPose.lng]);
+      if (aboardRef.current) {
+        const riding = { ...busPose };
+        posRef.current = riding;
+        setPos(riding);
+        playerRef.current?.setLatLng([riding.lat, riding.lng]);
+        mapRef.current?.panTo([riding.lat, riding.lng], { animate: false });
+        const found = nearestGeoSpot(riding.lat, riding.lng, 30);
+        if ((found?.id ?? null) !== nearIdRef.current) {
+          nearIdRef.current = found?.id ?? null;
+          setNear(found);
+        }
+        raf = requestAnimationFrame(tick);
+        return;
+      }
       const k = keys.current;
       const manual = k.up || k.down || k.left || k.right;
       if (manual) destRef.current = null;
@@ -304,6 +336,16 @@ export function DhigaliExperience() {
         fillColor: "#ffffff",
         fillOpacity: 1,
       }).addTo(map);
+      const firstBus = BUS_ROUTE[0] ?? { lat: start.lat, lng: start.lng };
+      busMarkerRef.current = L.circleMarker([firstBus.lat, firstBus.lng], {
+        radius: 6,
+        color: "#ffffff",
+        weight: 2,
+        fillColor: "#1b6f8a",
+        fillOpacity: 1,
+      })
+        .bindTooltip("버스", { direction: "top" })
+        .addTo(map);
       for (const npc of GEO_NPCS) {
         const p = npc.path[0];
         if (!p) continue;
@@ -325,6 +367,7 @@ export function DhigaliExperience() {
       map?.remove();
       mapRef.current = null;
       playerRef.current = null;
+      busMarkerRef.current = null;
       npcRefs.current = {};
     };
   }, [phase]);
@@ -483,6 +526,9 @@ export function DhigaliExperience() {
         fireworks={fireworks}
         underwater={underwater}
         swimsuit={swimsuit}
+        busLat={bus.lat}
+        busLng={bus.lng}
+        busHeading={bus.heading}
         people={people.map(({ npc, lat, lng }) => ({ id: npc.id, lat, lng, color: npc.color }))}
       />
       <div ref={hostRef} className="absolute bottom-4 right-4 z-30 h-36 w-40 overflow-hidden rounded-2xl shadow-lg ring-2 ring-white" />
@@ -497,7 +543,7 @@ export function DhigaliExperience() {
             <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · 수집한 길·잔교 · {sky.label}</p>
             <h1 className="font-serif text-2xl">디갈리 섬</h1>
             <p className="mt-0.5 truncate text-[12px] text-white/80">
-              {clockLabel(minutes)} · {ride === "buggy" ? "버기" : ride === "run" ? "달리기" : "도보"}
+              {clockLabel(minutes)} · {aboard ? "버스" : ride === "buggy" ? "버기" : ride === "run" ? "달리기" : "도보"}
               {destName ? ` · ${destName}으로` : ""}
             </p>
           </div>
@@ -599,15 +645,24 @@ export function DhigaliExperience() {
             <span className="font-semibold">{talk.name}</span> · {talk.line}
           </p>
         )}
+        {(aboard || haversineM(pos.lat, pos.lng, bus.lat, bus.lng) < 16) && (
+          <button
+            type="button"
+            onClick={() => setAboard((on) => !on)}
+            className="rounded-2xl bg-[#1b6f8a] px-3 py-2 text-left text-[12px] font-semibold text-white"
+          >
+            {aboard ? "버스에서 내리기" : "버스 타기"}
+          </button>
+        )}
         {near ? (
           <div className="rounded-2xl bg-white/95 p-3 text-stone-900">
             <p className="text-[11px] text-stone-500">가까이</p>
             <p className="font-semibold">{near.name}</p>
             <p className="mt-1 text-[12px] leading-relaxed text-stone-600">{near.blurb}</p>
             <div className="mt-2 flex gap-1">
-              <button
-                type="button"
-                onClick={joinEvent}
+            <button
+              type="button"
+              onClick={joinEvent}
                 className="rounded-full bg-[#1b4965] px-3 py-1.5 text-[12px] font-semibold text-white"
               >
                 {near.id === "jetty" ? "스노클 들어가기" : "참여"}
