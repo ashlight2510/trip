@@ -2,18 +2,20 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import "leaflet/dist/leaflet.css";
 import { checkDhigaliAdmin } from "@/app/actions/dhigali-admin";
+import { DHIGALI_ITINERARY } from "@/lib/dhigali";
 import {
-  DHIGALI,
-  DHIGALI_ITINERARY,
-  DHIGALI_NPCS,
-  DHIGALI_PIERS,
-  DHIGALI_SPOTS,
-  dhigaliInside,
-  nearestPerson,
-  nearestSpot,
-  type DhigaliSpot,
-} from "@/lib/dhigali";
+  ARRIVAL,
+  bearingDeg,
+  DHIGALI_COAST,
+  GEO_NPCS,
+  GEO_SPOTS,
+  nearestGeoSpot,
+  onDhigaliLand,
+  type GeoSpot,
+} from "@/lib/dhigali-geo";
+import { haversineM, offsetLatLng } from "@/lib/travel-mode";
 
 type Phase = "gate" | "fly" | "island";
 
@@ -24,8 +26,6 @@ const FLY_STEPS = [
   { title: "수상비행기", body: "라 환초까지 약 45분. 산호 고리가 창문 아래로 이어진다." },
   { title: "디갈리 도착", body: "남쪽 파빌리온에 내렸다. 신발을 벗고 모래를 밟는다." },
 ];
-
-const SCALE = 2.15;
 
 function skyFor(minutes: number) {
   const h = (minutes / 60) % 24;
@@ -61,8 +61,8 @@ export function DhigaliExperience() {
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState("");
   const [flyStep, setFlyStep] = useState(0);
-  const [pos, setPos] = useState({ x: -20, y: 140, heading: 0 });
-  const [near, setNear] = useState<DhigaliSpot | null>(null);
+  const [pos, setPos] = useState({ lat: ARRIVAL.lat, lng: ARRIVAL.lng, heading: 0 });
+  const [near, setNear] = useState<GeoSpot | null>(null);
   const [done, setDone] = useState<string[]>([]);
   const [log, setLog] = useState<string[]>([]);
   const [npcT, setNpcT] = useState(0);
@@ -75,7 +75,13 @@ export function DhigaliExperience() {
   const drag = useRef<{ kind: "map" | "bar"; x: number; y: number; ox: number; oy: number } | null>(null);
   const posRef = useRef(pos);
   const rideRef = useRef(ride);
-  const destRef = useRef<{ x: number; y: number } | null>(null);
+  const destRef = useRef<{ lat: number; lng: number } | null>(null);
+  const mapRef = useRef<import("leaflet").Map | null>(null);
+  const playerRef = useRef<import("leaflet").CircleMarker | null>(null);
+  const npcRefs = useRef<Record<string, import("leaflet").CircleMarker>>({});
+  const hostRef = useRef<HTMLDivElement>(null);
+  const movingRef = useRef(false);
+  const npcTRef = useRef(0);
   const nearIdRef = useRef<string | null>(null);
   posRef.current = pos;
   rideRef.current = ride;
@@ -111,7 +117,16 @@ export function DhigaliExperience() {
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      setNpcT((t) => (t + dt * 0.08) % 1);
+      const nextNpcT = (npcTRef.current + dt * 0.08) % 1;
+      npcTRef.current = nextNpcT;
+      setNpcT(nextNpcT);
+      for (const npc of GEO_NPCS) {
+        const p = alongPath(
+          npc.path.map((point) => ({ x: point.lat, y: point.lng })),
+          nextNpcT * npc.speed * 8,
+        );
+        npcRefs.current[npc.id]?.setLatLng([p.x, p.y]);
+      }
       setMinutes((m) => (m + dt * 2.4) % (24 * 60));
       const k = keys.current;
       const manual = k.up || k.down || k.left || k.right;
@@ -123,29 +138,28 @@ export function DhigaliExperience() {
       if (k.right) heading = (heading + 140 * dt) % 360;
       if (k.up) speed = cruise;
       else if (k.down) speed = -cruise * 0.45;
+      const here = posRef.current;
       const dest = destRef.current;
       if (!manual && dest) {
-        const dx = dest.x - posRef.current.x;
-        const dy = dest.y - posRef.current.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 8) {
+        const dist = haversineM(here.lat, here.lng, dest.lat, dest.lng);
+        if (dist < 14) {
           destRef.current = null;
           setDestName(null);
         } else {
-          heading = (Math.atan2(dx, -dy) * 180) / Math.PI;
-          if (heading < 0) heading += 360;
+          heading = bearingDeg(here, dest);
           speed = cruise;
         }
       }
+      movingRef.current = speed !== 0;
       if (speed !== 0) {
-        const rad = (heading * Math.PI) / 180;
-        const nx = posRef.current.x + Math.sin(rad) * speed * dt;
-        const ny = posRef.current.y - Math.cos(rad) * speed * dt;
-        if (dhigaliInside(nx, ny)) {
-          const next = { x: nx, y: ny, heading };
+        const step = offsetLatLng(here.lat, here.lng, heading, speed * dt);
+        if (onDhigaliLand(step.lat, step.lng)) {
+          const next = { lat: step.lat, lng: step.lng, heading };
           posRef.current = next;
           setPos(next);
-          const found = nearestSpot(nx, ny);
+          playerRef.current?.setLatLng([next.lat, next.lng]);
+          mapRef.current?.panTo([next.lat, next.lng], { animate: false });
+          const found = nearestGeoSpot(step.lat, step.lng);
           if ((found?.id ?? null) !== nearIdRef.current) {
             nearIdRef.current = found?.id ?? null;
             setNear(found);
@@ -153,12 +167,14 @@ export function DhigaliExperience() {
         } else {
           destRef.current = null;
           setDestName(null);
-          setPos((p) => ({ ...p, heading }));
-          posRef.current = { ...posRef.current, heading };
+          const turned = { ...here, heading };
+          posRef.current = turned;
+          setPos(turned);
         }
       } else if (k.left || k.right) {
-        setPos((p) => ({ ...p, heading }));
-        posRef.current = { ...posRef.current, heading };
+        const turned = { ...here, heading };
+        posRef.current = turned;
+        setPos(turned);
       }
       raf = requestAnimationFrame(tick);
     };
@@ -167,6 +183,78 @@ export function DhigaliExperience() {
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", down);
       window.removeEventListener("keyup", up);
+    };
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "island") return;
+    const host = hostRef.current;
+    if (!host) return;
+    let cancelled = false;
+    let map: import("leaflet").Map | null = null;
+    void import("leaflet").then(({ default: L }) => {
+      if (cancelled || !hostRef.current) return;
+      map = L.map(hostRef.current, {
+        zoomControl: false,
+        attributionControl: true,
+        minZoom: 16,
+        maxZoom: 19,
+      });
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+        {
+          attribution: "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics",
+          maxZoom: 19,
+          maxNativeZoom: 18,
+        },
+      ).addTo(map);
+      const shore = L.polygon(
+        DHIGALI_COAST.map(([lat, lng]) => [lat, lng] as [number, number]),
+        { color: "#fff7e6", weight: 2, fillColor: "#fff7e6", fillOpacity: 0.06 },
+      ).addTo(map);
+      map.fitBounds(shore.getBounds().pad(0.35), { maxZoom: 17, animate: false });
+      for (const spot of GEO_SPOTS) {
+        const marker = L.circleMarker([spot.lat, spot.lng], {
+          radius: 6,
+          color: "#ffffff",
+          weight: 2,
+          fillColor: "#1b4965",
+          fillOpacity: 1,
+        });
+        marker.bindTooltip(spot.name, { permanent: true, direction: "top", offset: [0, -6] });
+        marker.on("click", () => goTo(spot));
+        marker.addTo(map!);
+      }
+      const start = posRef.current;
+      playerRef.current = L.circleMarker([start.lat, start.lng], {
+        radius: 8,
+        color: "#1b4965",
+        weight: 3,
+        fillColor: "#ffffff",
+        fillOpacity: 1,
+      }).addTo(map);
+      for (const npc of GEO_NPCS) {
+        const p = npc.path[0];
+        if (!p) continue;
+        npcRefs.current[npc.id] = L.circleMarker([p.lat, p.lng], {
+          radius: 5,
+          color: "#ffffff",
+          weight: 1,
+          fillColor: npc.color,
+          fillOpacity: 1,
+        })
+          .bindTooltip(npc.name, { direction: "top" })
+          .addTo(map);
+      }
+      mapRef.current = map;
+      requestAnimationFrame(() => map?.invalidateSize());
+    });
+    return () => {
+      cancelled = true;
+      map?.remove();
+      mapRef.current = null;
+      playerRef.current = null;
+      npcRefs.current = {};
     };
   }, [phase]);
 
@@ -191,8 +279,8 @@ export function DhigaliExperience() {
     setDone((prev) => (prev.includes(near.id) ? prev : [...prev, near.id]));
   }
 
-  function goTo(spot: DhigaliSpot) {
-    destRef.current = { x: spot.x, y: spot.y };
+  function goTo(spot: GeoSpot) {
+    destRef.current = { lat: spot.lat, lng: spot.lng };
     setDestName(spot.name);
     setRide("buggy");
   }
@@ -265,14 +353,15 @@ export function DhigaliExperience() {
     );
   }
 
-  const camX = pos.x * SCALE;
-  const camY = pos.y * SCALE;
   const sky = skyFor(minutes);
-  const people = DHIGALI_NPCS.map((npc) => {
-    const p = alongPath(npc.path, npcT * npc.speed * 8);
-    return { npc, x: p.x, y: p.y };
+  const people = GEO_NPCS.map((npc) => {
+    const p = alongPath(
+      npc.path.map((point) => ({ x: point.lat, y: point.lng })),
+      npcT * npc.speed * 8,
+    );
+    return { npc, lat: p.x, lng: p.y };
   });
-  const talk = nearestPerson(pos.x, pos.y, people);
+  const talk = people.find((person) => haversineM(pos.lat, pos.lng, person.lat, person.lng) < 32)?.npc ?? null;
 
   function pointerDown(kind: "map" | "bar", e: React.PointerEvent) {
     if (kind === "map" && (e.target as HTMLElement).closest("button, a, aside")) return;
@@ -299,84 +388,9 @@ export function DhigaliExperience() {
     <main
       className="relative h-dvh cursor-grab overflow-hidden text-white active:cursor-grabbing"
       style={{ background: sky.sea }}
-      onPointerDown={(e) => pointerDown("map", e)}
     >
-      <div
-        className="absolute left-1/2 top-1/2"
-        style={{ transform: `translate(${pan.x - camX}px, ${pan.y - camY}px)` }}
-      >
-        <svg
-          width={560 * SCALE}
-          height={420 * SCALE}
-          viewBox="-280 -210 560 420"
-          className="absolute overflow-visible"
-          style={{ left: -280 * SCALE, top: -210 * SCALE }}
-        >
-          <ellipse cx={0} cy={0} rx={DHIGALI.rx + 48} ry={DHIGALI.ry + 34} fill="#7fd0c4" transform={`rotate(${DHIGALI.rotDeg})`} opacity={0.9} />
-          <ellipse cx={0} cy={0} rx={DHIGALI.rx + 8} ry={DHIGALI.ry + 6} fill="#f3e6c4" transform={`rotate(${DHIGALI.rotDeg})`} />
-          <ellipse cx={0} cy={0} rx={DHIGALI.rx - 18} ry={DHIGALI.ry - 16} fill="#e7d3a1" transform={`rotate(${DHIGALI.rotDeg})`} />
-          <ellipse cx={-8} cy={6} rx={78} ry={30} fill="#7dae6a" opacity={0.8} transform={`rotate(${DHIGALI.rotDeg})`} />
-          {DHIGALI_PIERS.map((pier) => (
-            <line
-              key={`${pier[0].x}-${pier[1].y}`}
-              x1={pier[0].x}
-              y1={pier[0].y}
-              x2={pier[1].x}
-              y2={pier[1].y}
-              stroke="#f7f1e4"
-              strokeWidth={10}
-              strokeLinecap="round"
-            />
-          ))}
-          {DHIGALI_SPOTS.map((spot) => (
-            <rect
-              key={spot.id}
-              x={spot.x - 7}
-              y={spot.y - 5}
-              width={14}
-              height={10}
-              rx={1.5}
-              fill={spot.roof}
-              stroke="#1b4965"
-              strokeWidth={0.6}
-            />
-          ))}
-        </svg>
-        {DHIGALI_SPOTS.map((spot) => (
-          <button
-            key={spot.id}
-            type="button"
-            className="absolute grid -translate-x-1/2 -translate-y-1/2 place-items-center"
-            style={{ left: spot.x * SCALE, top: spot.y * SCALE }}
-            onClick={() => goTo(spot)}
-          >
-            <span className="size-2.5 rounded-full bg-[#1b4965] ring-2 ring-white" />
-            <span className="absolute left-4 top-0 whitespace-nowrap text-[10px] font-semibold text-[#073044]">
-              {spot.name}
-            </span>
-          </button>
-        ))}
-        {people.map(({ npc, x, y }) => (
-          <span
-            key={npc.id}
-            className="absolute grid size-4 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-[9px] font-bold text-white ring-2 ring-white"
-            style={{ left: x * SCALE, top: y * SCALE, background: npc.color }}
-            title={npc.name}
-          >
-            {npc.name.slice(0, 1)}
-          </span>
-        ))}
-        <span
-          className="absolute size-4 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow"
-          style={{
-            left: pos.x * SCALE,
-            top: pos.y * SCALE,
-            transform: `translate(-50%, -50%) rotate(${pos.heading}deg)`,
-          }}
-        >
-          <span className="absolute left-1/2 top-0 h-2 w-0.5 -translate-x-1/2 bg-[#1b4965]" />
-        </span>
-      </div>
+      <div ref={hostRef} className="dhigali-map absolute inset-0 z-0" />
+      <style>{`.dhigali-map .leaflet-pane{z-index:1}.dhigali-map .leaflet-top,.dhigali-map .leaflet-bottom{z-index:2}`}</style>
 
       <header
         className="absolute inset-x-0 top-0 z-20 bg-gradient-to-b from-black/45 to-transparent px-3 pb-3 pt-3"
@@ -384,7 +398,7 @@ export function DhigaliExperience() {
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[11px] tracking-[0.2em] text-white/70">DHIGALI · {sky.label}</p>
+            <p className="text-[11px] tracking-[0.2em] text-white/70">위성 · OSM 해안선 · {sky.label}</p>
             <h1 className="font-serif text-2xl">디갈리 섬</h1>
             <p className="mt-0.5 truncate text-[12px] text-white/80">
               {clockLabel(minutes)} · {ride === "buggy" ? "버기" : "도보"}
@@ -449,7 +463,7 @@ export function DhigaliExperience() {
             </button>
           </div>
         ) : (
-          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">시설 점을 누르면 버기가 그쪽으로 간다.</p>
+          <p className="rounded-2xl bg-black/35 px-3 py-2 text-[12px]">지도의 점을 누르면 버기가 그쪽으로 간다. 빈 바다는 끌어서 둘러본다.</p>
         )}
         {log.length > 0 && (
           <ul className="rounded-2xl bg-black/35 px-3 py-2 text-[12px] leading-relaxed">
