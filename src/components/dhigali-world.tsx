@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { Mesh, MeshStandardMaterial, Points, PointsMaterial, Vector3 } from "three";
+import type { Mesh, MeshBasicMaterial, MeshStandardMaterial, Points, PointsMaterial, Vector3 } from "three";
 import { DHIGALI_COAST } from "@/lib/dhigali-coast";
 import { DHIGALI_FEATURES } from "@/lib/dhigali-collected";
 import { DHIGALI_CENTER, GEO_SPOTS, toLocal } from "@/lib/dhigali-geo";
@@ -49,6 +49,16 @@ export function DhigaliWorld({
       const sun = new THREE.DirectionalLight(0xfff2d8, 1.15);
       sun.position.set(-80, 120, 40);
       scene.add(sun);
+      const sunDisk = new THREE.Mesh(
+        new THREE.SphereGeometry(14, 24, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfff1c9 }),
+      );
+      scene.add(sunDisk);
+      const skyDay = new THREE.Color(0x8ecae6);
+      const skyRise = new THREE.Color(0xf3b183);
+      const skySet = new THREE.Color(0xe07a4c);
+      const skyNight = new THREE.Color(0x07141c);
+      const skyMix = new THREE.Color();
 
       const water = new THREE.Mesh(
         new THREE.CircleGeometry(1800, 48),
@@ -217,13 +227,24 @@ export function DhigaliWorld({
         you.g.rotation.y = -((now.heading * Math.PI) / 180);
         swing(you, stood.distanceTo(you.g.position) > 0.015);
         const hour = (now.minutes / 60) % 24;
-        const dusk = hour >= 16 && hour < 19;
-        const night = hour >= 19 || hour < 5;
-        scene.background = new THREE.Color(night ? 0x07141c : dusk ? 0xc45c3e : 0x8ecae6);
+        const arc = ((hour - 6) / 12) * Math.PI;
+        const elev = Math.sin(arc);
+        const sunX = Math.cos(arc) * 280;
+        const sunY = elev * 190;
+        sunDisk.position.set(sunX, Math.max(sunY, -30), 20);
+        sunDisk.visible = elev > -0.08;
+        sun.position.set(sunX, Math.max(sunY, 8), 20);
+        const rising = hour >= 5 && hour < 9;
+        const setting = hour >= 16 && hour < 19.2;
+        if (elev > 0.25) skyMix.copy(skyDay);
+        else if (elev > -0.05) skyMix.copy(rising ? skyRise : skySet).lerp(skyDay, (elev + 0.05) / 0.3);
+        else skyMix.copy(skyNight).lerp(rising ? skyRise : skySet, Math.max(0, (elev + 0.35) / 0.3));
+        scene.background = skyMix;
         const sea = water.material as MeshStandardMaterial;
-        sea.color.set(night ? 0x062433 : dusk ? 0x8a4a3a : 0x0e7490);
-        sun.intensity = night ? 0.25 : dusk ? 0.7 : 1.15;
-        sun.color.set(dusk ? 0xffb067 : 0xfff4dd);
+        sea.color.set(elev > 0.2 ? 0x0e7490 : setting || rising ? 0x8a4a3a : 0x062433);
+        sun.intensity = elev > 0 ? 0.35 + elev * 0.9 : 0.15;
+        sun.color.set(setting || rising ? 0xffb067 : 0xfff4dd);
+        (sunDisk.material as MeshBasicMaterial).color.set(setting || rising ? 0xffb15a : 0xfff6d4);
         for (const [id, mesh] of buildings) {
           const mat = mesh.material as MeshStandardMaterial;
           mat.emissive.set(id === now.nearId ? 0xf0c27a : 0x000000);

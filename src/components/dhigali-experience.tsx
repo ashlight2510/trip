@@ -32,9 +32,9 @@ const FLY_STEPS = [
 
 function skyFor(minutes: number) {
   const h = (minutes / 60) % 24;
-  if (h >= 5 && h < 7) return { sea: "#c9846a", sandGlow: 0.2, label: "새벽" };
-  if (h >= 7 && h < 16) return { sea: "#0b6e8a", sandGlow: 0, label: "한낮" };
-  if (h >= 16 && h < 19) return { sea: "#c45c3e", sandGlow: 0.35, label: "노을" };
+  if (h >= 5 && h < 6.8) return { sea: "#c9846a", sandGlow: 0.2, label: "선라이즈" };
+  if (h >= 6.8 && h < 16) return { sea: "#0b6e8a", sandGlow: 0, label: "한낮" };
+  if (h >= 16 && h < 19) return { sea: "#c45c3e", sandGlow: 0.35, label: "선셋" };
   return { sea: "#062433", sandGlow: 0, label: "밤" };
 }
 
@@ -132,7 +132,16 @@ export function DhigaliExperience() {
         );
         npcRefs.current[npc.id]?.setLatLng([p.x, p.y]);
       }
-      setMinutes((m) => (m + dt * 2.4) % (24 * 60));
+      setMinutes((m) => {
+        const target = watchUntil.current;
+        const step = dt * (target == null ? 2.4 : 28);
+        const next = m + step;
+        if (target != null && m < target && next >= target) {
+          watchUntil.current = null;
+          return target % (24 * 60);
+        }
+        return next % (24 * 60);
+      });
       const k = keys.current;
       const manual = k.up || k.down || k.left || k.right;
       if (manual) destRef.current = null;
@@ -198,6 +207,7 @@ export function DhigaliExperience() {
   }, [phase]);
 
   const nightShown = useRef(false);
+  const watchUntil = useRef<number | null>(null);
   useEffect(() => {
     if (phase !== "island") return;
     const hour = (minutes / 60) % 24;
@@ -461,8 +471,32 @@ export function DhigaliExperience() {
         <div className="mt-2 flex gap-1 overflow-x-auto pb-1">
           <button type="button" onClick={() => setRide("walk")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "walk" ? "bg-white text-[#073044]" : "bg-black/40"}`}>도보</button>
           <button type="button" onClick={() => setRide("buggy")} className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] ${ride === "buggy" ? "bg-white text-[#073044]" : "bg-black/40"}`}>버기</button>
-          <button type="button" onClick={() => setMinutes(7 * 60 + 30)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">아침</button>
-          <button type="button" onClick={() => setMinutes(16 * 60 + 40)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">노을</button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = { ...posRef.current, heading: 90 };
+              posRef.current = next;
+              setPos(next);
+              setMinutes(5 * 60 + 15);
+              watchUntil.current = 6 * 60 + 45;
+            }}
+            className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]"
+          >
+            선라이즈
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const next = { ...posRef.current, heading: 270 };
+              posRef.current = next;
+              setPos(next);
+              setMinutes(17 * 60 + 5);
+              watchUntil.current = 18 * 60 + 45;
+            }}
+            className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]"
+          >
+            선셋
+          </button>
           <button type="button" onClick={() => setMinutes(20 * 60 + 10)} className="shrink-0 rounded-full bg-black/40 px-2.5 py-1 text-[11px]">밤</button>
           <button
             type="button"
