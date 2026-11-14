@@ -363,6 +363,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [wanderPool, setWanderPool] = useState<MapPlace[]>([]);
   const [wanderPicks, setWanderPicks] = useState<MapPlace[]>([]);
   const [wanderLoading, setWanderLoading] = useState(false);
+  const [panelOpen, setPanelOpen] = useState(true);
   const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
   const wanderActive = wanderMode != null;
 
@@ -694,6 +695,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   useEffect(() => {
     basemapRef.current?.setLocale(locale);
   }, [locale]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 240);
+    return () => clearTimeout(timer);
+  }, [panelOpen]);
 
   // Boot nearby places. Never prompt for location — only reuse an already-granted permission.
   useEffect(() => {
@@ -1058,7 +1064,13 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
   return (
     <div className="relative flex h-dvh w-full flex-col md:flex-row">
-      <aside className="z-10 flex max-h-[46vh] w-full flex-col border-b border-[var(--border-soft)] bg-[var(--background-panel)] md:max-h-none md:w-[380px] md:border-b-0 md:border-r">
+      <aside
+        className={`z-10 flex w-full flex-col overflow-hidden border-[var(--border-soft)] bg-[var(--background-panel)] transition-[max-height,width] duration-200 ${
+          panelOpen
+            ? "max-h-[46vh] border-b md:max-h-none md:w-[380px] md:border-b-0 md:border-r"
+            : "max-h-0 border-b-0 md:w-0 md:border-r-0"
+        }`}
+      >
         <header className="shrink-0 px-5 pb-3 pt-5">
           <div className="flex items-start justify-between gap-3">
             <Image
@@ -1333,6 +1345,17 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
       <div className="relative min-h-0 flex-1">
         <div ref={hostRef} className="absolute inset-0 z-0" />
+        <button
+          type="button"
+          onClick={() => setPanelOpen((open) => !open)}
+          aria-expanded={panelOpen}
+          aria-label={panelOpen ? t.collapsePanel : t.expandPanel}
+          className="absolute left-3 top-1/2 z-[530] grid size-9 -translate-y-1/2 place-items-center rounded-full bg-white text-stone-700 shadow-md ring-1 ring-stone-200 hover:bg-stone-50"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            {panelOpen ? <path d="M15 6 9 12l6 6" /> : <path d="m9 6 6 6-6 6" />}
+          </svg>
+        </button>
         {showCategoryFilter && (
           <div className="pointer-events-none absolute inset-x-0 top-3 z-[500] flex justify-center px-3 md:justify-start md:pl-3 md:pr-14">
             <div className="pointer-events-auto max-w-[min(100%,42rem)] overflow-x-auto rounded-2xl bg-[color-mix(in_srgb,var(--background-panel)_92%,white)] p-2 shadow-md ring-1 ring-[var(--border-soft)] backdrop-blur">
