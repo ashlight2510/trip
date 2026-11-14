@@ -5,6 +5,9 @@ let master: GainNode | null = null;
 let air: BiquadFilterNode | null = null;
 let voices: Voice[] = [];
 let lastStep = 0;
+let act: "none" | "duo" | "sax" = "none";
+let actTimer: number | null = null;
+const phrase = [262, 294, 330, 349, 392, 440, 392, 349, 330, 294];
 
 function layer(kind: "waves" | "wind" | "gulls", level: number) {
   if (!ctx || !master) return;
@@ -12,6 +15,27 @@ function layer(kind: "waves" | "wind" | "gulls", level: number) {
   gain.gain.value = level;
   gain.connect(master);
   voices.push(generators[kind](ctx, gain));
+}
+
+function tone(freq: number, when: number, type: OscillatorType, level: number, lowpass?: number) {
+  if (!ctx || !master) return;
+  const osc = ctx.createOscillator();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, when);
+  const env = ctx.createGain();
+  env.gain.setValueAtTime(0.0001, when);
+  env.gain.exponentialRampToValueAtTime(level, when + 0.04);
+  env.gain.exponentialRampToValueAtTime(0.0001, when + 0.42);
+  if (lowpass) {
+    const filter = ctx.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = lowpass;
+    osc.connect(filter).connect(env).connect(master);
+  } else {
+    osc.connect(env).connect(master);
+  }
+  osc.start(when);
+  osc.stop(when + 0.46);
 }
 
 export const dhigaliAmbience = {
@@ -39,6 +63,30 @@ export const dhigaliAmbience = {
   dive(under: boolean) {
     if (!ctx || !air) return;
     air.frequency.setTargetAtTime(under ? 420 : 18000, ctx.currentTime, 0.15);
+  },
+
+  setAct(next: "none" | "duo" | "sax") {
+    if (next === act) return;
+    act = next;
+    if (actTimer != null) window.clearTimeout(actTimer);
+    actTimer = null;
+    if (next === "none" || !ctx || !master) return;
+    let step = 0;
+    const play = () => {
+      if (act !== next || !ctx || !master) return;
+      const t = ctx.currentTime;
+      const f = phrase[step % phrase.length]!;
+      step += 1;
+      if (next === "duo") {
+        tone(f, t, "sine", 0.07);
+        tone(f * 1.25, t + 0.03, "triangle", 0.045);
+        tone(f, t + 0.04, "sawtooth", 0.04, 1400);
+      } else {
+        tone(f * 1.5, t, "sawtooth", 0.05, 900);
+      }
+      actTimer = window.setTimeout(play, 480);
+    };
+    play();
   },
 
   step(gap = 380) {
@@ -90,6 +138,9 @@ export const dhigaliAmbience = {
   },
 
   stop() {
+    act = "none";
+    if (actTimer != null) window.clearTimeout(actTimer);
+    actTimer = null;
     for (const voice of voices) voice.stop();
     voices = [];
     void ctx?.close();

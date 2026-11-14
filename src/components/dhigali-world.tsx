@@ -245,6 +245,27 @@ export function DhigaliWorld({
 
       const you = makeWalker(0xf4f7fb);
       scene.add(you.g);
+      const stageAt = (spotId: string, east: number, north: number, color: number) => {
+        const spot = GEO_SPOTS.find((item) => item.id === spotId);
+        if (!spot) return null;
+        const at = toLocal(spot.lat, spot.lng);
+        const performer = makeWalker(color);
+        performer.g.position.set(at.x + east, 0, -at.z - north);
+        scene.add(performer.g);
+        return performer;
+      };
+      const duo = [stageAt("capers", -1.3, 0.2, 0xc45c4c), stageAt("capers", 1.3, 0.2, 0xe7b8a0)];
+      const trumpet = stageAt("capers", 0, -1.4, 0xf0c27a);
+      if (trumpet) {
+        const bell = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.03, 0.09, 0.42, 8),
+          new THREE.MeshStandardMaterial({ color: 0xd4a017, metalness: 0.6, roughness: 0.35 }),
+        );
+        bell.rotation.z = Math.PI / 2;
+        bell.position.set(0.28, 1.25, 0.15);
+        trumpet.g.add(bell);
+      }
+      const sax = stageAt("haali", 0.9, 0, 0x1b4965);
       const fish = new THREE.Group();
       for (let i = 0; i < 14; i++) {
         const body = new THREE.Mesh(
@@ -306,6 +327,11 @@ export function DhigaliWorld({
         const here = toLocal(now.lat, now.lng);
         const stood = you.g.position.clone();
         you.g.visible = !now.underwater;
+        for (const performer of [...duo, trumpet, sax]) {
+          if (!performer) continue;
+          performer.phase += 0.08;
+          performer.armR.rotation.x = Math.sin(performer.phase) * 0.25;
+        }
         you.shorts.visible = now.swimsuit;
         you.torso.material = now.swimsuit ? you.skinMat : you.cloth;
         for (const part of you.limbs) part.material = now.swimsuit ? you.skinMat : you.cloth;

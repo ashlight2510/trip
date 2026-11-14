@@ -227,6 +227,22 @@ export function DhigaliExperience() {
   }, [phase, minutes]);
 
   useEffect(() => {
+    if (phase !== "island" || !soundOn) {
+      dhigaliAmbience.setAct("none");
+      return;
+    }
+    const capers = GEO_SPOTS.find((spot) => spot.id === "capers");
+    const haali = GEO_SPOTS.find((spot) => spot.id === "haali");
+    const act =
+      capers && haversineM(pos.lat, pos.lng, capers.lat, capers.lng) < 34
+        ? "duo"
+        : haali && haversineM(pos.lat, pos.lng, haali.lat, haali.lng) < 34
+          ? "sax"
+          : "none";
+    dhigaliAmbience.setAct(act);
+  }, [phase, soundOn, pos.lat, pos.lng]);
+
+  useEffect(() => {
     if (phase !== "island" || !fireworks || !soundOn) return;
     const id = window.setInterval(() => dhigaliAmbience.boom(), 1200);
     return () => window.clearInterval(id);
@@ -423,6 +439,14 @@ export function DhigaliExperience() {
     return { npc, lat: p.x, lng: p.y };
   });
   const talk = people.find((person) => haversineM(pos.lat, pos.lng, person.lat, person.lng) < 32)?.npc ?? null;
+  const capers = GEO_SPOTS.find((spot) => spot.id === "capers");
+  const haali = GEO_SPOTS.find((spot) => spot.id === "haali");
+  const music =
+    capers && haversineM(pos.lat, pos.lng, capers.lat, capers.lng) < 34
+      ? "duo"
+      : haali && haversineM(pos.lat, pos.lng, haali.lat, haali.lng) < 34
+        ? "sax"
+        : "none";
 
   function pointerDown(kind: "map" | "bar", e: React.PointerEvent) {
     if (kind === "map" && (e.target as HTMLElement).closest("button, a, aside")) return;
@@ -560,6 +584,16 @@ export function DhigaliExperience() {
             </span>
           ))}
         </div>
+        {music === "duo" && (
+          <p className="rounded-2xl bg-black/45 px-3 py-2 text-[12px] leading-relaxed">
+            케이퍼스 레지던트 듀오와 트럼펫. 실명은 공개돼 있지 않아, 그 자리의 즉흥이 나옵니다.
+          </p>
+        )}
+        {music === "sax" && (
+          <p className="rounded-2xl bg-black/45 px-3 py-2 text-[12px] leading-relaxed">
+            할리의 상주 색소폰, 부디카 산다루완. 2023–2024 디갈리 레지던트. 색소폰 즉흥이 나옵니다.
+          </p>
+        )}
         {talk && (
           <p className="rounded-2xl bg-black/45 px-3 py-2 text-[12px] leading-relaxed">
             <span className="font-semibold">{talk.name}</span> · {talk.line}
