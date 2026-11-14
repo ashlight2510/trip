@@ -17,6 +17,7 @@ import { displayName } from "@/i18n/display-name";
 import { SettingsMenu, useLocale, useT } from "@/i18n/locale";
 import { ContributeLinkForm } from "@/components/contribute-link-form";
 import { NearSuggestPanel } from "@/components/near-suggest-panel";
+import { TripBoard } from "@/components/trip-board";
 import { ReportLinkButton } from "@/components/report-link-button";
 import { SourceRankControls } from "@/components/source-rank-controls";
 import { PlaceLikeControls } from "@/components/place-like-controls";
@@ -333,8 +334,10 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const layerRef = useRef<L.LayerGroup | null>(null);
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const wanderCircleRef = useRef<L.Circle | null>(null);
+  const boundaryRef = useRef<L.GeoJSON | null>(null);
   const basemapRef = useRef<BasemapHandle | null>(null);
   const fetchSeq = useRef(0);
+  const boundarySeq = useRef(0);
   const wanderSeq = useRef(0);
   /** Last search query we auto-fit the map for — avoid re-fitting on every zoom (trackpad bounce). */
   const fittedSearchQ = useRef<string | null>(null);
@@ -793,6 +796,41 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
   useEffect(() => {
     const map = mapRef.current;
+    const q = query.trim();
+    if (boundaryRef.current) {
+      boundaryRef.current.remove();
+      boundaryRef.current = null;
+    }
+    if (!map || !q || searchNearMe) return;
+    const seq = ++boundarySeq.current;
+    const timer = setTimeout(() => {
+      void fetch(`/api/map/boundary?q=${encodeURIComponent(q)}`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data: { geojson?: GeoJSON.GeoJSON } | null) => {
+          if (!data?.geojson || seq !== boundarySeq.current || !mapRef.current) return;
+          const layer = L.geoJSON(data.geojson, {
+            style: {
+              color: "#1b4965",
+              weight: 2,
+              opacity: 0.9,
+              fillColor: "#1b4965",
+              fillOpacity: 0.08,
+            },
+            interactive: false,
+          }).addTo(mapRef.current);
+          boundaryRef.current = layer;
+          const bounds = layer.getBounds();
+          if (bounds.isValid()) {
+            mapRef.current.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
+          }
+        })
+        .catch(() => {});
+    }, 280);
+    return () => clearTimeout(timer);
+  }, [query, searchNearMe, mapReady]);
+
+  useEffect(() => {
+    const map = mapRef.current;
     const layer = layerRef.current;
     if (!map || !layer || !mapReady) return;
     layer.clearLayers();
@@ -1148,6 +1186,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                 if (gps && wanderMode) await runWander(wanderMode, wanderCats, gps);
               })();
             }}
+            onSelect={(place) => void openPlace(place)}
+          />
+
+          <TripBoard
+            origin={userLoc}
+            hasGps={hasUserGps}
             onSelect={(place) => void openPlace(place)}
           />
 
