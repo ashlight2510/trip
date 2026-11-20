@@ -22,8 +22,6 @@ jobs:
       NEXT_TELEMETRY_DISABLED: 1
       NEXT_PUBLIC_BASE_PATH: ""
       NEXT_PUBLIC_SITE_URL: "https://trip.funnyfunny.cloud"
-      NEXT_PUBLIC_KAKAO_MAP_KEY: ${{ secrets.NEXT_PUBLIC_KAKAO_MAP_KEY }}
-      NEXT_PUBLIC_GOOGLE_MAPS_KEY: ${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,11 +29,11 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: yarn
 
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile --ignore-engines
 
       - name: Build static data + Next export
         run: yarn build
