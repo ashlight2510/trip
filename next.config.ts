@@ -12,6 +12,9 @@ const nextConfig: NextConfig = {
   },
   // Hide the Next.js "N" / route-info badge in development.
   devIndicators: false,
+  experimental: {
+    agentUpgrade: "security",
+  },
   turbopack: {
     rules: {
       "*.css": {
