@@ -4,8 +4,6 @@ import { Suspense } from "react";
 import { TripExperience } from "@/components/trip-experience";
 import { getCourse, listCourses } from "@/db/repo";
 
-export const ensureStatic = "navigation";
-
 export async function generateStaticParams() {
   return (await listCourses()).map((c) => ({ courseId: c.id }));
 }

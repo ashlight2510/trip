@@ -17,6 +17,10 @@
 /.next/
 /out/
 
+# generated for GitHub Pages (yarn data:static)
+/public/static-data/
+
+
 # production
 /build
 

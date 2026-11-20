@@ -1670,7 +1670,7 @@ function PlacePanel({
           </div>
           <div className="flex shrink-0 items-center gap-1">
             <Link
-              href={`/trip/place/${place.id}`}
+              href={`/trip/place/?id=${encodeURIComponent(place.id)}`}
               title={t.soloTrip}
               className="inline-flex items-center gap-1 rounded-full bg-[#1b4965] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#163a52]"
             >

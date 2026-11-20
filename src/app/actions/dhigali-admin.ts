@@ -1,6 +1,3 @@
-"use server";
-
-export async function checkDhigaliAdmin(code: string) {
-  const expected = process.env.DHIGALI_ADMIN_CODE || "260201";
-  return code.trim() === expected;
+export async function checkDhigaliAdmin(_code: string) {
+  return { ok: false as const };
 }

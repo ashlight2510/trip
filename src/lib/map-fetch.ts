@@ -1,5 +1,6 @@
 import type { MapPlace } from "@/db/repo";
 import type { TripBrief } from "@/lib/trip-brief";
+import { getStaticPlace, queryStaticPlaces } from "@/lib/static-map-data";
 
 export type MapSearchResponse = {
   places: MapPlace[];
@@ -33,41 +34,40 @@ export function mergePlaces(prev: MapPlace[], next: MapPlace[]): MapPlace[] {
   return [...map.values()];
 }
 
+function paramsToQuery(params: Record<string, string | number | undefined>) {
+  return {
+    lat: params.lat != null && params.lat !== "" ? Number(params.lat) : undefined,
+    lng: params.lng != null && params.lng !== "" ? Number(params.lng) : undefined,
+    radiusKm: params.radiusKm != null && params.radiusKm !== "" ? Number(params.radiusKm) : undefined,
+    west: params.west != null && params.west !== "" ? Number(params.west) : undefined,
+    south: params.south != null && params.south !== "" ? Number(params.south) : undefined,
+    east: params.east != null && params.east !== "" ? Number(params.east) : undefined,
+    north: params.north != null && params.north !== "" ? Number(params.north) : undefined,
+    q: params.q != null ? String(params.q) : undefined,
+    scope: params.scope === "near" ? ("near" as const) : ("all" as const),
+    cityId: params.cityId != null ? String(params.cityId) : undefined,
+    districtId: params.districtId != null ? String(params.districtId) : undefined,
+    limit: params.limit != null && params.limit !== "" ? Number(params.limit) : undefined,
+    includeSources: params.includeSources === 1 || params.includeSources === "1",
+  };
+}
+
 export async function fetchPlaces(params: Record<string, string | number | undefined>): Promise<MapPlace[]> {
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v == null || v === "") continue;
-    qs.set(k, String(v));
-  }
-  const res = await fetch(`/api/map/places?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`places ${res.status}`);
-  const data = (await res.json()) as { places: MapPlace[] };
-  return data.places ?? [];
+  return queryStaticPlaces(paramsToQuery(params));
 }
 
 export async function fetchMapSearch(
   params: Record<string, string | number | undefined>,
 ): Promise<MapSearchResponse> {
-  const qs = new URLSearchParams();
-  for (const [k, v] of Object.entries(params)) {
-    if (v == null || v === "") continue;
-    qs.set(k, String(v));
-  }
-  const res = await fetch(`/api/map/places?${qs.toString()}`, { cache: "no-store" });
-  if (!res.ok) throw new Error(`places ${res.status}`);
-  const data = (await res.json()) as Partial<MapSearchResponse>;
+  const places = await queryStaticPlaces(paramsToQuery(params));
   return {
-    places: data.places ?? [],
-    brief: data.brief ?? null,
-    dayOffer: data.dayOffer ?? null,
-    briefNeedsLoc: Boolean(data.briefNeedsLoc),
+    places,
+    brief: null,
+    dayOffer: null,
+    briefNeedsLoc: false,
   };
 }
 
 export async function fetchPlaceDetail(id: string): Promise<MapPlace | null> {
-  const res = await fetch(`/api/map/places/${encodeURIComponent(id)}`, { cache: "no-store" });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`place ${res.status}`);
-  const data = (await res.json()) as { place: MapPlace };
-  return data.place ?? null;
+  return getStaticPlace(id);
 }
