@@ -1,13 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  /* Clearer sky blue pastels — matches 풍경너머 logo clouds. */
+  /* FunnyFunny Candy Ticket Booth tokens — chrome only, never the map tiles. */
+  --ticket-ink: #0e2230;
+  --ticket-paper: #fff6de;
+  --ticket-coral: #ff4b33;
+  --ticket-sun: #ffb81c;
+  --ticket-mint: #16b892;
+
+  /* Clearer sky blue pastels — matches 풍경너머 logo clouds (page / map gutters). */
   --background: #d9eefb;
-  --background-panel: #e7f5fc;
+  /* Sidebar / header chrome sits on ticket paper; the map itself stays sky. */
+  --background-panel: var(--ticket-paper);
   --background-soft: #c8e7f8;
-  --border-soft: #a9d4ec;
-  --foreground: #1a3350;
+  --border-soft: #ecd9a8;
+  --foreground: var(--ticket-ink);
   --brand-navy: #1b4965;
+  --brand-coral: var(--ticket-coral);
 }
 
 .leaflet-container {
@@ -25,7 +34,7 @@
 }
 
 .pn-place-pin button:focus-visible {
-  outline: 2px solid var(--brand-navy);
+  outline: 2px solid var(--ticket-coral);
   outline-offset: 2px;
   border-radius: 999px;
 }
@@ -37,9 +46,17 @@
   --color-border-soft: var(--border-soft);
   --color-foreground: var(--foreground);
   --color-brand-navy: var(--brand-navy);
-  --font-sans: var(--font-ibm-plex), "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --color-ticket-ink: var(--ticket-ink);
+  --color-ticket-paper: var(--ticket-paper);
+  --color-ticket-coral: var(--ticket-coral);
+  --color-ticket-sun: var(--ticket-sun);
+  --color-ticket-mint: var(--ticket-mint);
+  --font-sans: var(--font-outfit), var(--font-ibm-plex), "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
   --font-display: var(--font-gowun), "Apple SD Gothic Neo", serif;
   --font-serif: var(--font-gowun), "Apple SD Gothic Neo", serif;
+  --font-ticket-display: var(--font-black-han), var(--font-jua), "Apple SD Gothic Neo", sans-serif;
+  --font-ticket: var(--font-jua), var(--font-gowun), "Apple SD Gothic Neo", sans-serif;
+  --font-chrome: var(--font-outfit), var(--font-jua), "Apple SD Gothic Neo", sans-serif;
 }
 
 body {
@@ -50,11 +67,45 @@ body {
   letter-spacing: -0.01em;
 }
 
+::selection {
+  background: var(--ticket-sun);
+  color: var(--ticket-ink);
+}
+
 .font-display,
 .font-serif {
   font-family: var(--font-display);
   letter-spacing: -0.02em;
   font-weight: 400;
+}
+
+/* --- Candy Ticket Booth chrome (thin, map-safe) ------------------------- */
+
+/** Repeating awning scallop/stripe. Pointer-events are disabled at the call site. */
+.ticket-awning {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--ticket-coral) 0 28px,
+    var(--ticket-paper) 28px 56px,
+    var(--ticket-sun) 56px 84px,
+    var(--ticket-paper) 84px 112px,
+    var(--ticket-mint) 112px 140px,
+    var(--ticket-paper) 140px 168px
+  );
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--ticket-ink) 18%, transparent);
+}
+
+/** Small ticket-stub pill used for the FunnyFunny wordmark link. */
+.ticket-stub {
+  font-family: var(--font-ticket);
+  color: var(--ticket-ink);
+  background: var(--ticket-paper);
+  border: 1.5px dashed color-mix(in srgb, var(--ticket-ink) 45%, transparent);
+  box-shadow: 2px 2px 0 var(--ticket-coral);
+}
+
+.ticket-stub:hover {
+  background: var(--ticket-sun);
 }
 
 @keyframes kenburns {

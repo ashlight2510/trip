@@ -1178,6 +1178,18 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             />
             <SettingsMenu className="shrink-0" />
           </div>
+          <a
+            href="https://funnyfunny.cloud/"
+            target="_blank"
+            rel="noreferrer"
+            className="ticket-stub mt-2.5 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] leading-none tracking-wide transition"
+            aria-label="FunnyFunny Candy Ticket Booth — funnyfunny.cloud"
+          >
+            <span aria-hidden>🎟️</span>
+            <span className="font-chrome font-bold tracking-[0.08em]">FUNNYFUNNY</span>
+            <span className="text-[var(--ticket-coral)]">·</span>
+            <span>캔디 티켓 부스</span>
+          </a>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <Link
               href="/my-list"
@@ -1214,7 +1226,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
 
         <div className="min-h-0 md:flex-1 md:overflow-y-auto md:overscroll-contain">
           <div className="px-5 pb-4 pt-3">
-            <h1 className="font-display text-xl text-stone-900 md:text-2xl">{t.mapTitle}</h1>
+            <h1 className="font-ticket text-xl text-[var(--ticket-ink)] md:text-2xl">{t.mapTitle}</h1>
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600 md:line-clamp-none">
               {t.mapBlurb}
             </p>
@@ -1253,7 +1265,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder={searchNearMe ? t.searchPlaceholderNear : t.searchPlaceholderNationwide}
-                className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-sky-700/30 placeholder:text-stone-400 focus:ring-2"
+                className="w-full rounded-xl border border-stone-300 bg-white px-3 py-2.5 text-sm outline-none ring-[var(--ticket-coral)]/30 placeholder:text-stone-400 focus:ring-2"
               />
             </label>
             <div className="mt-2 flex flex-wrap gap-2">

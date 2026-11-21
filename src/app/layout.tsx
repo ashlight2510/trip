@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { LocaleProvider } from "@/i18n/locale";
-import { fontDisplay, fontSans } from "./fonts";
+import { fontDisplay, fontOutfit, fontSans, fontTicket, fontTicketDisplay } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,8 +16,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="ko" className={`h-full antialiased ${fontSans.variable} ${fontDisplay.variable}`}>
+    <html
+      lang="ko"
+      className={`h-full antialiased ${fontSans.variable} ${fontDisplay.variable} ${fontTicketDisplay.variable} ${fontTicket.variable} ${fontOutfit.variable}`}
+    >
       <body className={`${fontSans.className} flex min-h-full flex-col`}>
+        {/* Thin candy awning along the very top — decorative only, never intercepts map drags. */}
+        <div aria-hidden className="ticket-awning pointer-events-none fixed inset-x-0 top-0 z-[1000] h-[6px]" />
         <LocaleProvider>{children}</LocaleProvider>
       </body>
     </html>
