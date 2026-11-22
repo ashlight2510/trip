@@ -34,6 +34,7 @@ import {
 } from "@/lib/near-suggest";
 import { parseTripBrief, rechainBriefStops, type BriefStop, type TripBrief } from "@/lib/trip-brief";
 import { saveTripBoardStops } from "@/lib/trip-board-storage";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -1172,12 +1173,14 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             <span>캔디 티켓 부스</span>
           </a>
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <Link
-              href="/my-list"
-              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
-            >
-              {t.myListNav}
-            </Link>
+            {ENABLE_COMMUNITY_WRITES && (
+              <Link
+                href="/my-list"
+                className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
+              >
+                {t.myListNav}
+              </Link>
+            )}
             <Link
               href="/picks"
               className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
@@ -1694,7 +1697,7 @@ function PlacePanel({
           <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">연결된 후기</h3>
           {place.sources.length === 0 ? (
             <div className="mt-2 space-y-2">
-              <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요. 알고 있는 후기를 연결해 주세요.</p>
+              <p className="text-sm leading-relaxed text-stone-500">아직 등록된 링크가 없어요.</p>
               <ReportLinkButton placeId={place.id} />
             </div>
           ) : (

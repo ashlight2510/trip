@@ -2,8 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { likePlace } from "@/app/actions/like-place";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 export function PlaceLikeControls({
+  placeId,
+  likeCount = 0,
+  onLiked,
+}: {
+  placeId: string;
+  likeCount?: number;
+  onLiked?: (likes: number) => void | Promise<void>;
+}) {
+  if (!ENABLE_COMMUNITY_WRITES) return null;
+
+  return (
+    <PlaceLikeControlsActive placeId={placeId} likeCount={likeCount} onLiked={onLiked} />
+  );
+}
+
+function PlaceLikeControlsActive({
   placeId,
   likeCount = 0,
   onLiked,

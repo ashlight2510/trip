@@ -2,8 +2,19 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { getMyList, togglePlaceInMyList } from "@/app/actions/place-list";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 export function PlaceListControls({
+  placeId,
+}: {
+  placeId: string;
+}) {
+  if (!ENABLE_COMMUNITY_WRITES) return null;
+
+  return <PlaceListControlsActive placeId={placeId} />;
+}
+
+function PlaceListControlsActive({
   placeId,
 }: {
   placeId: string;

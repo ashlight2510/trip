@@ -2,8 +2,32 @@
 
 import { useState, useTransition } from "react";
 import { voteSource } from "@/app/actions/vote-source";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 export function SourceVoteControls({
+  placeId,
+  sourceId,
+  communityScore = 0,
+  onVoted,
+}: {
+  placeId: string;
+  sourceId: string;
+  communityScore?: number;
+  onVoted?: () => void | Promise<void>;
+}) {
+  if (!ENABLE_COMMUNITY_WRITES) return null;
+
+  return (
+    <SourceVoteControlsActive
+      placeId={placeId}
+      sourceId={sourceId}
+      communityScore={communityScore}
+      onVoted={onVoted}
+    />
+  );
+}
+
+function SourceVoteControlsActive({
   placeId,
   sourceId,
   communityScore = 0,

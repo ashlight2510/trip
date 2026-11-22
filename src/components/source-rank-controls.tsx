@@ -2,8 +2,38 @@
 
 import { useState, useTransition } from "react";
 import { rankSource } from "@/app/actions/rank-source";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 export function SourceRankControls({
+  placeId,
+  sourceId,
+  boost,
+  canUp,
+  canDown,
+  onRanked,
+}: {
+  placeId: string;
+  sourceId: string;
+  boost: number;
+  canUp: boolean;
+  canDown: boolean;
+  onRanked?: () => void | Promise<void>;
+}) {
+  if (!ENABLE_COMMUNITY_WRITES) return null;
+
+  return (
+    <SourceRankControlsActive
+      placeId={placeId}
+      sourceId={sourceId}
+      boost={boost}
+      canUp={canUp}
+      canDown={canDown}
+      onRanked={onRanked}
+    />
+  );
+}
+
+function SourceRankControlsActive({
   placeId,
   sourceId,
   boost,

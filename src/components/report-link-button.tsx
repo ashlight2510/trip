@@ -2,8 +2,25 @@
 
 import { useState, useTransition } from "react";
 import { reportSource } from "@/app/actions/report-source";
+import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 
 export function ReportLinkButton({
+  placeId,
+  sourceId,
+  sourceUrl,
+}: {
+  placeId: string;
+  sourceId?: string | null;
+  sourceUrl?: string | null;
+}) {
+  if (!ENABLE_COMMUNITY_WRITES) return null;
+
+  return (
+    <ReportLinkButtonActive placeId={placeId} sourceId={sourceId} sourceUrl={sourceUrl} />
+  );
+}
+
+function ReportLinkButtonActive({
   placeId,
   sourceId,
   sourceUrl,
