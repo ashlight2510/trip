@@ -9,7 +9,7 @@ import { formatDistanceKm } from "@/lib/near-suggest";
 import { displayName } from "@/i18n/display-name";
 import { useLocale, useT } from "@/i18n/locale";
 import { ShareButton } from "@/components/share-button";
-import { absoluteUrl } from "@/lib/site";
+import { dayShareUrl } from "@/lib/day-share";
 
 export function TripBriefCard({
   brief,
@@ -30,6 +30,10 @@ export function TripBriefCard({
   const wish = brief.wishLabels.join(", ");
   const tail = wish || (brief.day ? t.briefDay : "");
   const title = tail ? `${brief.anchorName} · ${tail}` : brief.anchorName;
+  const shareUrl = dayShareUrl(
+    stops.map((s) => ({ role: s.role, placeId: s.place.id })),
+    title,
+  );
   const roleLabel: Record<DayRole, string> = {
     morning: t.dayMorning,
     lunch: t.dayLunch,
@@ -121,7 +125,7 @@ export function TripBriefCard({
               )
               .join("\n"),
           )}
-          url={absoluteUrl("/")}
+          url={shareUrl}
           event="share_day"
           eventProps={{ stops: stops.length, anchor: brief.anchorName }}
         />

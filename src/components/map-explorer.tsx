@@ -38,6 +38,12 @@ import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
 import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
+import {
+  clearDayShareFromUrl,
+  parseDayShareSearch,
+  tripBriefFromSharedPlaces,
+} from "@/lib/day-share";
+import { getStaticPlace } from "@/lib/static-map-data";
 import { placeShareUrl } from "@/lib/site";
 import { track } from "@/lib/track";
 
@@ -361,6 +367,8 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [dayOffer, setDayOffer] = useState<{ name: string } | null>(null);
   const [briefNeedsLoc, setBriefNeedsLoc] = useState(false);
   const [showCoursePool, setShowCoursePool] = useState(false);
+  /** Keep a shared `?day=` course until the user runs a new search. */
+  const sharedDayRef = useRef(false);
   const [placesLoading, setPlacesLoading] = useState(false);
   const [level, setLevel] = useState<Level>("city");
   const [cityId, setCityId] = useState<string | null>(null);
@@ -768,19 +776,52 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     applyWanderPicks(wanderPool, wanderCats);
   }, [reviewsOnly]);
 
-  // Server search when typing — don't require the whole catalog in memory.
+  // Restore shared day course from `/?day=m:id,l:id&dt=...` (static, no server).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const parsed = parseDayShareSearch(window.location.search);
+    if (!parsed) return;
+    let cancelled = false;
+    void (async () => {
+      const entries: { role: (typeof parsed.stops)[number]["role"]; place: MapPlace }[] = [];
+      for (const stop of parsed.stops) {
+        const place = await getStaticPlace(stop.placeId);
+        if (place) entries.push({ role: stop.role, place });
+      }
+      if (cancelled || entries.length === 0) return;
+      const brief = tripBriefFromSharedPlaces(entries, parsed.title);
+      if (!brief) return;
+      sharedDayRef.current = true;
+      setCourse(brief);
+      setCourseStops(brief.stops);
+      setDayOffer(null);
+      setBriefNeedsLoc(false);
+      setShowCoursePool(false);
+      ingestPlaces(entries.map((e) => e.place));
+      track("day_share_open", { stops: entries.length });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Search when typing — client brief for static export.
   useEffect(() => {
     const q = query.trim();
     if (!q) {
       setSearchHits(null);
-      setCourse(null);
-      setCourseStops([]);
+      if (!sharedDayRef.current) {
+        setCourse(null);
+        setCourseStops([]);
+      }
       setDayOffer(null);
       setBriefNeedsLoc(false);
       setShowCoursePool(false);
       fittedSearchQ.current = null;
       return;
     }
+    sharedDayRef.current = false;
+    clearDayShareFromUrl();
     const seq = ++fetchSeq.current;
     const timer = setTimeout(() => {
       setPlacesLoading(true);

@@ -1,5 +1,9 @@
 import type { MapPlace } from "@/db/repo";
-import type { TripBrief } from "@/lib/trip-brief";
+import {
+  buildTripBrief,
+  parseTripBrief,
+  type TripBrief,
+} from "@/lib/trip-brief";
 import { getStaticPlace, queryStaticPlaces } from "@/lib/static-map-data";
 
 export type MapSearchResponse = {
@@ -56,16 +60,97 @@ export async function fetchPlaces(params: Record<string, string | number | undef
   return queryStaticPlaces(paramsToQuery(params));
 }
 
-export async function fetchMapSearch(
+function briefFillDay(parsed: ReturnType<typeof parseTripBrief>) {
+  return parsed.day || parsed.wishes.length > 0;
+}
+
+/** Client-side day brief for static export (no /api). */
+async function composeClientBrief(
+  q: string,
   params: Record<string, string | number | undefined>,
-): Promise<MapSearchResponse> {
-  const places = await queryStaticPlaces(paramsToQuery(params));
+  places: MapPlace[],
+): Promise<Pick<MapSearchResponse, "brief" | "dayOffer" | "briefNeedsLoc" | "places">> {
+  const parsed = parseTripBrief(q);
+  if (!parsed.isBrief) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: false };
+  }
+  if (parsed.near && (params.lat == null || params.lng == null)) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: true };
+  }
+
+  let origin = {
+    lat: params.lat != null ? Number(params.lat) : NaN,
+    lng: params.lng != null ? Number(params.lng) : NaN,
+  };
+  let anchorName = parsed.nearLabel ?? (parsed.rest || "하루");
+  let anchorPlace: MapPlace | null = null;
+
+  if (!parsed.near) {
+    const rest = parsed.rest.trim();
+    if (rest) {
+      anchorPlace =
+        places.find((p) => p.name === rest) ??
+        places.find((p) => p.name.includes(rest) || (p.name_en ?? "").toLowerCase().includes(rest.toLowerCase())) ??
+        null;
+    }
+    if (anchorPlace) {
+      origin = { lat: anchorPlace.lat, lng: anchorPlace.lng };
+      anchorName = anchorPlace.city_name ? `${anchorPlace.city_name}` : anchorPlace.name;
+    } else if (places[0]) {
+      origin = { lat: places[0].lat, lng: places[0].lng };
+      anchorName = places[0].city_name || rest || places[0].name;
+    } else {
+      return { places, brief: null, dayOffer: null, briefNeedsLoc: false };
+    }
+  } else if (!Number.isFinite(origin.lat) || !Number.isFinite(origin.lng)) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: true };
+  }
+
+  let pool = places;
+  if (pool.length < 40) {
+    const extra = await queryStaticPlaces({
+      lat: origin.lat,
+      lng: origin.lng,
+      radiusKm: 35,
+      limit: 250,
+    });
+    pool = mergePlaces(places, extra);
+  }
+
+  const fillDay = briefFillDay(parsed);
+  const shape = anchorPlace && !fillDay ? "addon" : "day";
+  const brief = buildTripBrief({
+    pool,
+    origin,
+    anchorPlace,
+    anchorName,
+    wishes: parsed.wishes,
+    fillDay: shape === "addon" ? false : fillDay,
+    shape,
+    day: parsed.day,
+  });
+
+  const extras = brief
+    ? brief.stops.flatMap((stop) => [stop.place, ...stop.alternates])
+    : [];
   return {
-    places,
-    brief: null,
+    places: mergePlaces(places, extras),
+    brief,
     dayOffer: null,
     briefNeedsLoc: false,
   };
+}
+
+export async function fetchMapSearch(
+  params: Record<string, string | number | undefined>,
+): Promise<MapSearchResponse> {
+  const q = params.q != null ? String(params.q) : "";
+  const places = await queryStaticPlaces(paramsToQuery(params));
+  if (!q.trim()) {
+    return { places, brief: null, dayOffer: null, briefNeedsLoc: false };
+  }
+  const composed = await composeClientBrief(q, params, places);
+  return composed;
 }
 
 export async function fetchPlaceDetail(id: string): Promise<MapPlace | null> {
