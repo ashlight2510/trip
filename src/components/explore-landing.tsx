@@ -1,50 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
 import { categoryColor } from "@/lib/categories";
-import { loadStaticBundle, type StaticPlace } from "@/lib/static-map-data";
+import type { LandingPlaceCard } from "@/lib/seo-landing-places";
 import type { SeoLanding } from "@/lib/seo-landings";
+import { relatedLandings, seoLandingPath } from "@/lib/seo-landings";
 import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
 import { absoluteUrl, placeShareUrl } from "@/lib/site";
 import { track } from "@/lib/track";
-import { seoLandingPath } from "@/lib/seo-landings";
+import { useEffect } from "react";
 
-function rankPlace(p: StaticPlace, picksFirst: boolean) {
-  let s = p.pin_score ?? 0;
-  if (picksFirst && p.is_pick) s += 80;
-  s += Math.min(40, (p.source_count ?? 0) * 4);
-  return s;
-}
-
-export function ExploreLanding({ landing }: { landing: SeoLanding }) {
-  const [places, setPlaces] = useState<StaticPlace[]>([]);
-  const [ready, setReady] = useState(false);
-
+export function ExploreLanding({
+  landing,
+  places,
+}: {
+  landing: SeoLanding;
+  places: LandingPlaceCard[];
+}) {
   useEffect(() => {
     track("explore_landing_view", { slug: landing.slug });
-    void loadStaticBundle()
-      .then((b) => {
-        let list = b.places.slice();
-        if (landing.cityId) list = list.filter((p) => p.city_id === landing.cityId);
-        if (landing.category) list = list.filter((p) => p.category === landing.category);
-        list.sort(
-          (a, b) =>
-            rankPlace(b, Boolean(landing.picksFirst)) - rankPlace(a, Boolean(landing.picksFirst)),
-        );
-        setPlaces(list.slice(0, 24));
-      })
-      .finally(() => setReady(true));
-  }, [landing]);
+  }, [landing.slug]);
 
-  const mapHref = useMemo(() => {
-    const q = landing.keywords[0] ?? landing.title;
-    return `/?q=${encodeURIComponent(q)}`;
-  }, [landing]);
-
+  const mapHref = `/?q=${encodeURIComponent(landing.keywords[0] ?? landing.title)}`;
   const pageUrl = absoluteUrl(seoLandingPath(landing.slug));
+  const related = relatedLandings(landing);
 
   return (
     <main className="min-h-dvh bg-[var(--background)] text-[var(--foreground)]">
@@ -89,6 +70,15 @@ export function ExploreLanding({ landing }: { landing: SeoLanding }) {
           </Link>
         </div>
 
+        <section className="mt-8 space-y-3">
+          <h2 className="text-lg font-bold text-stone-900">이렇게 쓰면 좋아요</h2>
+          {landing.guide.map((p) => (
+            <p key={p} className="text-sm leading-relaxed text-stone-600">
+              {p}
+            </p>
+          ))}
+        </section>
+
         <TravelKit className="mt-5" />
         <AffiliateCta
           className="mt-3"
@@ -98,20 +88,20 @@ export function ExploreLanding({ landing }: { landing: SeoLanding }) {
 
         <section className="mt-10">
           <h2 className="text-lg font-bold text-stone-900">추천 장소</h2>
-          <p className="mt-1 text-sm text-stone-500">후기·픽 우선 · 최대 24곳</p>
-          {!ready ? (
-            <p className="mt-4 text-sm text-stone-500">불러오는 중…</p>
-          ) : places.length === 0 ? (
+          <p className="mt-1 text-sm text-stone-500">
+            후기·픽 우선 · {places.length}곳 (지도에서 더 볼 수 있어요)
+          </p>
+          {places.length === 0 ? (
             <p className="mt-4 text-sm text-stone-400">아직 모을 장소가 없어요. 지도에서 검색해 보세요.</p>
           ) : (
             <ol className="mt-4 space-y-3">
               {places.map((item, rank) => {
-                const color = categoryColor[item.category] ?? "#78716c";
+                const color = categoryColor[item.category as keyof typeof categoryColor] ?? "#78716c";
                 return (
                   <li key={item.id}>
                     <div className="flex gap-3 rounded-2xl bg-white/80 p-3.5 shadow-sm ring-1 ring-stone-200/80">
                       <Link
-                        href={mapHref}
+                        href={`/?q=${encodeURIComponent(item.name)}`}
                         onClick={() =>
                           track("explore_place_click", {
                             slug: landing.slug,
@@ -162,6 +152,24 @@ export function ExploreLanding({ landing }: { landing: SeoLanding }) {
             </ol>
           )}
         </section>
+
+        {related.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="text-lg font-bold text-stone-900">같이 보면 좋은 테마</h2>
+            <ul className="mt-4 flex flex-wrap gap-2">
+              {related.map((r) => (
+                <li key={r.slug}>
+                  <Link
+                    href={seoLandingPath(r.slug)}
+                    className="inline-block rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-[#1b4965] ring-1 ring-sky-200 hover:bg-sky-50"
+                  >
+                    {r.keywords[0] ?? r.title}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
 
         <section className="mt-12">
           <h2 className="text-lg font-bold text-stone-900">자주 묻는 질문</h2>

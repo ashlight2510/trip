@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { ExploreLanding } from "@/components/explore-landing";
+import { getLandingPlaces } from "@/lib/seo-landing-places";
 import { getSeoLanding, SEO_LANDINGS, seoLandingPath } from "@/lib/seo-landings";
 
 export function generateStaticParams() {
@@ -42,6 +43,7 @@ export default async function ExploreSlugPage({
   const landing = getSeoLanding(slug);
   if (!landing) notFound();
 
+  const places = getLandingPlaces(landing);
   const url = `https://trip.funnyfunny.cloud${seoLandingPath(landing.slug)}`;
   const faqLd = {
     "@context": "https://schema.org",
@@ -64,6 +66,18 @@ export default async function ExploreSlugPage({
       url: "https://trip.funnyfunny.cloud/",
     },
   };
+  const listLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: landing.title,
+    numberOfItems: places.length,
+    itemListElement: places.map((p, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: p.name,
+      url: `https://trip.funnyfunny.cloud/?q=${encodeURIComponent(p.name)}`,
+    })),
+  };
 
   return (
     <>
@@ -75,7 +89,11 @@ export default async function ExploreSlugPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(webLd) }}
       />
-      <ExploreLanding landing={landing} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(listLd) }}
+      />
+      <ExploreLanding landing={landing} places={places} />
     </>
   );
 }
