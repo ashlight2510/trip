@@ -8,6 +8,7 @@ import { relatedLandings, seoLandingPath } from "@/lib/seo-landings";
 import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
+import { placeSeoPath } from "@/lib/indexed-places";
 import { absoluteUrl, placeShareUrl } from "@/lib/site";
 import { track } from "@/lib/track";
 import { useEffect } from "react";
@@ -101,7 +102,7 @@ export function ExploreLanding({
                   <li key={item.id}>
                     <div className="flex gap-3 rounded-2xl bg-white/80 p-3.5 shadow-sm ring-1 ring-stone-200/80">
                       <Link
-                        href={`/?q=${encodeURIComponent(item.name)}`}
+                        href={placeSeoPath(item.id)}
                         onClick={() =>
                           track("explore_place_click", {
                             slug: landing.slug,

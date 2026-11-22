@@ -1226,6 +1226,26 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               {t.mapBlurb}
             </p>
             <TravelKit className="mt-3" />
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {[
+                { href: "/explore/gangneung-trip/", label: "강릉 여행" },
+                { href: "/explore/jeju-trip/", label: "제주 여행" },
+                { href: "/explore/busan-trip/", label: "부산 여행" },
+                { href: "/explore/gangneung-cafe/", label: "강릉 카페" },
+                { href: "/explore/seoul-cafe/", label: "서울 카페" },
+                { href: "/explore/jeonju-hanok/", label: "전주 한옥" },
+                { href: "/p/", label: "후기 많은 곳" },
+              ].map((chip) => (
+                <Link
+                  key={chip.href}
+                  href={chip.href}
+                  onClick={() => track("home_theme_chip", { href: chip.href })}
+                  className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold text-[#1b4965] ring-1 ring-sky-200 hover:bg-sky-50"
+                >
+                  {chip.label}
+                </Link>
+              ))}
+            </div>
 
             <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
               <button

@@ -282,6 +282,114 @@ export const SEO_LANDINGS: SeoLanding[] = [
       },
     ],
   },
+  {
+    slug: "gangneung-trip",
+    title: "강릉 여행 코스 — 후기 지도로 하루 짜기",
+    titleEn: "Gangneung trip — plan a day on the map",
+    description:
+      "강릉 여행 가기 전, 카페·해변·명소를 후기 지도에서 고르세요. 풍경너머에서 동선을 미리 잡아 둡니다.",
+    descriptionEn: "Plan a Gangneung day with cafes, beaches, and reviews on the map.",
+    cityId: "kr-gangneung",
+    picksFirst: true,
+    keywords: ["강릉 여행", "강릉 당일치기", "강릉 코스", "강릉 가볼만한곳"],
+    guide: [
+      "강릉은 안목·경포·구도심을 하루에 다 넣으면 빠듯합니다. 해변 1 + 카페 2 정도로 끊으세요.",
+      "이 페이지는 강릉 전체 카테고리를 후기·픽 순으로 모읍니다. 카페·해변만 보려면 아래 테마로 이어 가세요.",
+    ],
+    related: ["gangneung-cafe", "gangneung-beach", "sokcho-beach"],
+    faq: [
+      {
+        q: "당일치기 가능한가요?",
+        a: "가능합니다. 장소를 고른 뒤 지도의 ‘하루 짜기’로 순서를 고정하면 덜 헤맵니다.",
+      },
+    ],
+  },
+  {
+    slug: "jeju-trip",
+    title: "제주 여행 코스 — 후기 지도로 미리 짜기",
+    titleEn: "Jeju trip — plan with reviews on the map",
+    description:
+      "제주 여행 동선을 후기 지도로 미리 짜 보세요. 해변·카페·명소를 한곳에서 고른 뒤 이어 갑니다.",
+    descriptionEn: "Plan Jeju days with beaches, cafes, and reviews on one map.",
+    cityId: "kr-jeju",
+    picksFirst: true,
+    keywords: ["제주 여행", "제주 코스", "제주 가볼만한곳", "제주 당일치기"],
+    guide: [
+      "제주는 동·서가 멀어서 ‘하루에 한쪽’이 안전합니다. 후기로 혼잡·주차만 먼저 보세요.",
+      "서귀포 일정이면 서귀포 카페 테마로, 해변 위주면 제주 해변 테마로 좁히세요.",
+    ],
+    related: ["jeju-beach", "jeju-cafe", "seogwipo-cafe"],
+    faq: [
+      {
+        q: "렌트카 없이 짜도 되나요?",
+        a: "가능하지만 범위가 좁아집니다. 지도에서 한 권역만 고른 뒤 하루 짜기를 쓰세요.",
+      },
+    ],
+  },
+  {
+    slug: "sokcho-trip",
+    title: "속초 여행 — 후기 지도로 미리 보기",
+    titleEn: "Sokcho trip — preview with reviews",
+    description:
+      "속초 여행 전 해변·카페·명소를 후기 지도에서 고르세요. 당일·1박 동선을 미리 정리합니다.",
+    descriptionEn: "Preview Sokcho beaches, cafes, and spots before you go.",
+    cityId: "kr-sokcho",
+    picksFirst: true,
+    keywords: ["속초 여행", "속초 당일치기", "속초 가볼만한곳", "속초 코스"],
+    guide: [
+      "속초는 이동이 짧아 당일에 잘 맞습니다. 해변·시장·카페 순으로 핀만 찍어 두세요.",
+    ],
+    related: ["sokcho-beach", "gangneung-trip", "gangneung-cafe"],
+    faq: [
+      {
+        q: "설악산도 포함되나요?",
+        a: "속초 시 장소 위주입니다. 산·명소를 더 보려면 지도에서 검색해 이어 가세요.",
+      },
+    ],
+  },
+  {
+    slug: "jeonju-trip",
+    title: "전주 여행 — 한옥마을·맛집 후기 지도",
+    titleEn: "Jeonju trip — hanok & food on the map",
+    description:
+      "전주 여행 가기 전 한옥·맛집·카페를 후기 지도로 미리 보세요. 주말 혼잡을 피하기 좋습니다.",
+    descriptionEn: "Preview Jeonju hanok, food, and cafes with reviews before you go.",
+    cityId: "kr-jeonju",
+    picksFirst: true,
+    keywords: ["전주 여행", "전주 당일치기", "전주 가볼만한곳", "전주 코스"],
+    guide: [
+      "한옥마을은 오전·저녁이 덜 붐빕니다. 후기에서 웨이팅 언급을 보고 시간을 고르세요.",
+      "한옥만 깊게 보려면 전주 한옥 테마로 이어 가세요.",
+    ],
+    related: ["jeonju-hanok", "seoul-hanok", "gyeongju-heritage"],
+    faq: [
+      {
+        q: "맛집도 나오나요?",
+        a: "이 페이지는 전주 전 카테고리를 모읍니다. 목록에서 맛집·카페를 고르면 됩니다.",
+      },
+    ],
+  },
+  {
+    slug: "busan-trip",
+    title: "부산 여행 코스 — 해변·카페 후기 지도",
+    titleEn: "Busan trip — beaches & cafes on the map",
+    description:
+      "부산 여행을 후기 지도로 미리 짜 보세요. 해운대·광안리와 주변 카페를 한곳에서 고릅니다.",
+    descriptionEn: "Plan Busan with beaches and cafes, backed by reviews on the map.",
+    cityId: "kr-busan",
+    picksFirst: true,
+    keywords: ["부산 여행", "부산 코스", "부산 가볼만한곳", "해운대 여행"],
+    guide: [
+      "해운대와 광안리를 하루에 다 넣으면 체력이 갑니다. 해변 하나 + 카페·야경으로 끊으세요.",
+    ],
+    related: ["busan-beach", "jeju-trip", "seoul-cafe"],
+    faq: [
+      {
+        q: "지하철만으로 가능한가요?",
+        a: "해운대·광안리 권역은 가능합니다. 지도에서 같은 권역 핀만 모아 하루 짜기를 쓰세요.",
+      },
+    ],
+  },
 ];
 
 export function getSeoLanding(slug: string): SeoLanding | undefined {

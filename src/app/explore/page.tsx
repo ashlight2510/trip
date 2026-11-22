@@ -5,7 +5,7 @@ import { SEO_LANDINGS, seoLandingPath } from "@/lib/seo-landings";
 export const metadata: Metadata = {
   title: "여행 테마 — 후기 지도로 미리 보기",
   description:
-    "강릉 카페, 제주 해변, 서울 카페·한옥, 부산 해변, 경주 유적까지. 풍경너머 테마별 후기 지도 모음.",
+    "강릉·제주·부산·속초·전주 여행과 카페·해변·한옥 테마. 풍경너머 후기 지도 모음.",
   alternates: { canonical: "https://trip.funnyfunny.cloud/explore/" },
   openGraph: {
     title: "여행 테마 — 후기 지도로 미리 보기",

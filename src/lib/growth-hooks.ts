@@ -96,6 +96,34 @@ export const GROWTH_HOOKS: GrowthHook[] = [
     cta: "제주 카페 미리 보기",
     landingPath: "/explore/jeju-cafe/",
   },
+  {
+    id: "gangneung-trip-1",
+    channel: "shorts",
+    hook: "강릉 당일치기, 카페·바다 순서부터",
+    body: "후기 지도에서 핀 고르고 하루 짜기. 안목·경포 헤매기 전에.",
+    shots: ["1) 강릉 여행 랜딩", "2) 핀 3개 선택", "3) URL"],
+    hashtags: ["강릉여행", "강릉당일치기", "강릉코스", "풍경너머"],
+    cta: "강릉 여행 후기 지도",
+    landingPath: "/explore/gangneung-trip/",
+  },
+  {
+    id: "jeju-trip-1",
+    channel: "blog",
+    hook: "제주 코스, 검색창 대신 후기 지도",
+    body: "동·서를 하루에 억지로 넣지 말고, 풍경너머에서 권역·후기부터 고르세요.",
+    hashtags: ["제주여행", "제주코스", "제주가볼만한곳", "풍경너머"],
+    cta: "제주 여행 미리 짜기",
+    landingPath: "/explore/jeju-trip/",
+  },
+  {
+    id: "busan-trip-1",
+    channel: "cafe",
+    hook: "부산 여행, 해운대만 찍고 끝내지 말 것",
+    body: "해변·카페를 후기 지도에 올려두고 동선만 정리해 보세요.",
+    hashtags: ["부산여행", "해운대", "광안리", "풍경너머"],
+    cta: "부산 여행 후기 지도",
+    landingPath: "/explore/busan-trip/",
+  },
 ];
 
 export function formatHookForPost(hook: GrowthHook, origin = "https://trip.funnyfunny.cloud") {

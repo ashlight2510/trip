@@ -1,6 +1,5 @@
-import fs from "node:fs";
-import path from "node:path";
 import type { SeoLanding } from "@/lib/seo-landings";
+import { loadStaticPlacesFile, type StaticPlaceRow } from "@/lib/static-places-file";
 
 export type LandingPlaceCard = {
   id: string;
@@ -12,12 +11,7 @@ export type LandingPlaceCard = {
   is_pick: boolean;
 };
 
-type RawPlace = LandingPlaceCard & {
-  city_id?: string | null;
-  pin_score?: number | null;
-};
-
-function rankPlace(p: RawPlace, picksFirst: boolean) {
+function rankPlace(p: StaticPlaceRow, picksFirst: boolean) {
   let s = p.pin_score ?? 0;
   if (picksFirst && p.is_pick) s += 80;
   s += Math.min(40, (p.source_count ?? 0) * 4);
@@ -26,9 +20,7 @@ function rankPlace(p: RawPlace, picksFirst: boolean) {
 
 /** Build-time place list so explore HTML is indexable (not empty client shell). */
 export function getLandingPlaces(landing: SeoLanding, limit = 24): LandingPlaceCard[] {
-  const file = path.join(process.cwd(), "public", "static-data", "places.json");
-  const places = JSON.parse(fs.readFileSync(file, "utf8")) as RawPlace[];
-  let list = places.slice();
+  let list = loadStaticPlacesFile().slice();
   if (landing.cityId) list = list.filter((p) => p.city_id === landing.cityId);
   if (landing.category) list = list.filter((p) => p.category === landing.category);
   list.sort(
