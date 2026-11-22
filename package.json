@@ -54,7 +54,7 @@
     "@types/react-dom": "^19",
     "@types/three": "^0.187.0",
     "eslint": "^9",
-    "eslint-config-next": "16.4.3",
+    "eslint-config-next": "16.4.6",
     "exceljs": "^4.4.0",
     "png-to-ico": "^3.0.2",
     "tailwindcss": "^4",

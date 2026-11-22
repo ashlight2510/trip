@@ -47,7 +47,7 @@ export const dictionaries = {
     editorPick: "풍경너머 픽",
     mapTitle: "여행지 지도",
     mapBlurb:
-      "시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다. 직접 연결하면 포인트가 쌓여요.",
+      "시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다.",
     allCities: "전체 시",
     searchLabel: "통합검색",
     searchPlaceholderNationwide: "강릉 카페 노을, 경복궁, 해운대…",
@@ -151,7 +151,7 @@ export const dictionaries = {
     editorPick: "Editor pick",
     mapTitle: "Travel map",
     mapBlurb:
-      "City → district → place. Reviews link out to the original (up to 10 per place). Connect your own links to earn points.",
+      "City → district → place. Reviews link out to the original (up to 10 per place).",
     allCities: "All cities",
     searchLabel: "Search",
     searchPlaceholderNationwide: "Cafe and sunset in a city, a palace…",

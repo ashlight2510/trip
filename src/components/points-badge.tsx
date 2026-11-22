@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getMyPoints } from "@/app/actions/contribute-source";
+import { ENABLE_CONTRIBUTE_POINTS } from "@/lib/features";
 
 export const POINTS_UPDATED_EVENT = "pn:points-updated";
 
@@ -18,6 +19,18 @@ export function PointsBadge({
 }: {
   className?: string;
   /** `menu` = settings-panel row; `chip` = standalone pill. */
+  variant?: "chip" | "menu";
+}) {
+  if (!ENABLE_CONTRIBUTE_POINTS) return null;
+
+  return <PointsBadgeActive className={className} variant={variant} />;
+}
+
+function PointsBadgeActive({
+  className = "",
+  variant = "chip",
+}: {
+  className?: string;
   variant?: "chip" | "menu";
 }) {
   const [points, setPoints] = useState(0);

@@ -19,6 +19,7 @@ import {
   type Locale,
 } from "@/i18n/dictionaries";
 import { PointsBadge } from "@/components/points-badge";
+import { ENABLE_CONTRIBUTE_POINTS } from "@/lib/features";
 
 type LocaleCtx = {
   locale: Locale;
@@ -167,15 +168,17 @@ export function SettingsMenu({
             </p>
             <LangToggle className={tone === "dark" ? "bg-white/10 ring-white/20" : ""} />
           </div>
-          <div className={`mt-3 border-t pt-2.5 ${tone === "dark" ? "border-white/10" : "border-stone-100"}`}>
-            <p className={`mb-1 text-[12px] font-semibold ${tone === "dark" ? "text-white/85" : "text-stone-700"}`}>
-              {t.settingsPoints}
-            </p>
-            <PointsBadge
-              variant="menu"
-              className={tone === "dark" ? "text-amber-100 hover:bg-white/10" : ""}
-            />
-          </div>
+          {ENABLE_CONTRIBUTE_POINTS && (
+            <div className={`mt-3 border-t pt-2.5 ${tone === "dark" ? "border-white/10" : "border-stone-100"}`}>
+              <p className={`mb-1 text-[12px] font-semibold ${tone === "dark" ? "text-white/85" : "text-stone-700"}`}>
+                {t.settingsPoints}
+              </p>
+              <PointsBadge
+                variant="menu"
+                className={tone === "dark" ? "text-amber-100 hover:bg-white/10" : ""}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

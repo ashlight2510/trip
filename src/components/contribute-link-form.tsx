@@ -3,10 +3,25 @@
 import { useEffect, useState, useTransition } from "react";
 import { contributeSource, getMyPoints } from "@/app/actions/contribute-source";
 import { notifyPointsUpdated } from "@/components/points-badge";
+import { ENABLE_CONTRIBUTE_POINTS } from "@/lib/features";
 
 export { PointsBadge } from "@/components/points-badge";
 
 export function ContributeLinkForm({
+  placeId,
+  onLinked,
+  tone = "light",
+}: {
+  placeId: string;
+  onLinked?: () => void | Promise<void>;
+  tone?: "light" | "dark";
+}) {
+  if (!ENABLE_CONTRIBUTE_POINTS) return null;
+
+  return <ContributeLinkFormActive placeId={placeId} onLinked={onLinked} tone={tone} />;
+}
+
+function ContributeLinkFormActive({
   placeId,
   onLinked,
   tone = "light",
