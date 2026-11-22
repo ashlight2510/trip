@@ -1,0 +1,302 @@
+[
+  {
+    "id": "kr-jeju-nn5873595885",
+    "name": "라이트아트페스타",
+    "category": "heritage",
+    "address": "제주특별자치도 제주시 제주 중심"
+  },
+  {
+    "id": "kr-jeju-nn14238135747",
+    "name": "제주융합과학연구원 제주SWAI체험관",
+    "category": "landmark",
+    "address": "제주특별자치도 제주시 제주 중심"
+  },
+  {
+    "id": "kr-jeju-nw371634709",
+    "name": "난전시실",
+    "category": "landmark",
+    "address": "제주특별자치도 제주시 제주 중심"
+  },
+  {
+    "id": "kr-seoul-k12544587",
+    "name": "북한산둘레길 7구간옛성길",
+    "category": "landmark",
+    "address": "서울 서대문구 홍은동"
+  },
+  {
+    "id": "kr-daejeon-k12810723",
+    "name": "한민전통시장",
+    "category": "market",
+    "address": "대전 서구 가장로 94"
+  },
+  {
+    "id": "kr-ulsan-k8127556",
+    "name": "하기해수욕장",
+    "category": "beach",
+    "address": "울산 동구 주전동"
+  },
+  {
+    "id": "kr-sejong-k1595024878",
+    "name": "대평시장과일",
+    "category": "market",
+    "address": "세종특별자치시 금남면 대평시장2길 2"
+  },
+  {
+    "id": "kr-sejong-k10527732",
+    "name": "시장이발",
+    "category": "market",
+    "address": "세종특별자치시 장군면 장척로 417"
+  },
+  {
+    "id": "kr-sejong-k1593615116",
+    "name": "세종재래시장",
+    "category": "market",
+    "address": "세종특별자치시 달빛로 41"
+  },
+  {
+    "id": "kr-sejong-k2118205696",
+    "name": "세종조경나무시장",
+    "category": "market",
+    "address": "세종특별자치시 장군면 봉안리 349-2"
+  },
+  {
+    "id": "kr-sejong-k664562954",
+    "name": "국채시장",
+    "category": "market",
+    "address": "세종특별자치시 도움6로 42"
+  },
+  {
+    "id": "kr-goyang-k26142936",
+    "name": "원당성사화훼단지",
+    "category": "market",
+    "address": "경기 고양시 덕양구 호국로 924"
+  },
+  {
+    "id": "kr-yongin-k15141719",
+    "name": "용인중앙시장역사거리",
+    "category": "market",
+    "address": "경기 용인시 처인구 김량장동 144-9"
+  },
+  {
+    "id": "kr-yongin-k726993566",
+    "name": "가락유통시장",
+    "category": "market",
+    "address": "경기 용인시 처인구 경안천로 32"
+  },
+  {
+    "id": "kr-yongin-k165686405",
+    "name": "용인공원 문학정원",
+    "category": "park",
+    "address": "경기 용인시 처인구 모현읍 초부리 산 64-4"
+  },
+  {
+    "id": "kr-ansan-k10226200",
+    "name": "군자시장",
+    "category": "market",
+    "address": "경기 안산시 단원구 화랑로 32"
+  },
+  {
+    "id": "kr-ansan-k10581262",
+    "name": "안산제2종합시장",
+    "category": "market",
+    "address": "경기 안산시 상록구 성호로 258"
+  },
+  {
+    "id": "kr-anyang-k27013950",
+    "name": "수리산등산로입구",
+    "category": "landmark",
+    "address": "경기 안양시 만안구 안양동"
+  },
+  {
+    "id": "kr-anyang-k8745631",
+    "name": "과천1차종합상가",
+    "category": "market",
+    "address": "경기 과천시 관문로 130"
+  },
+  {
+    "id": "kr-chuncheon-k8104554",
+    "name": "춘천시농수산물도매시장",
+    "category": "market",
+    "address": "강원특별자치도 춘천시 마장길 39"
+  },
+  {
+    "id": "kr-chuncheon-k9462393",
+    "name": "춘천축산농협 가축시장",
+    "category": "market",
+    "address": "강원특별자치도 춘천시 신북읍 사랑말길 42"
+  },
+  {
+    "id": "kr-sokcho-k994782107",
+    "name": "속초중앙전통시장상인회",
+    "category": "market",
+    "address": "강원특별자치도 속초시 중앙시장로6길 4"
+  },
+  {
+    "id": "kr-wonju-k17575250",
+    "name": "원주시 농산물공영도매시장 합동청과",
+    "category": "market",
+    "address": "강원특별자치도 원주시 단계동 603-14"
+  },
+  {
+    "id": "kr-wonju-k19046544",
+    "name": "봉화산선재래시장",
+    "category": "market",
+    "address": "강원특별자치도 원주시 단계동 1097"
+  },
+  {
+    "id": "kr-cheonan-k18525821",
+    "name": "천안 신부동상점가",
+    "category": "market",
+    "address": "충남 천안시 동남구 먹거리11길 41"
+  },
+  {
+    "id": "kr-asan-k9190020",
+    "name": "시장정육생고기점",
+    "category": "market",
+    "address": "충남 아산시 시장남길 22"
+  },
+  {
+    "id": "kr-asan-k1898302156",
+    "name": "홍어시장",
+    "category": "market",
+    "address": "충남 아산시 온천대로 1592"
+  },
+  {
+    "id": "kr-asan-k1137068204",
+    "name": "시장폰",
+    "category": "market",
+    "address": "충남 아산시 온천대로 1487-6"
+  },
+  {
+    "id": "kr-asan-k23977026",
+    "name": "시장상회",
+    "category": "market",
+    "address": "충남 아산시 시민로 414-10"
+  },
+  {
+    "id": "kr-gongju-k9355607",
+    "name": "세종공주축산농협가축시장",
+    "category": "market",
+    "address": "충남 공주시 내산목천길 92"
+  },
+  {
+    "id": "kr-gongju-k15400964",
+    "name": "시장토종닭집",
+    "category": "market",
+    "address": "충남 공주시 제민천1길 145"
+  },
+  {
+    "id": "kr-jeonju-k1443996788",
+    "name": "삼천2동막걸리골목",
+    "category": "street",
+    "address": "전북특별자치도 전주시 완산구 삼천동1가 712"
+  },
+  {
+    "id": "kr-jeonju-k8087513",
+    "name": "전주중앙 버드나무시장",
+    "category": "market",
+    "address": "전북특별자치도 전주시 완산구 태평동 35-43"
+  },
+  {
+    "id": "kr-jeonju-k11265700",
+    "name": "농수산물도매시장 관리사무소",
+    "category": "market",
+    "address": "전북특별자치도 전주시 덕진구 동부대로 1183"
+  },
+  {
+    "id": "kr-jeonju-k23957252",
+    "name": "완산체육생활공원",
+    "category": "park",
+    "address": "전북특별자치도 전주시 완산구 모악산자락길 22"
+  },
+  {
+    "id": "kr-gunsan-k13312047",
+    "name": "문화시장",
+    "category": "market",
+    "address": "전북특별자치도 군산시 문화동 917-1"
+  },
+  {
+    "id": "kr-gunsan-k2143509450",
+    "name": "강천시장번영회사무실",
+    "category": "market",
+    "address": "전북특별자치도 군산시 나운안길 27"
+  },
+  {
+    "id": "kr-iksan-k8541109",
+    "name": "익산온천랜드",
+    "category": "landmark",
+    "address": "전북특별자치도 익산시 석암로 207-1"
+  },
+  {
+    "id": "kr-iksan-k18525449",
+    "name": "원광 온누리상점가",
+    "category": "market",
+    "address": "전북특별자치도 익산시 동서로19길 88"
+  },
+  {
+    "id": "kr-namwon-k18525801",
+    "name": "남원터미널시장",
+    "category": "market",
+    "address": "전북특별자치도 남원시 동부시장길 2"
+  },
+  {
+    "id": "kr-namwon-k25021350",
+    "name": "남원목공예특산품전시판매장",
+    "category": "market",
+    "address": "전북특별자치도 남원시 어현동 470-16"
+  },
+  {
+    "id": "kr-namwon-k441024292",
+    "name": "남원가축경매시장",
+    "category": "market",
+    "address": "전북특별자치도 남원시 광천남길 42"
+  },
+  {
+    "id": "kr-namwon-k7965722",
+    "name": "시장사거리",
+    "category": "market",
+    "address": "전북특별자치도 남원시 금동"
+  },
+  {
+    "id": "kr-namwon-k1185759685",
+    "name": "남원인력시장",
+    "category": "market",
+    "address": "전북특별자치도 남원시 네마실1길 22-7"
+  },
+  {
+    "id": "kr-mokpo-k716122532",
+    "name": "용출도해수욕장",
+    "category": "beach",
+    "address": "전남광주통합특별시 신안군 압해읍 장감리 산 123-18"
+  },
+  {
+    "id": "kr-mokpo-k17810491",
+    "name": "부흥종합시장",
+    "category": "market",
+    "address": "전남광주통합특별시 목포시 삼향천로 16-1"
+  },
+  {
+    "id": "kr-mokpo-k12354140",
+    "name": "동명도매어시장",
+    "category": "market",
+    "address": "전남광주통합특별시 목포시 수강로12번길 42"
+  },
+  {
+    "id": "kr-yeosu-k231891466",
+    "name": "2026 여수세계섬박람회 셔틀버스 승강장(모사금해수욕장.하행)",
+    "category": "beach",
+    "address": "전남광주통합특별시 여수시 망양로 509"
+  },
+  {
+    "id": "kr-yeosu-k442562343",
+    "name": "2026 여수세계섬박람회 셔틀버스 승강장(만성리해수욕장.상행)",
+    "category": "beach",
+    "address": "전남광주통합특별시 여수시 만흥동 95"
+  },
+  {
+    "id": "kr-yeosu-k91662064",
+    "name": "여수해안로건어물상가시장",
+    "category": "market",
+    "address": "전남광주통합특별시 여수시 교동 495"
+  }
+]
