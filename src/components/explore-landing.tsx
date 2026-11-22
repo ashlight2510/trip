@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { categoryColor } from "@/lib/categories";
 import { loadStaticBundle, type StaticPlace } from "@/lib/static-map-data";
 import type { SeoLanding } from "@/lib/seo-landings";
+import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
 import { absoluteUrl, placeShareUrl } from "@/lib/site";
@@ -89,6 +90,11 @@ export function ExploreLanding({ landing }: { landing: SeoLanding }) {
         </div>
 
         <TravelKit className="mt-5" />
+        <AffiliateCta
+          className="mt-3"
+          placeName={landing.keywords[0] ?? landing.title}
+          cityName={(landing.keywords[0] ?? "").split(/\s+/)[0] || null}
+        />
 
         <section className="mt-10">
           <h2 className="text-lg font-bold text-stone-900">추천 장소</h2>
@@ -136,16 +142,19 @@ export function ExploreLanding({ landing }: { landing: SeoLanding }) {
                           </p>
                         </div>
                       </Link>
-                      <ShareButton
-                        compact
-                        label="공유"
-                        copiedLabel="복사"
-                        title={`${item.name} · 풍경너머`}
-                        text={`${item.name} — 후기 지도로 미리 보기`}
-                        url={placeShareUrl(item.id)}
-                        event="share_place"
-                        eventProps={{ place_id: item.id, from: "explore" }}
-                      />
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <ShareButton
+                          compact
+                          label="공유"
+                          copiedLabel="복사"
+                          title={`${item.name} · 풍경너머`}
+                          text={`${item.name} — 후기 지도로 미리 보기`}
+                          url={placeShareUrl(item.id)}
+                          event="share_place"
+                          eventProps={{ place_id: item.id, from: "explore" }}
+                        />
+                        <AffiliateCta placeName={item.name} cityName={item.city_name} />
+                      </div>
                     </div>
                   </li>
                 );

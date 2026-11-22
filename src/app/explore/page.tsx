@@ -7,6 +7,15 @@ export const metadata: Metadata = {
   description:
     "강릉 카페, 제주 해변, 서울 카페·한옥, 부산 해변, 경주 유적까지. 풍경너머 테마별 후기 지도 모음.",
   alternates: { canonical: "https://trip.funnyfunny.cloud/explore/" },
+  openGraph: {
+    title: "여행 테마 — 후기 지도로 미리 보기",
+    description: "테마별 후기 지도 모음. 고른 뒤 지도·하루 코스로 이어 가세요.",
+    url: "https://trip.funnyfunny.cloud/explore/",
+    type: "website",
+    locale: "ko_KR",
+    siteName: "풍경너머",
+    images: [{ url: "/logo-brand.png", width: 512, height: 512, alt: "풍경너머" }],
+  },
 };
 
 export default function ExploreIndexPage() {

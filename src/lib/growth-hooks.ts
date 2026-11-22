@@ -72,3 +72,30 @@ export function formatHookForPost(hook: GrowthHook, origin = "https://trip.funny
     `${origin}${hook.landingPath}`,
   ].join("\n");
 }
+
+/** ISO week number (Mon-based) for rotating the weekly 3 posts. */
+export function isoWeekNumber(date = new Date()): number {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+const WEEKDAY_LABELS = ["월", "수", "금"] as const;
+
+/** Always 3 posts: rotate through the hook pool by ISO week. */
+export function thisWeekHooks(date = new Date()): {
+  week: number;
+  year: number;
+  slots: { day: (typeof WEEKDAY_LABELS)[number]; hook: GrowthHook }[];
+} {
+  const week = isoWeekNumber(date);
+  const year = date.getFullYear();
+  const start = (week * 3) % GROWTH_HOOKS.length;
+  const slots = WEEKDAY_LABELS.map((day, i) => ({
+    day,
+    hook: GROWTH_HOOKS[(start + i) % GROWTH_HOOKS.length],
+  }));
+  return { week, year, slots };
+}

@@ -28,6 +28,7 @@ export async function generateMetadata({
       type: "website",
       locale: "ko_KR",
       siteName: "풍경너머",
+      images: [{ url: "/logo-brand.png", width: 512, height: 512, alt: "풍경너머" }],
     },
   };
 }
@@ -40,5 +41,41 @@ export default async function ExploreSlugPage({
   const { slug } = await params;
   const landing = getSeoLanding(slug);
   if (!landing) notFound();
-  return <ExploreLanding landing={landing} />;
+
+  const url = `https://trip.funnyfunny.cloud${seoLandingPath(landing.slug)}`;
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: landing.faq.map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
+  };
+  const webLd = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: landing.title,
+    description: landing.description,
+    url,
+    isPartOf: {
+      "@type": "WebSite",
+      name: "풍경너머",
+      url: "https://trip.funnyfunny.cloud/",
+    },
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(webLd) }}
+      />
+      <ExploreLanding landing={landing} />
+    </>
+  );
 }

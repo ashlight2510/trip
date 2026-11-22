@@ -35,6 +35,7 @@ import {
 import { parseTripBrief, rechainBriefStops, type BriefStop, type TripBrief } from "@/lib/trip-brief";
 import { saveTripBoardStops } from "@/lib/trip-board-storage";
 import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
+import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
 import { placeShareUrl } from "@/lib/site";
@@ -1718,6 +1719,12 @@ function PlacePanel({
         <PlaceHashtags place={place} />
 
         {place.description && <p className="mt-3 text-sm leading-relaxed text-stone-700">{place.description}</p>}
+
+        <AffiliateCta
+          className="mt-3"
+          placeName={displayName(place, locale)}
+          cityName={place.city_name}
+        />
 
         <div className="mt-5">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-stone-500">연결된 후기</h3>

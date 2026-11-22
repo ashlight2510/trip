@@ -33,7 +33,8 @@
     "collect:osm": "tsx scripts/collect-osm-places.mts",
     "source:thumbs": "tsx scripts/source-thumbs.mts",
     "env:check": "tsx scripts/env-check.mts",
-    "growth:hooks": "tsx scripts/print-growth-hooks.mts"
+    "growth:hooks": "tsx scripts/print-growth-hooks.mts",
+    "growth:week": "tsx scripts/print-growth-hooks.mts --week"
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
