@@ -3,15 +3,23 @@
  * yarn growth:hooks   — short hooks
  * yarn growth:week    — this week's 3 short hooks
  * yarn growth:posts   — this week's full blog/cafe paste drafts (preferred)
+ * yarn growth:x       — this week's X/Twitter paste drafts
  */
 import { formatHookForPost, GROWTH_HOOKS, thisWeekHooks } from "../src/lib/growth-hooks";
-import { formatWeekBlogPosts } from "../src/lib/growth-posts";
+import { formatWeekBlogPosts, formatWeekXPosts } from "../src/lib/growth-posts";
 
-const arg = process.argv.includes("--posts") || process.argv[2] === "posts"
-  ? "posts"
-  : process.argv.includes("--week") || process.argv[2] === "week"
-    ? "week"
-    : "all";
+const arg = process.argv.includes("--x") || process.argv[2] === "x"
+  ? "x"
+  : process.argv.includes("--posts") || process.argv[2] === "posts"
+    ? "posts"
+    : process.argv.includes("--week") || process.argv[2] === "week"
+      ? "week"
+      : "all";
+
+if (arg === "x") {
+  console.log(formatWeekXPosts());
+  process.exit(0);
+}
 
 if (arg === "posts") {
   console.log(formatWeekBlogPosts());
