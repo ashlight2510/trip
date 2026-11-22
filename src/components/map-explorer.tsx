@@ -35,6 +35,10 @@ import {
 import { parseTripBrief, rechainBriefStops, type BriefStop, type TripBrief } from "@/lib/trip-brief";
 import { saveTripBoardStops } from "@/lib/trip-board-storage";
 import { ENABLE_COMMUNITY_WRITES } from "@/lib/features";
+import { ShareButton } from "@/components/share-button";
+import { TravelKit } from "@/components/travel-kit";
+import { placeShareUrl } from "@/lib/site";
+import { track } from "@/lib/track";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -1214,6 +1218,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             <p className="mt-1 line-clamp-2 text-sm leading-relaxed text-stone-600 md:line-clamp-none">
               {t.mapBlurb}
             </p>
+            <TravelKit className="mt-3" />
 
             <nav className="mt-3 flex flex-wrap items-center gap-1 text-xs">
               <button
@@ -1665,9 +1670,24 @@ function PlacePanel({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
+            <ShareButton
+              compact
+              label={t.sharePlace}
+              copiedLabel={t.sharePlaceCopied}
+              title={`${displayName(place, locale)} · ${t.brand}`}
+              text={
+                locale === "en"
+                  ? `Preview ${displayName(place, locale)} on Beyond the View — map + reviews before you go.`
+                  : `${displayName(place, locale)} · 풍경너머에서 후기 지도로 미리 보기`
+              }
+              url={placeShareUrl(place.id)}
+              event="share_place"
+              eventProps={{ place_id: place.id, category: place.category }}
+            />
             <Link
               href={`/trip/place/?id=${encodeURIComponent(place.id)}`}
               title={t.soloTrip}
+              onClick={() => track("solo_trip_open", { place_id: place.id })}
               className="inline-flex items-center gap-1 rounded-full bg-[#1b4965] px-2.5 py-1.5 text-[11px] font-semibold text-white shadow-sm hover:bg-[#163a52]"
             >
               <svg viewBox="0 0 24 24" className="size-3.5" aria-hidden>
@@ -1706,7 +1726,19 @@ function PlacePanel({
                 const badge = sourceBadge(src);
                 return (
                   <li key={src.id} className="rounded-xl border border-stone-200/90 bg-white px-3 py-2.5 shadow-sm">
-                    <a href={src.url} target="_blank" rel="noreferrer" className="block hover:opacity-85">
+                    <a
+                      href={src.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="block hover:opacity-85"
+                      onClick={() =>
+                        track("open_review", {
+                          place_id: place.id,
+                          source_id: src.id,
+                          type: src.type,
+                        })
+                      }
+                    >
                       <div className="flex items-center gap-2">
                         <span className="text-[10px] font-semibold tabular-nums text-stone-400">{i + 1}</span>
                         <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}>

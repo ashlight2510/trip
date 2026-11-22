@@ -47,7 +47,13 @@ export const dictionaries = {
     editorPick: "풍경너머 픽",
     mapTitle: "여행지 지도",
     mapBlurb:
-      "시 → 구·동 → 장소. 후기는 장소당 최대 10개(블로그 적합도·유튜브 조회수) 원문 링크로 연결합니다.",
+      "가기 전에 후기를 지도에서 미리 보세요. 내 주변·관심 도시부터, 하루 코스까지.",
+    sharePlace: "공유",
+    sharePlaceCopied: "링크 복사됨",
+    shareDay: "이 하루 공유",
+    shareDayCopied: "복사됨",
+    shareDayText: (title: string, lines: string) =>
+      `풍경너머 · ${title}\n${lines}\n가기 전에 후기 지도로 미리 보기`,
     allCities: "전체 시",
     searchLabel: "통합검색",
     searchPlaceholderNationwide: "강릉 카페 노을, 경복궁, 해운대…",
@@ -151,7 +157,13 @@ export const dictionaries = {
     editorPick: "Editor pick",
     mapTitle: "Travel map",
     mapBlurb:
-      "City → district → place. Reviews link out to the original (up to 10 per place).",
+      "Preview trips with map reviews before you go — nearby, a city, or a full day plan.",
+    sharePlace: "Share",
+    sharePlaceCopied: "Link copied",
+    shareDay: "Share this day",
+    shareDayCopied: "Copied",
+    shareDayText: (title: string, lines: string) =>
+      `Beyond the View · ${title}\n${lines}\nPreview the trip on the map before you go`,
     allCities: "All cities",
     searchLabel: "Search",
     searchPlaceholderNationwide: "Cafe and sunset in a city, a palace…",

@@ -8,6 +8,8 @@ import type { AccessMode, DayRole, Verdict } from "@/lib/day-plan";
 import { formatDistanceKm } from "@/lib/near-suggest";
 import { displayName } from "@/i18n/display-name";
 import { useLocale, useT } from "@/i18n/locale";
+import { ShareButton } from "@/components/share-button";
+import { absoluteUrl } from "@/lib/site";
 
 export function TripBriefCard({
   brief,
@@ -93,17 +95,37 @@ export function TripBriefCard({
           );
         })}
       </ol>
-      <button
-        type="button"
-        onClick={() => {
-          onSave();
-          setSavedFlash(true);
-          window.setTimeout(() => setSavedFlash(false), 1600);
-        }}
-        className="mt-2 text-[11px] font-semibold text-[#1b4965] hover:underline"
-      >
-        {savedFlash ? t.briefSaved : t.briefSave}
-      </button>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            onSave();
+            setSavedFlash(true);
+            window.setTimeout(() => setSavedFlash(false), 1600);
+          }}
+          className="text-[11px] font-semibold text-[#1b4965] hover:underline"
+        >
+          {savedFlash ? t.briefSaved : t.briefSave}
+        </button>
+        <ShareButton
+          compact
+          label={t.shareDay}
+          copiedLabel={t.shareDayCopied}
+          title={title}
+          text={t.shareDayText(
+            title,
+            stops
+              .map(
+                (s, i) =>
+                  `${i + 1}. ${roleLabel[s.role]} · ${displayName(s.place, locale)}`,
+              )
+              .join("\n"),
+          )}
+          url={absoluteUrl("/")}
+          event="share_day"
+          eventProps={{ stops: stops.length, anchor: brief.anchorName }}
+        />
+      </div>
     </section>
   );
 }
