@@ -34,7 +34,8 @@
     "source:thumbs": "tsx scripts/source-thumbs.mts",
     "env:check": "tsx scripts/env-check.mts",
     "growth:hooks": "tsx scripts/print-growth-hooks.mts",
-    "growth:week": "tsx scripts/print-growth-hooks.mts --week"
+    "growth:week": "tsx scripts/print-growth-hooks.mts --week",
+    "growth:posts": "tsx scripts/print-growth-hooks.mts --posts"
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",

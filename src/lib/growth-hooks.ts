@@ -1,13 +1,14 @@
 /**
- * Copy-paste hooks for Shorts / Reels / blog / cafe posts.
+ * Distribution hooks. Prefer blog/cafe (yarn growth:posts) over Shorts/YouTube.
  * Post 3×/week. Always end with trip.funnyfunny.cloud + one explore landing.
  */
 export type GrowthHook = {
   id: string;
-  channel: "shorts" | "blog" | "cafe";
+  /** Target surface — blog/cafe first; shorts kept only as optional label */
+  channel: "blog" | "cafe" | "shorts";
   hook: string;
   body: string;
-  /** 15–30s shorts shot list */
+  /** Optional shot list if you ever film */
   shots?: string[];
   hashtags: string[];
   cta: string;
@@ -17,7 +18,7 @@ export type GrowthHook = {
 export const GROWTH_HOOKS: GrowthHook[] = [
   {
     id: "gangneung-cafe-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "강릉 카페, 후기 안 보고 가면 후회하는 이유",
     body: "지도에 카페 찍고 → 블로그·유튜브 후기 바로 열기. 안목부터 에디터 픽까지.",
     shots: [
@@ -31,7 +32,7 @@ export const GROWTH_HOOKS: GrowthHook[] = [
   },
   {
     id: "jeju-beach-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "제주 해변, 가기 전에 지도로 비교해 봤더니",
     body: "후기 있는 해변만 모아두고 주변 카페까지 이어서 고르기.",
     shots: ["1) 해변 핀 비교", "2) 후기 원문 탭", "3) URL 엔딩"],
@@ -50,7 +51,7 @@ export const GROWTH_HOOKS: GrowthHook[] = [
   },
   {
     id: "busan-beach-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "해운대 vs 광안리, 후기로 먼저 비교",
     body: "부산 해변을 지도에 올려두고 원문 후기만 눌러 보기.",
     shots: ["1) 해운대 핀", "2) 광안리 핀", "3) 후기 스와이프 → URL"],
@@ -69,7 +70,7 @@ export const GROWTH_HOOKS: GrowthHook[] = [
   },
   {
     id: "hanok-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "북촌 가기 전에 거리뷰·후기부터",
     body: "한옥·골목 분위기 장소를 지도에서 고르고 나홀로 거리뷰로 한 바퀴.",
     shots: ["1) 북촌 핀", "2) 거리뷰 한 컷", "3) URL"],
@@ -88,7 +89,7 @@ export const GROWTH_HOOKS: GrowthHook[] = [
   },
   {
     id: "jeju-cafe-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "제주 카페, 오션뷰만 고르다 실패한 날",
     body: "후기 있는 카페만 지도에 모아두고 동선 짜기.",
     shots: ["1) 제주 카페 핀", "2) 후기 썸네일", "3) URL"],
@@ -98,7 +99,7 @@ export const GROWTH_HOOKS: GrowthHook[] = [
   },
   {
     id: "gangneung-trip-1",
-    channel: "shorts",
+    channel: "blog",
     hook: "강릉 당일치기, 카페·바다 순서부터",
     body: "후기 지도에서 핀 고르고 하루 짜기. 안목·경포 헤매기 전에.",
     shots: ["1) 강릉 여행 랜딩", "2) 핀 3개 선택", "3) URL"],
