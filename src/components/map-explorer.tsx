@@ -619,8 +619,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     layerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     syncWorldMinZoom(map);
-    fitLatLngs(map, cities, 7);
-    setMapZoom(map.getZoom());
+    // Start on Seoul until GPS resolves — avoid a brief Korea-wide flash.
+    map.setView([DEFAULT_CENTER.lat, DEFAULT_CENTER.lng], 11, { animate: false });
+    setMapZoom(11);
     setMapReady(true);
 
     let cancelled = false;
@@ -714,7 +715,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     return () => clearTimeout(timer);
   }, [panelOpen]);
 
-  // Boot nearby places. Never prompt for location — only reuse an already-granted permission.
+  // Boot: Seoul nearby immediately; GPS ok → fly to me + reload nearby.
   useEffect(() => {
     if (!mapReady) return;
     let cancelled = false;
@@ -722,53 +723,33 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     const apply = async (lat: number, lng: number, fly: boolean, gps: boolean) => {
       if (cancelled) return;
       paintUserMarker(lat, lng, fly);
-      if (gps) setHasUserGps(true);
+      setHasUserGps(gps);
       await loadNearby(lat, lng);
     };
 
-    const remember = (lat: number, lng: number) => setUserLoc({ lat, lng });
-    const useFallback = () => {
-      remember(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng);
-      setHasUserGps(false);
-      void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false, false);
-    };
+    // Always show something useful while (or if) GPS is pending/denied.
+    setUserLoc(DEFAULT_CENTER);
+    void apply(DEFAULT_CENTER.lat, DEFAULT_CENTER.lng, false, false);
 
-    const readGrantedLocation = () => {
-      if (!navigator.geolocation) {
-        useFallback();
-        return;
-      }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          remember(pos.coords.latitude, pos.coords.longitude);
-          void apply(pos.coords.latitude, pos.coords.longitude, true, true);
-        },
-        () => useFallback(),
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 60_000 },
-      );
-    };
+    if (!navigator.geolocation) {
+      return () => {
+        cancelled = true;
+      };
+    }
 
-    const boot = async () => {
-      // Avoid the browser permission popup on every visit / remount.
-      try {
-        const permissions = navigator.permissions;
-        if (permissions?.query) {
-          const status = await permissions.query({ name: "geolocation" });
-          if (cancelled) return;
-          if (status.state === "granted") {
-            readGrantedLocation();
-            return;
-          }
-          useFallback();
-          return;
-        }
-      } catch {
-        // Permissions API unavailable — fall through without prompting.
-      }
-      if (!cancelled) useFallback();
-    };
-
-    void boot();
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (cancelled) return;
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setUserLoc({ lat, lng });
+        void apply(lat, lng, true, true);
+      },
+      () => {
+        // Stay on Seoul — already applied above.
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    );
 
     return () => {
       cancelled = true;
@@ -1119,11 +1100,11 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   }
 
   function toggleWanderCat(cat: Place["category"]) {
-    setWanderCats((prev) => {
-      const next = prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat];
-      if (wanderPool.length) applyWanderPicks(wanderPool, next);
-      return next;
-    });
+    const next = wanderCats.includes(cat)
+      ? wanderCats.filter((c) => c !== cat)
+      : [...wanderCats, cat];
+    setWanderCats(next);
+    if (wanderPool.length) applyWanderPicks(wanderPool, next);
   }
 
   function shuffleWander() {
