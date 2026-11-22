@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="만리장성(팔달령·모천욕)">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="164" cy="38" rx="28" ry="12.6" fill="#fff0d6" opacity="0.184"/><ellipse cx="261" cy="4" rx="40" ry="18" fill="#fff0d6" opacity="0.152"/><ellipse cx="358" cy="22" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.19999999999999998"/><ellipse cx="455" cy="31" rx="28" ry="12.6" fill="#fff0d6" opacity="0.15999999999999998"/>
+        <path d="M0 420 C160 360 240 480 400 400 S680 300 960 360 L960 560 L0 560 Z" fill="#8a4b16"/>
+        <rect x="80" y="340" width="36" height="70" fill="#e0a35a"/><rect x="86" y="348" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="200" y="360" width="36" height="86" fill="#e0a35a"/><rect x="206" y="368" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="340" y="380" width="36" height="102" fill="#e0a35a"/><rect x="346" y="388" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="480" y="340" width="36" height="118" fill="#e0a35a"/><rect x="486" y="348" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="620" y="360" width="36" height="70" fill="#e0a35a"/><rect x="626" y="368" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="760" y="380" width="36" height="86" fill="#e0a35a"/><rect x="766" y="388" width="24" height="16" fill="#3d1f0a" opacity="0.35"/><rect x="880" y="340" width="36" height="102" fill="#e0a35a"/><rect x="886" y="348" width="24" height="16" fill="#3d1f0a" opacity="0.35"/>
+        <path d="M0 560 L960 520 L960 720 L0 720 Z" fill="#3d1f0a" opacity="0.55"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 중국</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">만리장성(팔달령·모천욕)</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">산마루를 달리는 돌의 용</text>
+</svg>

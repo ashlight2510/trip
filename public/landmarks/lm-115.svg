@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="오사카 도톤보리">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="646" cy="10" rx="28" ry="12.6" fill="#fff0d6" opacity="0.23199999999999998"/><ellipse cx="743" cy="25" rx="40" ry="18" fill="#fff0d6" opacity="0.176"/><ellipse cx="840" cy="-3" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.208"/><ellipse cx="117" cy="-17" rx="28" ry="12.6" fill="#fff0d6" opacity="0.22399999999999998"/>
+        <rect x="0" y="380" width="960" height="340" fill="#0a1020"/>
+        <rect x="120" y="254" width="40" height="266" fill="#152238" opacity="0.95"/>
+            <rect x="126" y="262" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="142" y="282" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="220" y="217" width="58" height="303" fill="#8a4b16" opacity="0.95"/>
+            <rect x="226" y="225" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="242" y="245" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="320" y="360" width="76" height="160" fill="#152238" opacity="0.95"/>
+            <rect x="326" y="368" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="342" y="388" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="420" y="323" width="40" height="197" fill="#8a4b16" opacity="0.95"/>
+            <rect x="426" y="331" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="442" y="351" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="520" y="286" width="58" height="234" fill="#152238" opacity="0.95"/>
+            <rect x="526" y="294" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="542" y="314" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="620" y="249" width="76" height="271" fill="#8a4b16" opacity="0.95"/>
+            <rect x="626" y="257" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="642" y="277" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="720" y="212" width="40" height="308" fill="#152238" opacity="0.95"/>
+            <rect x="726" y="220" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="742" y="240" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="800" y="355" width="58" height="165" fill="#8a4b16" opacity="0.95"/>
+            <rect x="806" y="363" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="822" y="383" width="10" height="10" fill="#ff5ac8" opacity="0.85"/>
+        <rect x="60" y="560" width="840" height="18" fill="#2a3148"/>
+        <circle cx="200" cy="600" r="16" fill="#f5c518"/><circle cx="240" cy="600" r="16" fill="#f5c518"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 일본</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">오사카 도톤보리</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">한 번쯤 꼭 서 보고 싶은 세계적 명소</text>
+</svg>

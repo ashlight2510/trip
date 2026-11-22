@@ -46,6 +46,8 @@ import {
 import { getStaticPlace } from "@/lib/static-map-data";
 import { placeShareUrl } from "@/lib/site";
 import { track } from "@/lib/track";
+import { WORLD_LANDMARKS_200, type WorldLandmark } from "@/lib/world-landmarks-200";
+import { WorldLandmarkDetail } from "@/components/world-landmark-detail";
 
 const DEFAULT_CENTER = { lat: 37.5665, lng: 126.978 }; // Seoul fallback
 const NEAR_RADIUS_KM = 28;
@@ -181,6 +183,41 @@ function pinIcon(
 function placeMarkerIcon(place: MapPlace, selectedPlaceId: string | null, ariaLabel: string) {
   return pinIcon(place.category, place.id === selectedPlaceId, ariaLabel, {
     cafePick: place.is_cafe_pick,
+  });
+}
+
+/** Gold star pin with place name label above — world landmarks layer. */
+function worldLandmarkStarIcon(landmark: WorldLandmark, active: boolean) {
+  const label = landmark.name.length > 12 ? `${landmark.name.slice(0, 11)}…` : landmark.name;
+  const safeLabel = label.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+  const star = active ? 28 : 22;
+  const labelH = 18;
+  const pad = 4;
+  const w = Math.max(star + 8, safeLabel.length * 7 + 16);
+  const h = labelH + pad + star + 4;
+  const fill = active ? "#f5c518" : "#e8b923";
+  const stroke = active ? "#fff8d6" : "#fff";
+  return L.divIcon({
+    className: "pn-world-landmark-pin",
+    iconSize: [w, h],
+    iconAnchor: [w / 2, h - 2],
+    html: `<button type="button" aria-label="${safeLabel}" style="
+      width:${w}px;height:${h}px;padding:0;border:0;background:transparent;cursor:pointer;
+      display:flex;flex-direction:column;align-items:center;gap:${pad}px;
+      filter:drop-shadow(0 2px 6px rgba(0,0,0,.45));
+    ">
+      <span style="
+        max-width:${w}px;padding:2px 7px;border-radius:999px;
+        background:rgba(15,23,32,.88);color:#fff;font:700 10px/1.2 system-ui,sans-serif;
+        white-space:nowrap;letter-spacing:-0.02em;
+        box-shadow:0 0 0 1px rgba(255,255,255,.2);
+        ${active ? "background:#1b4965;" : ""}
+      ">${safeLabel}</span>
+      <svg width="${star}" height="${star}" viewBox="0 0 24 24" aria-hidden="true" style="display:block;flex-shrink:0">
+        <path d="M12 2.2l2.85 6.55 7.05.66-5.35 4.7 1.65 6.85L12 17.4l-6.2 3.56 1.65-6.85-5.35-4.7 7.05-.66L12 2.2z"
+          fill="${fill}" stroke="${stroke}" stroke-width="1.5"/>
+      </svg>
+    </button>`,
   });
 }
 
@@ -347,6 +384,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<L.Map | null>(null);
   const layerRef = useRef<L.LayerGroup | null>(null);
+  const worldLandmarkLayerRef = useRef<L.LayerGroup | null>(null);
+  /** Stable marker instances for world landmarks — avoid full rebuild on selection. */
+  const worldLandmarkMarkersRef = useRef<Map<string, L.Marker>>(new Map());
   const userMarkerRef = useRef<L.CircleMarker | null>(null);
   const wanderCircleRef = useRef<L.Circle | null>(null);
   const boundaryRef = useRef<L.GeoJSON | null>(null);
@@ -387,8 +427,19 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   const [wanderPicks, setWanderPicks] = useState<MapPlace[]>([]);
   const [wanderLoading, setWanderLoading] = useState(false);
   const [panelOpen, setPanelOpen] = useState(true);
+  const [showWorldLandmarks, setShowWorldLandmarks] = useState(true);
+  const [selectedLandmarkId, setSelectedLandmarkId] = useState<string | null>(null);
   const showPlacePins = mapZoom >= PLACE_PIN_ZOOM;
   const wanderActive = wanderMode != null;
+
+  const selectedLandmark = useMemo(
+    () => WORLD_LANDMARKS_200.find((l) => l.id === selectedLandmarkId) ?? null,
+    [selectedLandmarkId],
+  );
+  const selectedLandmarkIndex = useMemo(
+    () => (selectedLandmarkId ? WORLD_LANDMARKS_200.findIndex((l) => l.id === selectedLandmarkId) : -1),
+    [selectedLandmarkId],
+  );
 
   const cities = useMemo(() => areas.filter((a) => a.level === "city"), [areas]);
   const districts = useMemo(
@@ -631,6 +682,7 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     });
     L.control.zoom({ position: "topright" }).addTo(map);
     layerRef.current = L.layerGroup().addTo(map);
+    worldLandmarkLayerRef.current = L.layerGroup().addTo(map);
     mapRef.current = map;
     syncWorldMinZoom(map);
     // Start on Seoul until GPS resolves — avoid a brief Korea-wide flash.
@@ -688,17 +740,28 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     map.on("moveend", onMoveEnd);
 
     const onResize = () => {
-      map.invalidateSize();
-      syncWorldMinZoom(map);
+      if (cancelled || mapRef.current !== map) return;
+      try {
+        map.invalidateSize();
+        syncWorldMinZoom(map);
+      } catch {
+        /* map may already be tearing down */
+      }
     };
     window.addEventListener("resize", onResize);
-    requestAnimationFrame(() => {
-      map.invalidateSize();
-      syncWorldMinZoom(map);
+    const rafId = requestAnimationFrame(() => {
+      if (cancelled || mapRef.current !== map) return;
+      try {
+        map.invalidateSize();
+        syncWorldMinZoom(map);
+      } catch {
+        /* ignore stale frame after unmount */
+      }
     });
 
     return () => {
       cancelled = true;
+      cancelAnimationFrame(rafId);
       if (moveTimer) clearTimeout(moveTimer);
       host.removeEventListener("wheel", onWheel);
       map.off("zoomend", onZoomEnd);
@@ -710,6 +773,9 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
       wanderCircleRef.current = null;
       routeRef.current?.remove();
       routeRef.current = null;
+      worldLandmarkLayerRef.current?.clearLayers();
+      worldLandmarkLayerRef.current = null;
+      worldLandmarkMarkersRef.current.clear();
       map.remove();
       mapRef.current = null;
       layerRef.current = null;
@@ -725,7 +791,15 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
   }, [locale]);
 
   useEffect(() => {
-    const timer = setTimeout(() => mapRef.current?.invalidateSize(), 240);
+    const timer = setTimeout(() => {
+      const map = mapRef.current;
+      if (!map) return;
+      try {
+        map.invalidateSize();
+      } catch {
+        /* ignore */
+      }
+    }, 240);
     return () => clearTimeout(timer);
   }, [panelOpen]);
 
@@ -1043,6 +1117,51 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
     courseStops,
   ]);
 
+  useEffect(() => {
+    const map = mapRef.current;
+    const layer = worldLandmarkLayerRef.current;
+    if (!map || !layer || !mapReady) return;
+
+    if (!showWorldLandmarks) {
+      layer.clearLayers();
+      worldLandmarkMarkersRef.current.clear();
+      return;
+    }
+
+    if (worldLandmarkMarkersRef.current.size === 0) {
+      WORLD_LANDMARKS_200.forEach((landmark) => {
+        const marker = L.marker([landmark.lat, landmark.lng], {
+          icon: worldLandmarkStarIcon(landmark, false),
+          title: `${landmark.name} · ${landmark.country}`,
+          zIndexOffset: 250,
+          keyboard: false,
+        });
+        marker.on("click", () => {
+          setSelectedLandmarkId(landmark.id);
+          setSelectedPlaceId(null);
+          if (mapRef.current === map) {
+            map.flyTo([landmark.lat, landmark.lng], Math.max(map.getZoom(), 5), { duration: 0.55 });
+          }
+          track("world_landmark_open", { id: landmark.id, name: landmark.name });
+        });
+        marker.addTo(layer);
+        worldLandmarkMarkersRef.current.set(landmark.id, marker);
+      });
+    }
+
+    worldLandmarkMarkersRef.current.forEach((marker, id) => {
+      const landmark = WORLD_LANDMARKS_200.find((l) => l.id === id);
+      if (!landmark) return;
+      const active = id === selectedLandmarkId;
+      try {
+        marker.setIcon(worldLandmarkStarIcon(landmark, active));
+        marker.setZIndexOffset(active ? 900 : 250);
+      } catch {
+        /* icon swap during teardown */
+      }
+    });
+  }, [mapReady, showWorldLandmarks, selectedLandmarkId]);
+
   function swapCourseStop(index: number) {
     if (!course) return;
     setCourseStops((prev) => {
@@ -1257,6 +1376,26 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
             >
               세계 크리스마스
             </Link>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !showWorldLandmarks;
+                setShowWorldLandmarks(next);
+                if (!next) setSelectedLandmarkId(null);
+                if (next && mapRef.current && mapRef.current.getZoom() > 5) {
+                  mapRef.current.flyTo([20, 10], 2.4, { duration: 1.1 });
+                }
+                track("world_landmarks_toggle", { on: next });
+              }}
+              className={`rounded-full px-3 py-1.5 text-[13px] font-semibold ring-1 ${
+                showWorldLandmarks
+                  ? "bg-amber-400/90 text-amber-950 ring-amber-500/60"
+                  : "text-stone-600 ring-stone-200 hover:bg-stone-50"
+              }`}
+              aria-pressed={showWorldLandmarks}
+            >
+              ★ 세계 명소 200
+            </button>
           </div>
         </header>
 
@@ -1623,6 +1762,39 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
           />
         )}
       </div>
+
+      {selectedLandmark && (
+        <WorldLandmarkDetail
+          landmark={selectedLandmark}
+          onClose={() => setSelectedLandmarkId(null)}
+          onPrev={
+            selectedLandmarkIndex > 0
+              ? () => {
+                  const prev = WORLD_LANDMARKS_200[selectedLandmarkIndex - 1];
+                  if (prev) {
+                    setSelectedLandmarkId(prev.id);
+                    mapRef.current?.flyTo([prev.lat, prev.lng], Math.max(mapRef.current.getZoom(), 5), {
+                      duration: 0.6,
+                    });
+                  }
+                }
+              : undefined
+          }
+          onNext={
+            selectedLandmarkIndex >= 0 && selectedLandmarkIndex < WORLD_LANDMARKS_200.length - 1
+              ? () => {
+                  const next = WORLD_LANDMARKS_200[selectedLandmarkIndex + 1];
+                  if (next) {
+                    setSelectedLandmarkId(next.id);
+                    mapRef.current?.flyTo([next.lat, next.lng], Math.max(mapRef.current.getZoom(), 5), {
+                      duration: 0.6,
+                    });
+                  }
+                }
+              : undefined
+          }
+        />
+      )}
     </div>
   );
 }

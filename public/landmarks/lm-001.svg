@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="타임스스퀘어">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a2a44"/>
+      <stop offset="55%" stop-color="#1a6fa8"/>
+      <stop offset="100%" stop-color="#7ec8e8"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="167" cy="77" rx="28" ry="12.6" fill="#e6f6ff" opacity="0.208"/><ellipse cx="264" cy="93" rx="40" ry="18" fill="#e6f6ff" opacity="0.15999999999999998"/><ellipse cx="361" cy="66" rx="52" ry="23.400000000000002" fill="#e6f6ff" opacity="0.19999999999999998"/><ellipse cx="458" cy="53" rx="28" ry="12.6" fill="#e6f6ff" opacity="0.15999999999999998"/>
+        <rect x="0" y="380" width="960" height="340" fill="#0a1020"/>
+        <rect x="120" y="213" width="40" height="307" fill="#152238" opacity="0.95"/>
+            <rect x="126" y="221" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="142" y="241" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="220" y="356" width="58" height="164" fill="#1a6fa8" opacity="0.95"/>
+            <rect x="226" y="364" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="242" y="384" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="320" y="319" width="76" height="201" fill="#152238" opacity="0.95"/>
+            <rect x="326" y="327" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="342" y="347" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="420" y="282" width="40" height="238" fill="#1a6fa8" opacity="0.95"/>
+            <rect x="426" y="290" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="442" y="310" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="520" y="245" width="58" height="275" fill="#152238" opacity="0.95"/>
+            <rect x="526" y="253" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="542" y="273" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="620" y="208" width="76" height="312" fill="#1a6fa8" opacity="0.95"/>
+            <rect x="626" y="216" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="642" y="236" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="720" y="351" width="40" height="169" fill="#152238" opacity="0.95"/>
+            <rect x="726" y="359" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="742" y="379" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="800" y="314" width="58" height="206" fill="#1a6fa8" opacity="0.95"/>
+            <rect x="806" y="322" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="822" y="342" width="10" height="10" fill="#ff5ac8" opacity="0.85"/>
+        <rect x="60" y="560" width="840" height="18" fill="#2a3148"/>
+        <circle cx="200" cy="600" r="16" fill="#f5c518"/><circle cx="240" cy="600" r="16" fill="#f5c518"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아메리카 · 미국</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">타임스스퀘어</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">네온이 밤을 낮처럼 밝히는 세계의 교차로</text>
+</svg>

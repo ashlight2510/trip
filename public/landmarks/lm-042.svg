@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="할롱베이">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="767" cy="-29" rx="28" ry="12.6" fill="#fff0d6" opacity="0.144"/><ellipse cx="44" cy="5" rx="40" ry="18" fill="#fff0d6" opacity="0.128"/><ellipse cx="141" cy="22" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.184"/><ellipse cx="238" cy="-4" rx="28" ry="12.6" fill="#fff0d6" opacity="0.216"/>
+        <rect x="0" y="420" width="960" height="300" fill="#8a4b16" opacity="0.5"/>
+        <path d="M0 460 Q240 430 480 470 T960 450 L960 720 L0 720 Z" fill="#e0a35a" opacity="0.55"/>
+        <path d="M520 300 L620 420 L700 300 L780 440 L560 440 Z" fill="#fff0d6"/>
+        <rect x="140" y="380" width="18" height="160" fill="#3d1f0a"/><path d="M158 400 L260 380 L158 440 Z" fill="#fff0d6" opacity="0.7"/>
+        <rect x="200" y="500" width="90" height="28" fill="#3d1f0a" opacity="0.45"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 베트남</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">할롱베이</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">세계유산이자 지구촌 포스터 풍경</text>
+</svg>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="앙코르와트">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="674" cy="-2" rx="28" ry="12.6" fill="#fff0d6" opacity="0.19999999999999998"/><ellipse cx="771" cy="19" rx="40" ry="18" fill="#fff0d6" opacity="0.15999999999999998"/><ellipse cx="48" cy="-6" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.136"/><ellipse cx="145" cy="17" rx="28" ry="12.6" fill="#fff0d6" opacity="0.192"/><path d="M0 520 Q240 485.3333333333333 480 510 T960 530 L960 720 L0 720 Z" fill="#8a4b16" opacity="0.55"/>
+        <rect x="360" y="360" width="240" height="160" fill="#8a4b16"/>
+        <path d="M330 360 L480 250 L630 360 Z" fill="#e0a35a"/>
+        <path d="M350 300 L480 210 L610 300 Z" fill="#fff0d6"/>
+        <rect x="450" y="420" width="60" height="100" fill="#3d1f0a" opacity="0.4"/>
+        <rect x="200" y="480" width="120" height="60" fill="#e0a35a" opacity="0.7"/>
+        <rect x="640" y="470" width="120" height="70" fill="#e0a35a" opacity="0.7"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 캄보디아</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">앙코르와트</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">해 뜨는 탑에 기대는 크메르의 우주</text>
+</svg>

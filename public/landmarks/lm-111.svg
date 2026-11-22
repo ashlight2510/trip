@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="바티칸 광장 열주">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f2740"/>
+      <stop offset="55%" stop-color="#1b4965"/>
+      <stop offset="100%" stop-color="#7aa2b8"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="471" cy="35" rx="28" ry="12.6" fill="#e8f1f6" opacity="0.208"/><ellipse cx="568" cy="37" rx="40" ry="18" fill="#e8f1f6" opacity="0.22399999999999998"/><ellipse cx="665" cy="38" rx="52" ry="23.400000000000002" fill="#e8f1f6" opacity="0.23199999999999998"/><ellipse cx="762" cy="39" rx="28" ry="12.6" fill="#e8f1f6" opacity="0.24"/><path d="M0 520 Q240 517.3333333333334 480 510 T960 530 L960 720 L0 720 Z" fill="#1b4965" opacity="0.55"/>
+        <rect x="300" y="280" width="360" height="220" fill="#7aa2b8"/>
+        <rect x="330" y="310" width="60" height="120" fill="#e8f1f6" opacity="0.8"/>
+        <rect x="570" y="310" width="60" height="120" fill="#e8f1f6" opacity="0.8"/>
+        <circle cx="480" cy="520" r="48" fill="#1b4965" opacity="0.5"/>
+        <rect x="160" y="420" width="100" height="140" fill="#1b4965"/><rect x="700" y="400" width="110" height="160" fill="#1b4965"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">유럽 · 바티칸</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">바티칸 광장 열주</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">한 번쯤 꼭 서 보고 싶은 세계적 명소</text>
+</svg>

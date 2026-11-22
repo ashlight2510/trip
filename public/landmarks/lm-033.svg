@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="카파도키아">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f2740"/>
+      <stop offset="55%" stop-color="#1b4965"/>
+      <stop offset="100%" stop-color="#7aa2b8"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="352" cy="82" rx="28" ry="12.6" fill="#e8f1f6" opacity="0.152"/><ellipse cx="449" cy="96" rx="40" ry="18" fill="#e8f1f6" opacity="0.19999999999999998"/><ellipse cx="546" cy="103" rx="52" ry="23.400000000000002" fill="#e8f1f6" opacity="0.15999999999999998"/><ellipse cx="643" cy="106" rx="28" ry="12.6" fill="#e8f1f6" opacity="0.19999999999999998"/><path d="M0 520 Q240 493.3333333333333 480 510 T960 530 L960 720 L0 720 Z" fill="#1b4965" opacity="0.55"/>
+        <path d="M200 500 L350 280 L500 500 Z" fill="#7aa2b8"/><rect x="520" y="320" width="160" height="200" fill="#1b4965"/>
+        <circle cx="600" cy="280" r="40" fill="#e8f1f6" opacity="0.7"/>
+        <path d="M120 560 Q480 600 840 540" stroke="#e8f1f6" stroke-width="8" fill="none" opacity="0.45"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">유럽 · 튀르키예</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">카파도키아</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">세계유산이자 지구촌 포스터 풍경</text>
+</svg>

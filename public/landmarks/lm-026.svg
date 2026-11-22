@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="발리 우붓">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="536" cy="106" rx="28" ry="12.6" fill="#fff0d6" opacity="0.216"/><ellipse cx="633" cy="108" rx="40" ry="18" fill="#fff0d6" opacity="0.16799999999999998"/><ellipse cx="730" cy="109" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.208"/><ellipse cx="827" cy="109" rx="28" ry="12.6" fill="#fff0d6" opacity="0.15999999999999998"/>
+        <ellipse cx="480" cy="520" rx="280" ry="70" fill="#8a4b16" opacity="0.55"/>
+        <path d="M260 500 Q480 360 700 500 Q480 560 260 500" fill="#e0a35a"/>
+        <path d="M400 480 C410 400 470 390 480 480" fill="#3d1f0a"/><ellipse cx="440" cy="400" rx="45" ry="20" fill="#8a4b16"/>
+        <rect x="0" y="560" width="960" height="160" fill="#e0a35a" opacity="0.45"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 인도네시아</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">발리 우붓</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">쉬러 왔다가 인생 컷을 남기게 되는 휴양 명소</text>
+</svg>

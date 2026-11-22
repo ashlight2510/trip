@@ -1,0 +1,1202 @@
+[
+  {
+    "id": "lm-001-타임스스퀘어",
+    "name": "타임스스퀘어",
+    "image": "/landmarks/lm-001.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-002-센트럴파크",
+    "name": "센트럴파크",
+    "image": "/landmarks/lm-002.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-003-라스베이거스-스트립",
+    "name": "라스베이거스 스트립",
+    "image": "/landmarks/lm-003.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-004-나이아가라-폭포",
+    "name": "나이아가라 폭포",
+    "image": "/landmarks/lm-004.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-005-디즈니월드-올랜도",
+    "name": "디즈니월드 올랜도",
+    "image": "/landmarks/lm-005.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-006-루브르-박물관",
+    "name": "루브르 박물관",
+    "image": "/landmarks/lm-006.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-007-에펠탑",
+    "name": "에펠탑",
+    "image": "/landmarks/lm-007.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-008-바티칸-박물관",
+    "name": "바티칸 박물관",
+    "image": "/landmarks/lm-008.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-009-그랜드바자르",
+    "name": "그랜드바자르",
+    "image": "/landmarks/lm-009.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-010-두바이-부르즈-칼리파",
+    "name": "두바이 부르즈 칼리파",
+    "image": "/landmarks/lm-010.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-011-두바이몰",
+    "name": "두바이몰",
+    "image": "/landmarks/lm-011.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-012-메카-마스지드-알하람",
+    "name": "메카 마스지드 알하람",
+    "image": "/landmarks/lm-012.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-013-만리장성-팔달령-모천욕",
+    "name": "만리장성(팔달령·모천욕)",
+    "image": "/landmarks/lm-013.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-014-자금성-고궁",
+    "name": "자금성(고궁)",
+    "image": "/landmarks/lm-014.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-015-상하이-와이탄",
+    "name": "상하이 와이탄",
+    "image": "/landmarks/lm-015.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-016-도쿄-센소지",
+    "name": "도쿄 센소지",
+    "image": "/landmarks/lm-016.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-017-교토-후시미이나리-대사",
+    "name": "교토 후시미이나리 대사",
+    "image": "/landmarks/lm-017.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-018-방콕-왕궁-에메랄드-사원",
+    "name": "방콕 왕궁·에메랄드 사원",
+    "image": "/landmarks/lm-018.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-019-싱가포르-마리나베이샌즈",
+    "name": "싱가포르 마리나베이샌즈",
+    "image": "/landmarks/lm-019.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-020-스미소니언-박물관군",
+    "name": "스미소니언 박물관군",
+    "image": "/landmarks/lm-020.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-021-월트디즈니-파리",
+    "name": "월트디즈니 파리",
+    "image": "/landmarks/lm-021.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-022-상하이-디즈니랜드",
+    "name": "상하이 디즈니랜드",
+    "image": "/landmarks/lm-022.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-023-도쿄-디즈니랜드-시",
+    "name": "도쿄 디즈니랜드·시",
+    "image": "/landmarks/lm-023.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-024-유니버설-스튜디오-재팬",
+    "name": "유니버설 스튜디오 재팬",
+    "image": "/landmarks/lm-024.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-025-푸켓-파통-카론-해변",
+    "name": "푸켓 파통·카론 해변",
+    "image": "/landmarks/lm-025.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-026-발리-우붓",
+    "name": "발리 우붓",
+    "image": "/landmarks/lm-026.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-027-디즈니랜드-애너하임",
+    "name": "디즈니랜드 애너하임",
+    "image": "/landmarks/lm-027.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-028-칸쿤-리비에라마야",
+    "name": "칸쿤·리비에라마야",
+    "image": "/landmarks/lm-028.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-029-푸꾸옥섬",
+    "name": "푸꾸옥섬",
+    "image": "/landmarks/lm-029.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-030-알함브라-궁전",
+    "name": "알함브라 궁전",
+    "image": "/landmarks/lm-030.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-031-할슈타트",
+    "name": "할슈타트",
+    "image": "/landmarks/lm-031.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-032-아크로폴리스",
+    "name": "아크로폴리스",
+    "image": "/landmarks/lm-032.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-033-카파도키아",
+    "name": "카파도키아",
+    "image": "/landmarks/lm-033.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-034-페트라",
+    "name": "페트라",
+    "image": "/landmarks/lm-034.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-035-기자-피라미드",
+    "name": "기자 피라미드",
+    "image": "/landmarks/lm-035.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-036-빅토리아-폭포",
+    "name": "빅토리아 폭포",
+    "image": "/landmarks/lm-036.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-037-세렝게티-국립공원",
+    "name": "세렝게티 국립공원",
+    "image": "/landmarks/lm-037.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-038-장가계-국립공원",
+    "name": "장가계 국립공원",
+    "image": "/landmarks/lm-038.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-039-계림-양삭-이강",
+    "name": "계림·양삭 이강",
+    "image": "/landmarks/lm-039.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-040-후지산",
+    "name": "후지산",
+    "image": "/landmarks/lm-040.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-041-앙코르와트",
+    "name": "앙코르와트",
+    "image": "/landmarks/lm-041.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-042-할롱베이",
+    "name": "할롱베이",
+    "image": "/landmarks/lm-042.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-043-코모도-국립공원",
+    "name": "코모도 국립공원",
+    "image": "/landmarks/lm-043.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-044-팔라완-엘니도-푸에르토프린세사",
+    "name": "팔라완 엘니도·푸에르토프린세사",
+    "image": "/landmarks/lm-044.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-045-그레이트배리어리프",
+    "name": "그레이트배리어리프",
+    "image": "/landmarks/lm-045.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-046-울루루-카타추타",
+    "name": "울루루·카타추타",
+    "image": "/landmarks/lm-046.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-047-밀포드사운드",
+    "name": "밀포드사운드",
+    "image": "/landmarks/lm-047.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-048-이스터섬-모아이",
+    "name": "이스터섬 모아이",
+    "image": "/landmarks/lm-048.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-049-옐로스톤-국립공원",
+    "name": "옐로스톤 국립공원",
+    "image": "/landmarks/lm-049.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-050-요세미티-국립공원",
+    "name": "요세미티 국립공원",
+    "image": "/landmarks/lm-050.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-051-알래스카-글래시어베이",
+    "name": "알래스카 글래시어베이",
+    "image": "/landmarks/lm-051.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-052-밴프-레이크루이스",
+    "name": "밴프·레이크루이스",
+    "image": "/landmarks/lm-052.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-053-이과수-폭포",
+    "name": "이과수 폭포",
+    "image": "/landmarks/lm-053.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-054-파타고니아-페리토모레노-빙하",
+    "name": "파타고니아 페리토모레노 빙하",
+    "image": "/landmarks/lm-054.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-055-갈라파고스-제도",
+    "name": "갈라파고스 제도",
+    "image": "/landmarks/lm-055.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-056-피요르드-예이란게르-네뢰",
+    "name": "피요르드(예이란게르·네뢰)",
+    "image": "/landmarks/lm-056.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-057-친퀘테레",
+    "name": "친퀘테레",
+    "image": "/landmarks/lm-057.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-058-돌로미티",
+    "name": "돌로미티",
+    "image": "/landmarks/lm-058.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-059-메테오라",
+    "name": "메테오라",
+    "image": "/landmarks/lm-059.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-060-바이칼호",
+    "name": "바이칼호",
+    "image": "/landmarks/lm-060.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-061-에티오피아-랄리벨라",
+    "name": "에티오피아 랄리벨라",
+    "image": "/landmarks/lm-061.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-062-나미브사막-수소프블레이",
+    "name": "나미브사막 수소프블레이",
+    "image": "/landmarks/lm-062.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-063-오카방고-델타",
+    "name": "오카방고 델타",
+    "image": "/landmarks/lm-063.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-064-판타나우",
+    "name": "판타나우",
+    "image": "/landmarks/lm-064.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-065-자이언트코즈웨이",
+    "name": "자이언트코즈웨이",
+    "image": "/landmarks/lm-065.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-066-알울라-헤그라",
+    "name": "알울라·헤그라",
+    "image": "/landmarks/lm-066.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-067-콜로세움",
+    "name": "콜로세움",
+    "image": "/landmarks/lm-067.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-068-성-베드로-대성당",
+    "name": "성 베드로 대성당",
+    "image": "/landmarks/lm-068.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-069-사그라다-파밀리아",
+    "name": "사그라다 파밀리아",
+    "image": "/landmarks/lm-069.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-070-대영박물관",
+    "name": "대영박물관",
+    "image": "/landmarks/lm-070.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-071-런던아이",
+    "name": "런던아이",
+    "image": "/landmarks/lm-071.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-072-쾰른-대성당",
+    "name": "쾰른 대성당",
+    "image": "/landmarks/lm-072.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-073-프라하성",
+    "name": "프라하성",
+    "image": "/landmarks/lm-073.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-074-이스탄불-아야소피아",
+    "name": "이스탄불 아야소피아",
+    "image": "/landmarks/lm-074.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-075-블루모스크",
+    "name": "블루모스크",
+    "image": "/landmarks/lm-075.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-076-아부다비-그랜드모스크",
+    "name": "아부다비 그랜드모스크",
+    "image": "/landmarks/lm-076.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-077-이집트-박물관-카이로",
+    "name": "이집트 박물관(카이로)",
+    "image": "/landmarks/lm-077.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-078-천안문-광장",
+    "name": "천안문 광장",
+    "image": "/landmarks/lm-078.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-079-홍콩-빅토리아피크",
+    "name": "홍콩 빅토리아피크",
+    "image": "/landmarks/lm-079.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-080-도쿄-스카이트리",
+    "name": "도쿄 스카이트리",
+    "image": "/landmarks/lm-080.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-081-시부야-스크램블-교차로",
+    "name": "시부야 스크램블 교차로",
+    "image": "/landmarks/lm-081.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-082-메이지신궁",
+    "name": "메이지신궁",
+    "image": "/landmarks/lm-082.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-083-아라시야마-대나무숲",
+    "name": "아라시야마 대나무숲",
+    "image": "/landmarks/lm-083.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-084-오키나와-츄라우미-수족관",
+    "name": "오키나와 츄라우미 수족관",
+    "image": "/landmarks/lm-084.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-085-경복궁",
+    "name": "경복궁",
+    "image": "/landmarks/lm-085.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-086-남산서울타워",
+    "name": "남산서울타워",
+    "image": "/landmarks/lm-086.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-087-부산-해운대-광안리",
+    "name": "부산 해운대·광안리",
+    "image": "/landmarks/lm-087.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-088-짜뚜짝-주말시장",
+    "name": "짜뚜짝 주말시장",
+    "image": "/landmarks/lm-088.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-089-호치민-메콩델타",
+    "name": "호치민 메콩델타",
+    "image": "/landmarks/lm-089.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-090-다낭-미케해변-바나힐",
+    "name": "다낭 미케해변·바나힐",
+    "image": "/landmarks/lm-090.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-091-가든스바이더베이",
+    "name": "가든스바이더베이",
+    "image": "/landmarks/lm-091.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-092-발리-울루와뚜-탄중베노아",
+    "name": "발리 울루와뚜·탄중베노아",
+    "image": "/landmarks/lm-092.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-093-타지마할",
+    "name": "타지마할",
+    "image": "/landmarks/lm-093.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-094-자이푸르-시티팰리스-한가마할",
+    "name": "자이푸르 시티팰리스·한가마할",
+    "image": "/landmarks/lm-094.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-095-시드니-오페라하우스",
+    "name": "시드니 오페라하우스",
+    "image": "/landmarks/lm-095.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-096-본다이비치",
+    "name": "본다이비치",
+    "image": "/landmarks/lm-096.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-097-로토루아-지열지대",
+    "name": "로토루아 지열지대",
+    "image": "/landmarks/lm-097.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-098-자유의-여신상",
+    "name": "자유의 여신상",
+    "image": "/landmarks/lm-098.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-099-메트로폴리탄-미술관",
+    "name": "메트로폴리탄 미술관",
+    "image": "/landmarks/lm-099.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-100-원월드-전망대-911-뮤지엄",
+    "name": "원월드 전망대·911 뮤지엄",
+    "image": "/landmarks/lm-100.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-101-워싱턴-dc-내셔널몰",
+    "name": "워싱턴 DC 내셔널몰",
+    "image": "/landmarks/lm-101.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-102-와이키키-해변",
+    "name": "와이키키 해변",
+    "image": "/landmarks/lm-102.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-103-치첸이트사",
+    "name": "치첸이트사",
+    "image": "/landmarks/lm-103.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-104-툴룸",
+    "name": "툴룸",
+    "image": "/landmarks/lm-104.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-105-마추픽추",
+    "name": "마추픽추",
+    "image": "/landmarks/lm-105.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-106-리우-그리스도상-슈가로프",
+    "name": "리우 그리스도상·슈가로프",
+    "image": "/landmarks/lm-106.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-107-인터라켄-융프라우",
+    "name": "인터라켄·융프라우",
+    "image": "/landmarks/lm-107.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-108-레이캬비크-골든서클",
+    "name": "레이캬비크·골든서클",
+    "image": "/landmarks/lm-108.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-109-블루라군",
+    "name": "블루라군",
+    "image": "/landmarks/lm-109.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-110-몽생미셸",
+    "name": "몽생미셸",
+    "image": "/landmarks/lm-110.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-111-바티칸-광장-열주",
+    "name": "바티칸 광장 열주",
+    "image": "/landmarks/lm-111.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-112-모스크바-크렘린-성바실리",
+    "name": "모스크바 크렘린·성바실리",
+    "image": "/landmarks/lm-112.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-113-프라하-구시가-천문시계",
+    "name": "프라하 구시가 천문시계",
+    "image": "/landmarks/lm-113.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-114-청두-판다기지",
+    "name": "청두 판다기지",
+    "image": "/landmarks/lm-114.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-115-오사카-도톤보리",
+    "name": "오사카 도톤보리",
+    "image": "/landmarks/lm-115.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-116-교토-기온-야사카신사",
+    "name": "교토 기온·야사카신사",
+    "image": "/landmarks/lm-116.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-117-서울-명동-동대문디자인플라자",
+    "name": "서울 명동·동대문디자인플라자",
+    "image": "/landmarks/lm-117.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-118-전주-한옥마을",
+    "name": "전주 한옥마을",
+    "image": "/landmarks/lm-118.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-119-치앙라이-화이트템플",
+    "name": "치앙라이 화이트템플",
+    "image": "/landmarks/lm-119.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-120-하노이-하롱-외-닌빈-땀꼭",
+    "name": "하노이 하롱 외 닌빈·땀꼭",
+    "image": "/landmarks/lm-120.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-121-뉴욕-자연사박물관",
+    "name": "뉴욕 자연사박물관",
+    "image": "/landmarks/lm-121.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-122-캐나다-나이아가라-스카이론",
+    "name": "캐나다 나이아가라 스카이론",
+    "image": "/landmarks/lm-122.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-123-쿠스코-외-무지수로이-레인보우마운틴",
+    "name": "쿠스코 외 무지수로이·레인보우마운틴",
+    "image": "/landmarks/lm-123.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-124-이스탄불-보스포루스-크루즈",
+    "name": "이스탄불 보스포루스 크루즈",
+    "image": "/landmarks/lm-124.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-125-홍콩-디즈니랜드",
+    "name": "홍콩 디즈니랜드",
+    "image": "/landmarks/lm-125.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-126-유니버설-올랜도",
+    "name": "유니버설 올랜도",
+    "image": "/landmarks/lm-126.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-127-센토사섬",
+    "name": "센토사섬",
+    "image": "/landmarks/lm-127.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-128-랑카위",
+    "name": "랑카위",
+    "image": "/landmarks/lm-128.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-129-고아-해변",
+    "name": "고아 해변",
+    "image": "/landmarks/lm-129.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-130-피지-난디-맘마누아",
+    "name": "피지 난디·맘마누아",
+    "image": "/landmarks/lm-130.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-131-마이애미-사우스비치",
+    "name": "마이애미 사우스비치",
+    "image": "/landmarks/lm-131.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-132-마요르카-팔마",
+    "name": "마요르카 팔마",
+    "image": "/landmarks/lm-132.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-133-니스-코트다쥐르",
+    "name": "니스·코트다쥐르",
+    "image": "/landmarks/lm-133.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-134-카프리섬",
+    "name": "카프리섬",
+    "image": "/landmarks/lm-134.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-135-미코노스-파로스",
+    "name": "미코노스·파로스",
+    "image": "/landmarks/lm-135.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-136-흐바르-브라치섬",
+    "name": "흐바르·브라치섬",
+    "image": "/landmarks/lm-136.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-137-괌-투몬비치",
+    "name": "괌 투몬비치",
+    "image": "/landmarks/lm-137.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-138-칸쿤-외-이슬라홀박스",
+    "name": "칸쿤 외 이슬라홀박스",
+    "image": "/landmarks/lm-138.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-139-안탈리아-카슈",
+    "name": "안탈리아·카슈",
+    "image": "/landmarks/lm-139.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-140-그랜드캐년-국립공원",
+    "name": "그랜드캐년 국립공원",
+    "image": "/landmarks/lm-140.jpg",
+    "hasAi": true
+  },
+  {
+    "id": "lm-141-테이블마운틴",
+    "name": "테이블마운틴",
+    "image": "/landmarks/lm-141.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-142-크루거-국립공원",
+    "name": "크루거 국립공원",
+    "image": "/landmarks/lm-142.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-143-마사이마라-국립보호구역",
+    "name": "마사이마라 국립보호구역",
+    "image": "/landmarks/lm-143.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-144-끄라비-피피섬",
+    "name": "끄라비·피피섬",
+    "image": "/landmarks/lm-144.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-145-라자암파트",
+    "name": "라자암파트",
+    "image": "/landmarks/lm-145.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-146-바라나시-갠지스-강가",
+    "name": "바라나시 갠지스 강가",
+    "image": "/landmarks/lm-146.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-147-포카라-안나푸르나",
+    "name": "포카라·안나푸르나",
+    "image": "/landmarks/lm-147.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-148-에베레스트-베이스캠프",
+    "name": "에베레스트 베이스캠프",
+    "image": "/landmarks/lm-148.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-149-보라보라",
+    "name": "보라보라",
+    "image": "/landmarks/lm-149.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-150-자이언-브라이스캐년",
+    "name": "자이언·브라이스캐년",
+    "image": "/landmarks/lm-150.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-151-앤텔로프캐년",
+    "name": "앤텔로프캐년",
+    "image": "/landmarks/lm-151.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-152-우유니-소금사막",
+    "name": "우유니 소금사막",
+    "image": "/landmarks/lm-152.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-153-아마존-마나우스-정글",
+    "name": "아마존 마나우스·정글",
+    "image": "/landmarks/lm-153.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-154-토레스델파이네",
+    "name": "토레스델파이네",
+    "image": "/landmarks/lm-154.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-155-산페드로데아타카마",
+    "name": "산페드로데아타카마",
+    "image": "/landmarks/lm-155.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-156-마추픽추-연계-잉카트레일",
+    "name": "마추픽추 연계 잉카트레일",
+    "image": "/landmarks/lm-156.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-157-코스타리카-아레날-마누엘안토니오",
+    "name": "코스타리카 아레날·마누엘안토니오",
+    "image": "/landmarks/lm-157.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-158-마터호른-체르마트",
+    "name": "마터호른·체르마트",
+    "image": "/landmarks/lm-158.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-159-트롤퉁가-프레케스톨렌",
+    "name": "트롤퉁가·프레케스톨렌",
+    "image": "/landmarks/lm-159.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-160-조쿨살론-빙하호",
+    "name": "조쿨살론 빙하호",
+    "image": "/landmarks/lm-160.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-161-와디샤브-자발샤",
+    "name": "와디샤브·자발샤姆斯",
+    "image": "/landmarks/lm-161.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-162-고비사막",
+    "name": "고비사막",
+    "image": "/landmarks/lm-162.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-163-사파-라이스테라스",
+    "name": "사파 라이스테라스",
+    "image": "/landmarks/lm-163.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-164-사바-시파단섬",
+    "name": "사바 시파단섬",
+    "image": "/landmarks/lm-164.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-165-라다크-레-팡공호",
+    "name": "라다크 레·팡공호",
+    "image": "/landmarks/lm-165.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-166-그랜드티턴-국립공원",
+    "name": "그랜드티턴 국립공원",
+    "image": "/landmarks/lm-166.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-167-아치스-캐년랜즈",
+    "name": "아치스·캐년랜즈",
+    "image": "/landmarks/lm-167.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-168-모뉴먼트밸리",
+    "name": "모뉴먼트밸리",
+    "image": "/landmarks/lm-168.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-169-과달루페섬-바하고래",
+    "name": "과달루페섬·바하고래",
+    "image": "/landmarks/lm-169.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-170-파타고니아-엘찰텐",
+    "name": "파타고니아 엘찰텐",
+    "image": "/landmarks/lm-170.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-171-클리프오브모허",
+    "name": "클리프오브모허",
+    "image": "/landmarks/lm-171.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-172-베르사유-궁전",
+    "name": "베르사유 궁전",
+    "image": "/landmarks/lm-172.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-173-노트르담-대성당",
+    "name": "노트르담 대성당",
+    "image": "/landmarks/lm-173.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-174-로마-포로-로마노",
+    "name": "로마 포로 로마노",
+    "image": "/landmarks/lm-174.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-175-판테온",
+    "name": "판테온",
+    "image": "/landmarks/lm-175.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-176-베니스-산마르코-광장",
+    "name": "베니스 산마르코 광장",
+    "image": "/landmarks/lm-176.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-177-피렌체-두오모",
+    "name": "피렌체 두오모",
+    "image": "/landmarks/lm-177.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-178-폼페이-유적",
+    "name": "폼페이 유적",
+    "image": "/landmarks/lm-178.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-179-파르크-구엘",
+    "name": "파르크 구엘",
+    "image": "/landmarks/lm-179.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-180-세비야-대성당-알카사르",
+    "name": "세비야 대성당·알카사르",
+    "image": "/landmarks/lm-180.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-181-스톤헨지",
+    "name": "스톤헨지",
+    "image": "/landmarks/lm-181.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-182-에든버러성",
+    "name": "에든버러성",
+    "image": "/landmarks/lm-182.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-183-타워-오브-런던",
+    "name": "타워 오브 런던",
+    "image": "/landmarks/lm-183.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-184-암스테르담-운하-지구",
+    "name": "암스테르담 운하 지구",
+    "image": "/landmarks/lm-184.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-185-브뤼헤-역사지구",
+    "name": "브뤼헤 역사지구",
+    "image": "/landmarks/lm-185.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-186-카를교",
+    "name": "카를교",
+    "image": "/landmarks/lm-186.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-187-빈-쇤브룬-궁전",
+    "name": "빈 쇤브룬 궁전",
+    "image": "/landmarks/lm-187.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-188-잘츠부르크-구시가지",
+    "name": "잘츠부르크 구시가지",
+    "image": "/landmarks/lm-188.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-189-부다페스트-의회의사당",
+    "name": "부다페스트 의회의사당",
+    "image": "/landmarks/lm-189.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-190-델피-유적",
+    "name": "델피 유적",
+    "image": "/landmarks/lm-190.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-191-두브로브니크-성벽",
+    "name": "두브로브니크 성벽",
+    "image": "/landmarks/lm-191.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-192-플리트비체-호수-국립공원",
+    "name": "플리트비체 호수 국립공원",
+    "image": "/landmarks/lm-192.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-193-에페소스-유적",
+    "name": "에페소스 유적",
+    "image": "/landmarks/lm-193.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-194-와디럼",
+    "name": "와디럼",
+    "image": "/landmarks/lm-194.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-195-예루살렘-구시가지",
+    "name": "예루살렘 구시가지",
+    "image": "/landmarks/lm-195.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-196-룩소르-신전-왕가의-계곡",
+    "name": "룩소르 신전·왕가의 계곡",
+    "image": "/landmarks/lm-196.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-197-아부심벨-신전",
+    "name": "아부심벨 신전",
+    "image": "/landmarks/lm-197.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-198-마라케시-제마엘프나-광장",
+    "name": "마라케시 제마엘프나 광장",
+    "image": "/landmarks/lm-198.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-199-페스-메디나",
+    "name": "페스 메디나",
+    "image": "/landmarks/lm-199.svg",
+    "hasAi": false
+  },
+  {
+    "id": "lm-200-킬리만자로산",
+    "name": "킬리만자로산",
+    "image": "/landmarks/lm-200.svg",
+    "hasAi": false
+  }
+]

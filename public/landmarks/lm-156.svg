@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="마추픽추 연계 잉카트레일">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a2a44"/>
+      <stop offset="55%" stop-color="#1a6fa8"/>
+      <stop offset="100%" stop-color="#7ec8e8"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="464" cy="18" rx="28" ry="12.6" fill="#e6f6ff" opacity="0.12"/><ellipse cx="561" cy="-6" rx="40" ry="18" fill="#e6f6ff" opacity="0.12"/><ellipse cx="658" cy="-18" rx="52" ry="23.400000000000002" fill="#e6f6ff" opacity="0.184"/><ellipse cx="755" cy="-24" rx="28" ry="12.6" fill="#e6f6ff" opacity="0.216"/><path d="M0 520 Q240 501.3333333333333 480 510 T960 530 L960 720 L0 720 Z" fill="#1a6fa8" opacity="0.55"/>
+        <path d="M200 500 L350 280 L500 500 Z" fill="#7ec8e8"/><rect x="520" y="320" width="160" height="200" fill="#1a6fa8"/>
+        <circle cx="600" cy="280" r="40" fill="#e6f6ff" opacity="0.7"/>
+        <path d="M120 560 Q480 600 840 540" stroke="#e6f6ff" stroke-width="8" fill="none" opacity="0.45"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아메리카 · 페루</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">마추픽추 연계 잉카트레일</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">한 번쯤 꼭 서 보고 싶은 세계적 명소</text>
+</svg>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="720" viewBox="0 0 960 720" role="img" aria-label="서울 명동·동대문디자인플라자">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3d1f0a"/>
+      <stop offset="55%" stop-color="#8a4b16"/>
+      <stop offset="100%" stop-color="#e0a35a"/>
+    </linearGradient>
+    <linearGradient id="vignette" x1="0.5" y1="0" x2="0.5" y2="1">
+      <stop offset="40%" stop-color="#000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000" stop-opacity="0.45"/>
+    </linearGradient>
+  </defs>
+  <rect width="960" height="720" fill="url(#sky)"/>
+  <ellipse cx="570" cy="70" rx="28" ry="12.6" fill="#fff0d6" opacity="0.19999999999999998"/><ellipse cx="667" cy="55" rx="40" ry="18" fill="#fff0d6" opacity="0.15999999999999998"/><ellipse cx="764" cy="82" rx="52" ry="23.400000000000002" fill="#fff0d6" opacity="0.136"/><ellipse cx="41" cy="61" rx="28" ry="12.6" fill="#fff0d6" opacity="0.128"/>
+        <rect x="0" y="380" width="960" height="340" fill="#0a1020"/>
+        <rect x="120" y="350" width="40" height="170" fill="#152238" opacity="0.95"/>
+            <rect x="126" y="358" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="142" y="378" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="220" y="313" width="58" height="207" fill="#8a4b16" opacity="0.95"/>
+            <rect x="226" y="321" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="242" y="341" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="320" y="276" width="76" height="244" fill="#152238" opacity="0.95"/>
+            <rect x="326" y="284" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="342" y="304" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="420" y="239" width="40" height="281" fill="#8a4b16" opacity="0.95"/>
+            <rect x="426" y="247" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="442" y="267" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="520" y="202" width="58" height="318" fill="#152238" opacity="0.95"/>
+            <rect x="526" y="210" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="542" y="230" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="620" y="345" width="76" height="175" fill="#8a4b16" opacity="0.95"/>
+            <rect x="626" y="353" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="642" y="373" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="720" y="308" width="40" height="212" fill="#152238" opacity="0.95"/>
+            <rect x="726" y="316" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="742" y="336" width="10" height="10" fill="#ff5ac8" opacity="0.85"/><rect x="800" y="271" width="58" height="249" fill="#8a4b16" opacity="0.95"/>
+            <rect x="806" y="279" width="10" height="10" fill="#f5c518" opacity="0.9"/>
+            <rect x="822" y="299" width="10" height="10" fill="#ff5ac8" opacity="0.85"/>
+        <rect x="60" y="560" width="840" height="18" fill="#2a3148"/>
+        <circle cx="200" cy="600" r="16" fill="#f5c518"/><circle cx="240" cy="600" r="16" fill="#f5c518"/>
+  <rect width="960" height="720" fill="url(#vignette)"/>
+  <circle cx="900" cy="56" r="22" fill="#f5c518" opacity="0.95"/>
+  <path d="M900 42l4.2 10.2 11 .9-8.4 7.3 2.5 10.7-9.3-5.4-9.3 5.4 2.5-10.7-8.4-7.3 11-.9z" fill="#fff8d6"/>
+  <rect x="28" y="28" rx="18" ry="18" width="220" height="36" fill="#000" fill-opacity="0.28"/>
+  <text x="46" y="52" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', sans-serif" font-size="16" font-weight="700">아시아 · 대한민국</text>
+  <text x="40" y="640" fill="#fff" font-family="Georgia, 'Apple SD Gothic Neo', serif" font-size="42" font-weight="700">서울 명동·동대문디자인플라자</text>
+  <text x="42" y="678" fill="#fff" fill-opacity="0.88" font-family="system-ui, sans-serif" font-size="18">한 번쯤 꼭 서 보고 싶은 세계적 명소</text>
+</svg>
