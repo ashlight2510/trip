@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { categoryColor } from "@/lib/categories";
-import type { LandingPlaceCard } from "@/lib/seo-landing-places";
 import type { SeoLanding } from "@/lib/seo-landings";
-import { relatedLandings, seoLandingPath } from "@/lib/seo-landings";
+import { relatedLandings } from "@/lib/seo-landings";
+
+export type LandingPlaceCard = {
+  id: string;
+  name: string;
+  city_name: string | null;
+  district_name: string | null;
+  category: string;
+  source_count: number;
+  is_pick: boolean;
+};
 import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
-import { placeSeoPath } from "@/lib/indexed-places";
+import { placeSeoPath, seoLandingPath } from "@/lib/seo-paths";
 import { absoluteUrl, placeShareUrl } from "@/lib/site";
 import { track } from "@/lib/track";
 import { useEffect } from "react";

@@ -5,18 +5,29 @@ import { AffiliateCta } from "@/components/affiliate-cta";
 import { ShareButton } from "@/components/share-button";
 import { TravelKit } from "@/components/travel-kit";
 import { categoryColor } from "@/lib/categories";
-import { placeSeoPath } from "@/lib/indexed-places";
+import { placeSeoPath } from "@/lib/seo-paths";
 import { absoluteUrl } from "@/lib/site";
-import type { StaticPlaceRow } from "@/lib/static-places-file";
 import { track } from "@/lib/track";
 import { useEffect } from "react";
+
+export type PlaceSeoCard = {
+  id: string;
+  name: string;
+  category: string;
+  city_name: string | null;
+  district_name: string | null;
+  address: string | null;
+  source_count: number;
+  is_pick: boolean;
+  sources: { id: string; type: string; title: string; url: string }[];
+};
 
 export function PlaceSeoView({
   place,
   themeHref,
   themeLabel,
 }: {
-  place: StaticPlaceRow;
+  place: PlaceSeoCard;
   themeHref: string;
   themeLabel: string;
 }) {

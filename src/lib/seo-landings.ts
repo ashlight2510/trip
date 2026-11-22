@@ -396,9 +396,7 @@ export function getSeoLanding(slug: string): SeoLanding | undefined {
   return SEO_LANDINGS.find((l) => l.slug === slug);
 }
 
-export function seoLandingPath(slug: string): string {
-  return `/explore/${slug}/`;
-}
+export { seoLandingPath } from "@/lib/seo-paths";
 
 export function relatedLandings(landing: SeoLanding): SeoLanding[] {
   return landing.related

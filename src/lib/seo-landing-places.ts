@@ -1,3 +1,4 @@
+import "server-only";
 import type { SeoLanding } from "@/lib/seo-landings";
 import { loadStaticPlacesFile, type StaticPlaceRow } from "@/lib/static-places-file";
 

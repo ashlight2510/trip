@@ -1,6 +1,9 @@
+import "server-only";
 import { getLandingPlaces } from "@/lib/seo-landing-places";
 import { SEO_LANDINGS } from "@/lib/seo-landings";
 import { getStaticPlaceById, loadStaticPlacesFile, type StaticPlaceRow } from "@/lib/static-places-file";
+
+export { placeSeoPath } from "@/lib/seo-paths";
 
 /** Cap ranked place SEO pages so GH Pages build stays sane. */
 export const INDEXED_PLACE_LIMIT = 250;
@@ -29,8 +32,4 @@ export function getAllSeoPlaces(): StaticPlaceRow[] {
   return getAllSeoPlaceIds()
     .map((id) => getStaticPlaceById(id))
     .filter((p): p is StaticPlaceRow => Boolean(p));
-}
-
-export function placeSeoPath(id: string): string {
-  return `/p/${encodeURIComponent(id)}/`;
 }
