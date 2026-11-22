@@ -1186,6 +1186,12 @@ export function MapExplorer({ areas }: { areas: MapArea[] }) {
               </Link>
             )}
             <Link
+              href="/explore/"
+              className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-[#1b4965] ring-1 ring-sky-200 hover:bg-sky-50"
+            >
+              여행 테마
+            </Link>
+            <Link
               href="/picks"
               className="rounded-full px-3 py-1.5 text-[13px] font-semibold text-stone-600 ring-1 ring-stone-200 hover:bg-stone-50"
             >

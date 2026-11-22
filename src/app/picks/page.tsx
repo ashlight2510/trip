@@ -43,12 +43,20 @@ export default function PicksPage() {
         <p className="text-xs tracking-[0.28em] text-stone-500">풍경너머</p>
         <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
           <h1 className="font-display text-4xl text-stone-900 md:text-5xl">픽</h1>
-          <Link
-            href="/"
-            className="rounded-full bg-stone-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-stone-800"
-          >
-            지도로 돌아가기
-          </Link>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href="/explore/"
+              className="rounded-full px-3.5 py-1.5 text-[12px] font-semibold text-[#1b4965] ring-1 ring-sky-200 hover:bg-sky-50"
+            >
+              여행 테마
+            </Link>
+            <Link
+              href="/"
+              className="rounded-full bg-stone-900 px-3.5 py-1.5 text-[12px] font-semibold text-white hover:bg-stone-800"
+            >
+              지도로 돌아가기
+            </Link>
+          </div>
         </div>
         {!ready ? (
           <p className="mt-6 text-sm text-stone-500">불러오는 중…</p>
