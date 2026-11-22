@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
-import { checkDhigaliAdmin } from "@/app/actions/dhigali-admin";
 import { DHIGALI_ITINERARY } from "@/lib/dhigali";
 import { COASTER_BEACH, COASTER_STATION, coasterAt, LAGOON_TRACK } from "@/lib/dhigali-coaster";
 import {
@@ -69,8 +68,6 @@ function alongPath(path: { x: number; y: number }[], t: number) {
 
 export function DhigaliExperience() {
   const [phase, setPhase] = useState<Phase>("gate");
-  const [code, setCode] = useState("");
-  const [codeError, setCodeError] = useState("");
   const [guest, setGuest] = useState(GUEST_NAMES[0] ?? "손님");
   const [shirt, setShirt] = useState(SHIRTS[6] ?? 0x8ed9b4);
   const [pos, setPos] = useState({ lat: ARRIVAL.lat, lng: ARRIVAL.lng, heading: 0 });
@@ -467,17 +464,6 @@ export function DhigaliExperience() {
     setPhase(afterArriveRef.current);
   }
 
-  async function enterAdmin() {
-    setCodeError("");
-    const ok = await checkDhigaliAdmin(code);
-    if (!ok) {
-      setCodeError("코드가 맞지 않아요.");
-      return;
-    }
-    void dhigaliAmbience.start();
-    setPhase("island");
-  }
-
   function rememberGuest(next: string) {
     const name = next.slice(0, 16);
     setGuest(name);
@@ -610,7 +596,7 @@ export function DhigaliExperience() {
             <p className="text-[11px] tracking-[0.22em] text-amber-100/80">DHIGALI · 라 환초</p>
             <h1 className="font-serif mt-2 text-3xl">디갈리에 오신 걸 환영해요</h1>
             <p className="mt-3 text-sm leading-relaxed text-white/75">
-              잔교를 따라 들어선 뒤, 낙하산을 타고 라 환초의 섬으로 내려간다. 이름은 머리 위에 보인다. 관리자 코드가 있으면 바로 모래 위다.
+              잔교를 따라 들어선 뒤, 낙하산을 타고 라 환초의 섬으로 내려간다. 이름은 머리 위에 보인다.
             </p>
             <label className="mt-4 block text-xs text-white/60">
               이름
@@ -656,25 +642,6 @@ export function DhigaliExperience() {
             >
               낙하산 타고 입장하기
             </button>
-            <form
-              className="mt-3 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void enterAdmin();
-              }}
-            >
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="관리자 코드"
-                className="min-w-0 flex-1 rounded-xl bg-white/10 px-3 py-2 text-sm outline-none ring-1 ring-white/15 placeholder:text-white/40"
-                autoComplete="off"
-              />
-              <button type="submit" className="rounded-xl px-3 text-sm ring-1 ring-white/25">
-                바로 입장
-              </button>
-            </form>
-            {codeError && <p className="mt-2 text-xs text-rose-200">{codeError}</p>}
             <div className="mt-4 flex gap-4">
               <Link href="/vlog/maldives" className="text-xs text-amber-100/80 hover:text-white">
                 오는 길 브이로그
