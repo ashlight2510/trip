@@ -132,8 +132,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-023-도쿄-디즈니랜드-시",
-    "name": "도쿄 디즈니랜드·시",
+    "id": "lm-023-도쿄-디즈니랜드-디즈니시",
+    "name": "도쿄 디즈니랜드·디즈니시",
     "image": "/landmarks/lm-023.svg",
     "hasAi": false
   },
@@ -366,8 +366,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-062-나미브사막-수소프블레이",
-    "name": "나미브사막 수소프블레이",
+    "id": "lm-062-나미브사막-소수스블레이",
+    "name": "나미브사막 소수스블레이",
     "image": "/landmarks/lm-062.svg",
     "hasAi": false
   },
@@ -630,8 +630,8 @@
     "hasAi": true
   },
   {
-    "id": "lm-106-리우-그리스도상-슈가로프",
-    "name": "리우 그리스도상·슈가로프",
+    "id": "lm-106-리우-그리스도상-빵산",
+    "name": "리우 그리스도상·빵산",
     "image": "/landmarks/lm-106.svg",
     "hasAi": false
   },
@@ -714,8 +714,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-120-하노이-하롱-외-닌빈-땀꼭",
-    "name": "하노이 하롱 외 닌빈·땀꼭",
+    "id": "lm-120-닌빈-땀꼭",
+    "name": "닌빈·땀꼭",
     "image": "/landmarks/lm-120.svg",
     "hasAi": false
   },
@@ -732,8 +732,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-123-쿠스코-외-무지수로이-레인보우마운틴",
-    "name": "쿠스코 외 무지수로이·레인보우마운틴",
+    "id": "lm-123-쿠스코-무지개산",
+    "name": "쿠스코·무지개산",
     "image": "/landmarks/lm-123.svg",
     "hasAi": false
   },
@@ -972,8 +972,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-163-사파-라이스테라스",
-    "name": "사파 라이스테라스",
+    "id": "lm-163-사파-계단식-논",
+    "name": "사파 계단식 논",
     "image": "/landmarks/lm-163.svg",
     "hasAi": false
   },
@@ -1020,8 +1020,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-171-클리프오브모허",
-    "name": "클리프오브모허",
+    "id": "lm-171-모허 절벽",
+    "name": "모허 절벽",
     "image": "/landmarks/lm-171.svg",
     "hasAi": false
   },
@@ -1092,8 +1092,8 @@
     "hasAi": false
   },
   {
-    "id": "lm-183-타워-오브-런던",
-    "name": "타워 오브 런던",
+    "id": "lm-183-런던탑",
+    "name": "런던탑",
     "image": "/landmarks/lm-183.svg",
     "hasAi": false
   },

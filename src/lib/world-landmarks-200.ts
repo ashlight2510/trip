@@ -961,8 +961,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "상하이 디즈니랜드 여행 일러스트 · 중국"
   },
   {
-    "id": "lm-023-도쿄-디즈니랜드-시",
-    "name": "도쿄 디즈니랜드·시",
+    "id": "lm-023-도쿄-디즈니랜드-디즈니시",
+    "name": "도쿄 디즈니랜드·디즈니시",
     "country": "일본",
     "region": "아시아",
     "lat": 35.6329,
@@ -1000,7 +1000,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "amber",
     "note": "최근 5년 테마파크 상위",
     "image": "/landmarks/lm-023.jpg",
-    "imageAlt": "도쿄 디즈니랜드·시 여행 일러스트 · 일본"
+    "imageAlt": "도쿄 디즈니랜드·디즈니시 여행 일러스트 · 일본"
   },
   {
     "id": "lm-024-유니버설-스튜디오-재팬",
@@ -1094,7 +1094,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "lat": -8.5069,
     "lng": 115.2625,
     "headline": "쉬러 왔다가 인생 컷을 남기게 되는 휴양 명소",
-    "summary": "라이스테라스와 요가·예술의 중심지로 발리 문화 관광의 심장이다.",
+    "summary": "계단식 논과 요가·예술의 중심지로 발리 문화 관광의 심장이다.",
     "bestSeason": "건기·따뜻한 달(지역별 우기 확인)",
     "experiences": [
       {
@@ -1114,7 +1114,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
       {
         "name": "이 장소가 유명해진 배경",
         "dateHint": "역사·문화",
-        "description": "라이스테라스와 요가·예술의 중심지로 발리 문화 관광의 심장이다. 여행자들은 그 상징성 때문에 세대를 이어 발길을 이어왔습니다."
+        "description": "계단식 논과 요가·예술의 중심지로 발리 문화 관광의 심장이다. 여행자들은 그 상징성 때문에 세대를 이어 발길을 이어왔습니다."
       },
       {
         "name": "여행자가 자주 하는 실수",
@@ -2599,19 +2599,19 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "에티오피아 랄리벨라 여행 일러스트 · 에티오피아"
   },
   {
-    "id": "lm-062-나미브사막-수소프블레이",
-    "name": "나미브사막 수소프블레이",
+    "id": "lm-062-나미브사막-소수스블레이",
+    "name": "나미브사막 소수스블레이",
     "country": "나미비아",
     "region": "아프리카",
     "lat": -24.733,
     "lng": 15.292,
     "headline": "세계유산이자 지구촌 포스터 풍경",
-    "summary": "세계 최고령급 모래언덕과 데드블라이의 죽은 아카시아 풍경이다.",
+    "summary": "세계 최고령급 모래언덕과 데드블레이의 죽은 아카시아 풍경이다.",
     "bestSeason": "건기(6–10월) 야생관찰이 특히 좋음",
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "나미브사막 수소프블레이의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "나미브사막 소수스블레이의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "짧은 트레일·전망 포인트",
@@ -2626,7 +2626,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
       {
         "name": "세계유산으로 남은 이유",
         "dateHint": "유네스코",
-        "description": "나미브사막 수소프블레이은(는) 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
+        "description": "나미브사막 소수스블레이은(는) 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
       },
       {
         "name": "여행자가 자주 하는 실수",
@@ -2638,7 +2638,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "orange",
     "note": "유네스코 · Nat Geo",
     "image": "/landmarks/lm-062.jpg",
-    "imageAlt": "나미브사막 수소프블레이 여행 일러스트 · 나미비아"
+    "imageAlt": "나미브사막 소수스블레이 여행 일러스트 · 나미비아"
   },
   {
     "id": "lm-063-오카방고-델타",
@@ -4447,8 +4447,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "마추픽추 여행 일러스트 · 페루"
   },
   {
-    "id": "lm-106-리우-그리스도상-슈가로프",
-    "name": "리우 그리스도상·슈가로프",
+    "id": "lm-106-리우-그리스도상-빵산",
+    "name": "리우 그리스도상·빵산",
     "country": "브라질",
     "region": "아메리카",
     "lat": -22.9519,
@@ -4459,7 +4459,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "리우 그리스도상·슈가로프의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "리우 그리스도상·빵산의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -4482,11 +4482,11 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
         "description": "성수기 주말 한낮·대형 크루즈 입항일·공휴일에는 대기열이 급증합니다. 이른 아침 입장권·예약 슬롯을 확보하세요."
       }
     ],
-    "funFact": "리우 그리스도상·슈가로프는 ‘세계 신7대 불가사의’ 투표·선정 과정에서 전 세계인이 이름을 올린 상징 유적입니다.",
+    "funFact": "리우 그리스도상·빵산는 ‘세계 신7대 불가사의’ 투표·선정 과정에서 전 세계인이 이름을 올린 상징 유적입니다.",
     "tone": "sky",
     "note": "최근 방문 상위 · 신7대 불가사의",
     "image": "/landmarks/lm-106.jpg",
-    "imageAlt": "리우 그리스도상·슈가로프 여행 일러스트 · 브라질"
+    "imageAlt": "리우 그리스도상·빵산 여행 일러스트 · 브라질"
   },
   {
     "id": "lm-107-인터라켄-융프라우",
@@ -5035,8 +5035,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "치앙라이 화이트템플 여행 일러스트 · 태국"
   },
   {
-    "id": "lm-120-하노이-하롱-외-닌빈-땀꼭",
-    "name": "하노이 하롱 외 닌빈·땀꼭",
+    "id": "lm-120-닌빈-땀꼭",
+    "name": "닌빈·땀꼭",
     "country": "베트남",
     "region": "아시아",
     "lat": 20.25,
@@ -5047,7 +5047,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "하노이 하롱 외 닌빈·땀꼭의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "닌빈·땀꼭의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -5074,7 +5074,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "amber",
     "note": "최근 방문 상위",
     "image": "/landmarks/lm-120.jpg",
-    "imageAlt": "하노이 하롱 외 닌빈·땀꼭 여행 일러스트 · 베트남"
+    "imageAlt": "닌빈·땀꼭 여행 일러스트 · 베트남"
   },
   {
     "id": "lm-121-뉴욕-자연사박물관",
@@ -5161,8 +5161,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "캐나다 나이아가라 스카이론 여행 일러스트 · 캐나다"
   },
   {
-    "id": "lm-123-쿠스코-외-무지수로이-레인보우마운틴",
-    "name": "쿠스코 외 무지수로이·레인보우마운틴",
+    "id": "lm-123-쿠스코-무지개산",
+    "name": "쿠스코·무지개산",
     "country": "페루",
     "region": "아메리카",
     "lat": -13.87,
@@ -5173,7 +5173,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "쿠스코 외 무지수로이·레인보우마운틴의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "쿠스코·무지개산의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -5200,7 +5200,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "sky",
     "note": "최근 방문 상위",
     "image": "/landmarks/lm-123.jpg",
-    "imageAlt": "쿠스코 외 무지수로이·레인보우마운틴 여행 일러스트 · 페루"
+    "imageAlt": "쿠스코·무지개산 여행 일러스트 · 페루"
   },
   {
     "id": "lm-124-이스탄불-보스포루스-크루즈",
@@ -6841,8 +6841,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "고비사막 여행 일러스트 · 몽골"
   },
   {
-    "id": "lm-163-사파-라이스테라스",
-    "name": "사파 라이스테라스",
+    "id": "lm-163-사파-계단식-논",
+    "name": "사파 계단식 논",
     "country": "베트남",
     "region": "아시아",
     "lat": 22.336,
@@ -6853,7 +6853,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "사파 라이스테라스의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "사파 계단식 논의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -6880,7 +6880,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "amber",
     "note": "Nat Geo",
     "image": "/landmarks/lm-163.jpg",
-    "imageAlt": "사파 라이스테라스 여행 일러스트 · 베트남"
+    "imageAlt": "사파 계단식 논 여행 일러스트 · 베트남"
   },
   {
     "id": "lm-164-사바-시파단섬",
@@ -7177,8 +7177,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "파타고니아 엘찰텐 여행 일러스트 · 아르헨티나"
   },
   {
-    "id": "lm-171-클리프오브모허",
-    "name": "클리프오브모허",
+    "id": "lm-171-모허 절벽",
+    "name": "모허 절벽",
     "country": "아일랜드",
     "region": "유럽",
     "lat": 52.9719,
@@ -7189,7 +7189,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "클리프오브모허의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "모허 절벽의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "짧은 트레일·전망 포인트",
@@ -7216,7 +7216,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "slate",
     "note": "Nat Geo",
     "image": "/landmarks/lm-171.jpg",
-    "imageAlt": "클리프오브모허 여행 일러스트 · 아일랜드"
+    "imageAlt": "모허 절벽 여행 일러스트 · 아일랜드"
   },
   {
     "id": "lm-172-베르사유-궁전",
@@ -7681,8 +7681,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "에든버러성 여행 일러스트 · 영국"
   },
   {
-    "id": "lm-183-타워-오브-런던",
-    "name": "타워 오브 런던",
+    "id": "lm-183-런던탑",
+    "name": "런던탑",
     "country": "영국",
     "region": "유럽",
     "lat": 51.5081,
@@ -7693,7 +7693,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "타워 오브 런던의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "런던탑의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -7708,7 +7708,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
       {
         "name": "세계유산으로 남은 이유",
         "dateHint": "유네스코",
-        "description": "타워 오브 런던은(는) 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
+        "description": "런던탑은 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
       },
       {
         "name": "여행자가 자주 하는 실수",
@@ -7720,7 +7720,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "slate",
     "note": "유네스코",
     "image": "/landmarks/lm-183.jpg",
-    "imageAlt": "타워 오브 런던 여행 일러스트 · 영국"
+    "imageAlt": "런던탑 여행 일러스트 · 영국"
   },
   {
     "id": "lm-184-암스테르담-운하-지구",

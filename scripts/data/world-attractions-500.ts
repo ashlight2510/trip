@@ -210,7 +210,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코",
   },
   {
-    name: "타워 오브 런던",
+    name: "런던탑",
     country: "영국",
     intro: "왕관 보석과 예이먼 경비병으로 유명한 중세 요새다.",
     note: "유네스코",
@@ -679,7 +679,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "최근 방문 상위",
   },
   {
-    name: "도쿄 디즈니랜드·시",
+    name: "도쿄 디즈니랜드·디즈니시",
     country: "일본",
     intro: "아시아에서 가장 붐비는 디즈니 리조트 중 하나로 연간 방문객이 매우 많다.",
     note: "최근 5년 테마파크 상위",
@@ -952,7 +952,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
   {
     name: "발리 우붓",
     country: "인도네시아",
-    intro: "라이스테라스와 요가·예술의 중심지로 발리 문화 관광의 심장이다.",
+    intro: "계단식 논과 요가·예술의 중심지로 발리 문화 관광의 심장이다.",
     note: "최근 5년 휴양·문화 상위",
   },
   {
@@ -1507,7 +1507,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코 · Nat Geo",
   },
   {
-    name: "리우 그리스도상·슈가로프",
+    name: "리우 그리스도상·빵산",
     country: "브라질",
     intro: "코르코바도·빵산 전망으로 리우 카니발 도시의 상징이다.",
     note: "최근 방문 상위 · 신7대 불가사의",
@@ -2175,9 +2175,9 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코",
   },
   {
-    name: "나미브사막 수소프블레이",
+    name: "나미브사막 소수스블레이",
     country: "나미비아",
-    intro: "세계 최고령급 모래언덕과 데드블라이의 죽은 아카시아 풍경이다.",
+    intro: "세계 최고령급 모래언덕과 데드블레이의 죽은 아카시아 풍경이다.",
     note: "유네스코 · Nat Geo",
   },
   {
@@ -2392,7 +2392,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "최근 방문 상위",
   },
   {
-    name: "하노이 하롱 외 닌빈·땀꼭",
+    name: "닌빈·땀꼭",
     country: "베트남",
     intro: "육지의 하롱이라 불리는 논밭 사이 카르스트 보트 코스다.",
     note: "최근 방문 상위",
@@ -2404,7 +2404,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코",
   },
   {
-    name: "사파 라이스테라스",
+    name: "사파 계단식 논",
     country: "베트남",
     intro: "황금빛 계단식 논과 산악 소수민족 마을이 있는 북부 고원이다.",
     note: "Nat Geo",
@@ -2699,7 +2699,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "Nat Geo",
   },
   {
-    name: "쿠스코 외 무지수로이·레인보우마운틴",
+    name: "쿠스코·무지개산",
     country: "페루",
     intro: "알록달록 광물 산등성이로 안데스 트레킹의 신흥 명소다.",
     note: "최근 방문 상위",
@@ -2886,7 +2886,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "Lonely Planet",
   },
   {
-    name: "클리프오브모허",
+    name: "모허 절벽",
     country: "아일랜드",
     intro: "대서양을 향한 수직 절벽으로 아일랜드 최고 자연 명소다.",
     note: "Nat Geo",
