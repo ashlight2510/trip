@@ -150,7 +150,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코 · 최근 방문 상위",
   },
   {
-    name: "파르크 구엘",
+    name: "구엘 공원",
     country: "스페인",
     intro: "가우디의 모자이크 공원으로 바르셀로나 언덕 전망이 빼어나다.",
     note: "유네스코",
@@ -1253,7 +1253,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "유네스코",
   },
   {
-    name: "피지 난디·맘마누아",
+    name: "피지 난디·마마누카",
     country: "피지",
     intro: "남태평양 대표 리조트 군도로 수상 방갈로 휴양이 인기다.",
     note: "휴양 상위",
@@ -2085,7 +2085,7 @@ export const WORLD_ATTRACTIONS_500: WorldAttraction[] = [
     note: "문화 관광",
   },
   {
-    name: "와디샤브·자발샤姆斯",
+    name: "와디샤브·자발 샴스",
     country: "오만",
     intro: "협곡 수영과 ‘오만의 그랜드캐년’ 전망이 있는 아라비아 아웃도어다.",
     note: "Nat Geo",

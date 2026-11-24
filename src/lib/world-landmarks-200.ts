@@ -5455,8 +5455,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "고아 해변 여행 일러스트 · 인도"
   },
   {
-    "id": "lm-130-피지-난디-맘마누아",
-    "name": "피지 난디·맘마누아",
+    "id": "lm-130-피지-난디-마마누카",
+    "name": "피지 난디·마마누카",
     "country": "피지",
     "region": "오세아니아",
     "lat": -17.77,
@@ -5467,7 +5467,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "피지 난디·맘마누아의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "피지 난디·마마누카의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -5494,7 +5494,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "teal",
     "note": "휴양 상위",
     "image": "/landmarks/lm-130.jpg",
-    "imageAlt": "피지 난디·맘마누아 여행 일러스트 · 피지"
+    "imageAlt": "피지 난디·마마누카 여행 일러스트 · 피지"
   },
   {
     "id": "lm-131-마이애미-사우스비치",
@@ -6757,8 +6757,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "조쿨살론 빙하호 여행 일러스트 · 아이슬란드"
   },
   {
-    "id": "lm-161-와디샤브-자발샤",
-    "name": "와디샤브·자발샤姆斯",
+    "id": "lm-161-와디샤브-자발샴스",
+    "name": "와디샤브·자발 샴스",
     "country": "오만",
     "region": "중동",
     "lat": 23.07,
@@ -6769,7 +6769,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "와디샤브·자발샤姆斯의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "와디샤브·자발 샴스의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -6796,7 +6796,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "rose",
     "note": "Nat Geo",
     "image": "/landmarks/lm-161.jpg",
-    "imageAlt": "와디샤브·자발샤姆斯 여행 일러스트 · 오만"
+    "imageAlt": "와디샤브·자발 샴스 여행 일러스트 · 오만"
   },
   {
     "id": "lm-162-고비사막",
@@ -7513,8 +7513,8 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "imageAlt": "폼페이 유적 여행 일러스트 · 이탈리아"
   },
   {
-    "id": "lm-179-파르크-구엘",
-    "name": "파르크 구엘",
+    "id": "lm-179-구엘-공원",
+    "name": "구엘 공원",
     "country": "스페인",
     "region": "유럽",
     "lat": 41.4145,
@@ -7525,7 +7525,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "experiences": [
       {
         "name": "핵심 스폿 천천히 걷기",
-        "description": "파르크 구엘의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
+        "description": "구엘 공원의 대표 전망·입구·상징 포인트를 여유 있게 돌아보며 사진보다 ‘분위기’를 먼저 느껴보세요."
       },
       {
         "name": "현지 가이드·오디오 해설",
@@ -7540,7 +7540,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
       {
         "name": "세계유산으로 남은 이유",
         "dateHint": "유네스코",
-        "description": "파르크 구엘은(는) 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
+        "description": "구엘 공원은 인류 공동 유산으로 보호받는 곳으로, 방문 자체가 ‘보존된 풍경을 빌리는’ 경험에 가깝습니다."
       },
       {
         "name": "여행자가 자주 하는 실수",
@@ -7552,7 +7552,7 @@ export const WORLD_LANDMARKS_200: WorldLandmark[] = [
     "tone": "slate",
     "note": "유네스코",
     "image": "/landmarks/lm-179.jpg",
-    "imageAlt": "파르크 구엘 여행 일러스트 · 스페인"
+    "imageAlt": "구엘 공원 여행 일러스트 · 스페인"
   },
   {
     "id": "lm-180-세비야-대성당-알카사르",
